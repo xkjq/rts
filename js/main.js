@@ -1,6 +1,8 @@
 //cid = null;
-cid = 1234;
-eid = 5678;
+var cid = 1234;
+var eid = 5678;
+
+var exam_mode = false;
 
 //var questions = null
 var question_order = [];
@@ -34,10 +36,15 @@ function setUpQuestions() {
 
   // Horrible way to get type of questions
   // We assume they are all of the same type....
-  question_type = questions[Object.keys(questions)[0]].type;
+  if (question_type == null) {
+    question_type = questions[Object.keys(questions)[0]].type;
+  }
 
-  // Make sure answers is an array
-  //
+  if (window.exam_mode) {
+    $("#options-button, #review-overlay-button").hide();
+  } else {
+    $("#submit-button").hide();
+  }
 
   loadQuestion(0, 1, true);
   createReviewPanel();
@@ -93,7 +100,33 @@ db.version(1).stores({
   user_answers: "qid, ans"
 });
 
-setUpQuestions();
+function setUpPacket(data) {
+  if (data.hasOwnProperty("exam_name")) {
+    $(".exam-name").text("Exam: " + data.exam_name);
+  }
+
+  if (data.hasOwnProperty("eid")) {
+    window.eid = data.eid;
+  }
+
+  if (data.hasOwnProperty("type")) {
+    window.question_type = data.type;
+  }
+
+  if (data.hasOwnProperty("exam_mode")) {
+    window.exam_mode = data.exam_mode;
+  }
+
+  if (data.hasOwnProperty("questions")) {
+    window.questions = data.questions;
+  } else {
+    window.questions = data;
+  }
+
+  setUpQuestions();
+}
+
+setUpPacket(questions);
 
 function loadQuestion(n, section = 1, force_reload = false) {
   // Make sure we have an integer
@@ -991,6 +1024,10 @@ function disableFullscreen(dicom_element) {
 // Register Key Event Listener
 window.addEventListener("keydown", keydown_handler);
 
+$("#submit-button").click(function(evt) {
+  submitAnswers();
+});
+
 $("#review-button").click(function(evt) {
   $(".question-list-panel").toggle();
 });
@@ -1026,36 +1063,22 @@ $("#review-overlay-close").click(function(evt) {
 });
 
 function getJsonAnswers() {
-  db.answers
-    .where({ cid: cid, eid: eid })
-    .toArray()
-    .then(function(answers) {
-      return;
-      answers.forEach(function(answer, n) {
-        $(
-          "#question-list-item-" +
-            question_order.indexOf(answer.qid) +
-            "-" +
-            answer.qidn
-        ).addClass("question-saved-localdb");
+  return db.answers.where({ cid: cid, eid: eid }).toArray();
+  // .then(function(ans) {
+  // console.log(ans);
+  // submitAnswers(ans);
+  // });
+}
 
-        if (question_type == "rapid" && answer.qidn == "1") {
-          if (answer.ans == "Abnormal") {
-            $(
-              "#question-list-item-" + question_order.indexOf(answer.qid) + "-2"
-            ).css("display", "block");
-          } else {
-            $(
-              "#question-list-item-" + question_order.indexOf(answer.qid) + "-2"
-            ).css("display", "none");
-          }
-        }
-      });
-      //$(".long-answer").text(answer.ans);
-    })
-    .catch(function(error) {
-      console.log("error - ", error);
-    });
+function postAnswers(ans) {
+  console.log(ans);
+  //ans = {"test" : 1}
+  $.post("http://localhost:8000/submit_answers", JSON.stringify(ans)).done(
+    data => {
+      console.log(data);
+    }
+  );
+  //$.post( "http://localhost:8000/submit_answers", JSON.stringify(ans));
 }
 
 function loadLocalQuestionSet() {
@@ -1080,14 +1103,21 @@ function loadLocalQuestionSet() {
     fr = new FileReader();
     fr.onload = receivedText;
     fr.readAsText(file);
-    $(".exam-name").text("Exam: " + file.name);
   }
 
   function receivedText(e) {
     let lines = e.target.result;
-    window.questions = JSON.parse(lines);
-    setUpQuestions();
+    j = JSON.parse(lines);
+    setUpPacket(j);
   }
+}
+
+function submitAnswers() {
+  console.log(
+    getJsonAnswers().then(a => {
+      postAnswers(a);
+    })
+  );
 }
 
 // Displays the review question panel with a summary of marks
@@ -1456,7 +1486,6 @@ function loadMainImage(image, stack) {
   const element = document.getElementById("dicom-image");
   cornerstone.enable(element);
 
-
   cornerstone.displayImage(element, image);
 
   cornerstoneTools.addStackStateManager(element, ["stack"]);
@@ -1521,7 +1550,7 @@ function showLoginDialog() {
 }
 
 $("#start-exam-button").click(function(evt) {
-  cid = $("#candidate-number").val();
+  cid = parseInt($("#candidate-number").val());
   $.modal.close();
 });
 
@@ -1561,7 +1590,9 @@ function manualScrollDicom(n) {
   c = cornerstone.getEnabledElement(dicom_element);
   max = c.toolStateManager.toolState.stack.data[0].imageIds.length;
 
-  if (max < 2) { return }
+  if (max < 2) {
+    return;
+  }
 
   current_index =
     c.toolStateManager.toolState.stack.data[0].currentImageIdIndex;
