@@ -23,7 +23,7 @@ var b = null;
 loadPacketList();
 
 function loadPacketList() {
-  var jqxhr = $.getJSON("packets/packets.json", function (data) {
+  var jqxhr = $.getJSON("packets/", function (data) {
     packet_list = data.packets;
     packet_list.forEach(function (packet) {
       $("#packet-list").append($("<div class='packet-button'>" + packet + "</div>").click(function () {
