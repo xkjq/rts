@@ -1577,3 +1577,11 @@ $("#start-exam-button").click(function (evt) {
   window.cid = parseInt($("#candidate-number").val());
   $.modal.close();
 });
+
+$(document).ajaxStart(function () {
+  $("#loading").show();
+});
+
+$(document).ajaxComplete(function () {
+  $("#loading").hide();
+});
