@@ -8,7 +8,7 @@ window.exam_mode = false;
 
 window.packet_list = [];
 
-// var questions = null
+window.questions = null;
 window.question_order = [];
 window.number_of_questions = null;
 window.question_type = null;
@@ -19,7 +19,6 @@ window.allow_self_marking = true;
 
 window.dfile = null;
 
-
 retrievePacketList();
 
 /**
@@ -28,23 +27,19 @@ retrievePacketList();
  * and then fallback to packets.json
  */
 function retrievePacketList() {
-  $.getJSON("packets/", function(data) {
+  $.getJSON("packets/", function (data) {
     loadPacketList(data);
   })
-      .done(function() {
-      })
-      .fail(function() {
-        $.getJSON("packets/packets.json", function(data) {
-          loadPacketList(data);
-        })
-            .fail(function() {
-              console.log("No packet list available");
-              showLoginDialog();
-            });
-      })
-      .always(function() {
+    .done(function () {})
+    .fail(function () {
+      $.getJSON("packets/packets.json", function (data) {
+        loadPacketList(data);
+      }).fail(function () {
+        console.log("No packet list available");
+        showLoginDialog();
       });
-
+    })
+    .always(function () {});
 
   // setUpPacket(questions);
 }
@@ -56,11 +51,12 @@ function retrievePacketList() {
  */
 function loadPacketList(data) {
   window.packet_list = data.packets;
-  window.packet_list.forEach(function(packet) {
+  window.packet_list.forEach(function (packet) {
     $("#packet-list").append(
-        $("<div class='packet-button'>" + packet + "</div>").click(function() {
-          loadPacketFromAjax("packets/" + packet);
-        }));
+      $("<div class='packet-button'>" + packet + "</div>").click(function () {
+        loadPacketFromAjax("packets/" + packet);
+      })
+    );
   });
   $("#options-panel").show();
 }
@@ -71,46 +67,45 @@ function loadPacketList(data) {
  */
 function loadPacketFromAjax(path) {
   console.log("loading packet from " + path);
-  $.getJSON(path, function(data) {
+  $.getJSON(path, function (data) {
     setUpPacket(data);
     $("#options-panel").hide();
   })
-      .done(function() {
-      })
-      .fail(function() {
-        console.log("Unable to load packet at: " + path);
-      });
+    .done(function () {})
+    .fail(function () {
+      console.log("Unable to load packet at: " + path);
+    });
 }
 
 /**
  * Build the currently loaded quiz
  */
 function setUpQuestions() {
-  if (questions == undefined) {
+  if (window.questions == undefined) {
     return;
   }
   // Set an order for the questions
   window.question_order = [];
-  Object.keys(questions).forEach(function(e) {
+  Object.keys(window.questions).forEach(function (e) {
     window.question_order.push(e);
 
     // Make sure answers are arrays
-    if (!Array.isArray(questions[e]["answers"])) {
-      questions[e]["answers"] = [questions[e]["answers"]];
+    if (!Array.isArray(window.questions[e]["answers"])) {
+      window.questions[e]["answers"] = [window.questions[e]["answers"]];
     }
   });
 
   console.log("pre", window.question_order);
   window.question_order = helper.shuffleArray(window.question_order);
   console.log("post", window.question_order);
-  window.number_of_questions = Object.keys(questions).length;
+  window.number_of_questions = Object.keys(window.questions).length;
   window.review = false;
   console.log(window.question_order);
 
   // Horrible way to get type of questions
   // We assume they are all of the same type....
   if (window.question_type == null) {
-    window.question_type = questions[Object.keys(questions)[0]].type;
+    window.question_type = window.questions[Object.keys(window.questions)[0]].type;
   }
 
   if (window.exam_mode) {
@@ -183,7 +178,6 @@ function setUpPacket(data) {
   setUpQuestions();
 }
 
-
 /**
  * Loads a specific question
  * @param {number} n - Question number to load
@@ -197,7 +191,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
 
   const qid = window.question_order[n];
   console.log("qid", qid);
-  const current_question = questions[qid];
+  const current_question = window.questions[qid];
 
   console.log("N=", n, section, current_question);
 
@@ -216,33 +210,33 @@ function loadQuestion(n, section = 1, force_reload = false) {
     $(".navigation[value='previous']").attr("disabled", "disabled");
   } else {
     $(".navigation[value='previous']")
-        .removeAttr("disabled")
-        .click(function() {
-          loadQuestion(n - 1);
-        });
+      .removeAttr("disabled")
+      .click(function () {
+        loadQuestion(n - 1);
+      });
   }
 
   if (n == window.number_of_questions - 1) {
     $(".navigation[value='next']").attr("disabled", "disabled");
   } else {
     $(".navigation[value='next']")
-        .removeAttr("disabled")
-        .click(function() {
-          loadQuestion(n + 1);
-        });
+      .removeAttr("disabled")
+      .click(function () {
+        loadQuestion(n + 1);
+      });
   }
 
   const display_n = n + 1;
 
   if (current_question.title) {
     $(".question .title").get(0).innerHTML =
-      "<span style=\"font-weight:700;\">" +
+      '<span style="font-weight:700;">' +
       display_n +
       "</span> " +
       current_question.title;
   } else {
     $(".question .title").get(0).innerHTML =
-      "<span style=\"font-weight:700;\">" + display_n + "</span>";
+      '<span style="font-weight:700;">' + display_n + "</span>";
   }
 
   // Close any open figures
@@ -267,9 +261,9 @@ function loadQuestion(n, section = 1, force_reload = false) {
       }
 
       thumbnails.append(
-          "<div class=\"figure\" id=\"figure-" +
-        id +
-        "\"><div class=\"figcaption\">...</div></div>",
+        '<div class="figure" id="figure-' +
+          id +
+          '"><div class="figcaption">...</div></div>'
       );
 
       // const thumbnail = $(".figure .thumbnail").get(id);
@@ -293,14 +287,14 @@ function loadQuestion(n, section = 1, force_reload = false) {
         // otherwise try to load it as a dicom
       } else {
         // convert the data url to a file
-        urltoFile(based_img, "dicom", "application/dicom").then(function(
-            dfile,
+        urltoFile(based_img, "dicom", "application/dicom").then(function (
+          dfile
         ) {
           // load the file using cornerstoneWADO file loader
           const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(
-              dfile,
+            dfile
           );
-          cornerstone.loadAndCacheImage(imageId).then(function(image) {
+          cornerstone.loadAndCacheImage(imageId).then(function (image) {
             const img = $("<div></div>").get(0);
             img.id = "thumb-" + id;
             img.class = "thumbnail";
@@ -321,7 +315,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
   }
 
   $(".thumbs .figure").each(function handleThumbnailClicks(id, thumbnail) {
-    thumbnail.onclick = function(event) {
+    thumbnail.onclick = function (event) {
       view(event, this);
     };
   });
@@ -350,16 +344,14 @@ function loadQuestion(n, section = 1, force_reload = false) {
         }
       }
 
-      $(".figure-open")
-          .removeClass("figure-open")
-          .addClass("figure");
+      $(".figure-open").removeClass("figure-open").addClass("figure");
 
       source.className = "figure-open";
 
       $(".question").append(
-          "<div class= \"canvas-panel\"><div id=\"dicom-image\" data-figure=\"" +
-        figure_to_load +
-        "\"></div></div>",
+        '<div class= "canvas-panel"><div id="dicom-image" data-figure="' +
+          figure_to_load +
+          '"></div></div>'
       );
 
       let images = current_question.images[figure_to_load.split("-")[1]];
@@ -391,7 +383,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
             dfile = await urltoFile(data_url, "dicom", "application/dicom");
 
             const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(
-                dfile,
+              dfile
             );
             imageIds.push(imageId);
             // cornerstone.loadImage(imageId).then(function(image) {
@@ -403,8 +395,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
           currentImageIdIndex: 0,
           imageIds,
         };
-        // cornerstone.loadAndCacheImage(imageIds[0]).then(function(image) {
-        cornerstone.loadAndCacheImage(imageIds[0]).then(function(image) {
+        cornerstone.loadAndCacheImage(imageIds[0]).then(function (image) {
           loadMainImage(image, stack);
         });
       }
@@ -418,21 +409,21 @@ function loadQuestion(n, section = 1, force_reload = false) {
   switch (current_question.type) {
     case "rapid": {
       ap.append(
-          "<div class=\"answer-item\"><div class=\"answer-label-outer\"><p class=\"answer-label-inner\"><span class=\"answer-label-number\">" +
-        display_n +
-        ".1</span><span style=\"flex:1\">Case normal/abnormal</span><button class=\"flag\" data-qid=\"" +
-        n +
-        "\" data-qidn=1 style=\"margin-right:0\">⚐</button></p></div><select class=\"rapid-option-answer\" id=\"rapid-option\" data-answer-section-qidn=1><option selected=\"selected\" disabled=\"disabled\" id=\"rapid-option-not-answered\">--- Not Answered ---</option><option>Abnormal</option><option>Normal</option></select></div>",
+        '<div class="answer-item"><div class="answer-label-outer"><p class="answer-label-inner"><span class="answer-label-number">' +
+          display_n +
+          '.1</span><span style="flex:1">Case normal/abnormal</span><button class="flag" data-qid="' +
+          n +
+          '" data-qidn=1 style="margin-right:0">⚐</button></p></div><select class="rapid-option-answer" id="rapid-option" data-answer-section-qidn=1><option selected="selected" disabled="disabled" id="rapid-option-not-answered">--- Not Answered ---</option><option>Abnormal</option><option>Normal</option></select></div>'
       );
       ap.append(
-          "<div class=\"answer-item\" id=\"rapid-text\" style=\"display: none;\"><div class=\"answer-label-outer\"><p class=\"answer-label-inner\"><span class=\"answer-label-number\">" +
-        display_n +
-        ".2</span><span style=\"flex:1\">Reason</span><button class=\"flag\" data-qid=\"" +
-        n +
-        "\" data-qidn=2 style=\"margin-right:0\">⚐</button></p></div><textarea class=\"long-answer\" name=\"Reason\" data-answer-section-qidn=2 style=\"overflow: hidden scroll; overflow-wrap: break-word;\"></textarea></div>",
+        '<div class="answer-item" id="rapid-text" style="display: none;"><div class="answer-label-outer"><p class="answer-label-inner"><span class="answer-label-number">' +
+          display_n +
+          '.2</span><span style="flex:1">Reason</span><button class="flag" data-qid="' +
+          n +
+          '" data-qidn=2 style="margin-right:0">⚐</button></p></div><textarea class="long-answer" name="Reason" data-answer-section-qidn=2 style="overflow: hidden scroll; overflow-wrap: break-word;"></textarea></div>'
       );
       // Handle changing display of optional answer fields and saving of data
-      $("#rapid-option").change(function(evt) {
+      $("#rapid-option").change(function (evt) {
         if (evt.target.value == "Abnormal") {
           $("#rapid-text").css("display", "block");
         } else {
@@ -449,12 +440,12 @@ function loadQuestion(n, section = 1, force_reload = false) {
       });
 
       // Save long answers on textchange
-      $(".long-answer").change(function(evt) {
+      $(".long-answer").change(function (evt) {
         // ignore blank text and delete any stored value
         if (evt.target.value.length < 1) {
           db.answers.delete([cid, eid, qid, "2"]);
           $(
-              "#question-list-item-" + window.question_order.indexOf(qid) + "-2",
+            "#question-list-item-" + window.question_order.indexOf(qid) + "-2"
           ).removeClass("question-saved-localdb");
           return;
         }
@@ -467,9 +458,9 @@ function loadQuestion(n, section = 1, force_reload = false) {
           ans: evt.target.value,
         });
 
-        $("#question-list-item-" + window.question_order.indexOf(qid) + "-2").addClass(
-            "question-saved-localdb",
-        );
+        $(
+          "#question-list-item-" + window.question_order.indexOf(qid) + "-2"
+        ).addClass("question-saved-localdb");
 
         updateQuestionListPanel();
       });
@@ -477,38 +468,40 @@ function loadQuestion(n, section = 1, force_reload = false) {
       // We chain our db requests as we can only check answers once
       // they have been loaded (should probably use then or after)
 
+
       db.answers
-          .get({cid: cid, eid: eid, qid: qid, qidn: "1"})
-          .then(function(answer) {
-            if (answer != undefined) {
-              $("#rapid-option option:contains(" + answer.ans + ")").prop(
-                  "selected",
-                  true,
-              );
-              // For some reason a change event is not fired...
-              if (answer.ans == "Abnormal") {
-                $("#rapid-text").css("display", "block");
-              }
-              $("#rapid-option-not-answered").remove();
+        .get({ cid: cid, eid: eid, qid: qid, qidn: "1" })
+        .then(function (answer) {
+          if (answer != undefined) {
+            $("#rapid-option option:contains(" + answer.ans + ")").prop(
+              "selected",
+              true
+            );
+            // For some reason a change event is not fired...
+            if (answer.ans == "Abnormal") {
+              $("#rapid-text").css("display", "block");
             }
-          })
-          .catch(function(error) {
-            console.log("error-", error);
-          })
-          .then(
-              db.answers
-                  .get({cid: cid, eid: eid, qid: qid, qidn: "2"})
-                  .then(function(answer) {
-                    if (answer != undefined) {
-                      console.log(answer);
-                      $(".long-answer").text(answer.ans);
-                    }
-                    markAnswer(qid, "rapid");
-                  })
-                  .catch(function(error) {
-                    console.log("error-", error);
-                  }),
-          );
+            $("#rapid-option-not-answered").remove();
+          }
+        })
+        .catch(function (error) {
+      console.log("DB", cid, eid, qid);
+          console.log("error-", error);
+        })
+        .then(
+          db.answers
+            .get({ cid: cid, eid: eid, qid: qid, qidn: "2" })
+            .then(function (answer) {
+              if (answer != undefined) {
+                console.log(answer);
+                $(".long-answer").text(answer.ans);
+              }
+              markAnswer(qid, "rapid");
+            })
+            .catch(function (error) {
+              console.log("error-", error);
+            })
+        );
 
       addFlagEvents();
       loadFlagsFromDb(qid, "1");
@@ -518,21 +511,21 @@ function loadQuestion(n, section = 1, force_reload = false) {
     }
     case "anatomy": {
       ap.append(
-          "<div class=\"answer-item\" id=\"anatomy-text\"><div class=\"answer-label-outer\"><p class=\"answer-label-inner\"><span class=\"answer-label-number\">" +
-        display_n +
-        ".1</span><span style=\"flex:1\">" +
-        current_question.question +
-        "</span><button class=\"flag\" data-qid=\"" +
-        n +
-        "\" data-qidn=1 style=\"margin-right:0\">⚐</button></p></div><textarea class=\"long-answer\" name=\"Reason\" data-answer-section-qidn=1 style=\"overflow: hidden scroll; overflow-wrap: break-word;\"></textarea></div>",
+        '<div class="answer-item" id="anatomy-text"><div class="answer-label-outer"><p class="answer-label-inner"><span class="answer-label-number">' +
+          display_n +
+          '.1</span><span style="flex:1">' +
+          current_question.question +
+          '</span><button class="flag" data-qid="' +
+          n +
+          '" data-qidn=1 style="margin-right:0">⚐</button></p></div><textarea class="long-answer" name="Reason" data-answer-section-qidn=1 style="overflow: hidden scroll; overflow-wrap: break-word;"></textarea></div>'
       );
 
-      $(".long-answer").change(function(evt) {
+      $(".long-answer").change(function (evt) {
         // ignore blank text and delete any stored value
         if (evt.target.value.length < 1) {
           db.answers.delete([cid, eid, qid, "1"]);
           $(
-              "#question-list-item-" + window.question_order.indexOf(qid) + "-1",
+            "#question-list-item-" + window.question_order.indexOf(qid) + "-1"
           ).removeClass("question-saved-localdb");
           return;
         }
@@ -545,23 +538,23 @@ function loadQuestion(n, section = 1, force_reload = false) {
           ans: evt.target.value,
         });
 
-        $("#question-list-item-" + window.question_order.indexOf(qid) + "-1").addClass(
-            "question-saved-localdb",
-        );
+        $(
+          "#question-list-item-" + window.question_order.indexOf(qid) + "-1"
+        ).addClass("question-saved-localdb");
         updateQuestionListPanel();
       });
 
       db.answers
-          .get({cid: cid, eid: eid, qid: qid, qidn: "1"})
-          .then(function(answer) {
-            if (answer != undefined) {
-              $(".long-answer").text(answer.ans);
-            }
-            markAnswer(qid, "anatomy");
-          })
-          .catch(function(error) {
-            console.log(error);
-          });
+        .get({ cid: cid, eid: eid, qid: qid, qidn: "1" })
+        .then(function (answer) {
+          if (answer != undefined) {
+            $(".long-answer").text(answer.ans);
+          }
+          markAnswer(qid, "anatomy");
+        })
+        .catch(function (error) {
+          console.log(error);
+        });
 
       addFlagEvents();
       loadFlagsFromDb(qid, "1");
@@ -571,50 +564,53 @@ function loadQuestion(n, section = 1, force_reload = false) {
 
     case "long": {
       ap.append(
-          "<div class=\"answer-item\"><div class=\"answer-label-outer\"><p class=\"answer-label-inner\"><span class=\"answer-label-number\">" +
-        display_n +
-        ".1</span><span style=\"flex:1\">Observations</span><button class=\"flag\" data-qid=\"" +
-        n +
-        "\" data-qidn=1 style=\"margin-right:0\">⚐</button></p></div><textarea class=\"long-answer\" data-qidn=1 name=\"Observations\" style=\"overflow-x: hidden; overflow-wrap: break-word; height: 80px;\"></textarea></div>",
+        '<div class="answer-item"><div class="answer-label-outer"><p class="answer-label-inner"><span class="answer-label-number">' +
+          display_n +
+          '.1</span><span style="flex:1">Observations</span><button class="flag" data-qid="' +
+          n +
+          '" data-qidn=1 style="margin-right:0">⚐</button></p></div><textarea class="long-answer" data-qidn=1 name="Observations" style="overflow-x: hidden; overflow-wrap: break-word; height: 80px;"></textarea></div>'
       );
       ap.append(
-          "<div class=\"answer-item\"><div class=\"answer-label-outer\"><p class=\"answer-label-inner\"><span class=\"answer-label-number\">" +
-        display_n +
-        ".2</span><span style=\"flex:1\">Interpretation</span><button class=\"flag\" data-qid=\"" +
-        n +
-        "\" data-qidn=2 style=\"margin-right:0\">⚐</button></p></div><textarea class=\"long-answer\" data-qidn=2 name=\"Interpretation\" style=\"overflow-x: hidden; overflow-wrap: break-word; , trueheight: 80px;\"></textarea></div>",
+        '<div class="answer-item"><div class="answer-label-outer"><p class="answer-label-inner"><span class="answer-label-number">' +
+          display_n +
+          '.2</span><span style="flex:1">Interpretation</span><button class="flag" data-qid="' +
+          n +
+          '" data-qidn=2 style="margin-right:0">⚐</button></p></div><textarea class="long-answer" data-qidn=2 name="Interpretation" style="overflow-x: hidden; overflow-wrap: break-word; , trueheight: 80px;"></textarea></div>'
       );
       ap.append(
-          "<div class=\"answer-item\"><div class=\"answer-label-outer\"><p class=\"answer-label-inner\"><span class=\"answer-label-number\">" +
-        display_n +
-        ".3</span><span style=\"flex:1\">Principle Diagnosis</span><button class=\"flag\" data-qid=\"" +
-        n +
-        "\" data-qidn=3 style=\"margin-right:0\">⚐</button></p></div><textarea class=\"long-answer\" data-qidn=3 name=\"Principle Diagnosis\" style=\"overflow-x: hidden; overflow-wrap: break-word; height: 80px;\"></textarea></div>",
+        '<div class="answer-item"><div class="answer-label-outer"><p class="answer-label-inner"><span class="answer-label-number">' +
+          display_n +
+          '.3</span><span style="flex:1">Principle Diagnosis</span><button class="flag" data-qid="' +
+          n +
+          '" data-qidn=3 style="margin-right:0">⚐</button></p></div><textarea class="long-answer" data-qidn=3 name="Principle Diagnosis" style="overflow-x: hidden; overflow-wrap: break-word; height: 80px;"></textarea></div>'
       );
       ap.append(
-          "<div class=\"answer-item\"><div class=\"answer-label-outer\"><p class=\"answer-label-inner\"><span class=\"answer-label-number\">" +
-        display_n +
-        ".4</span><span style=\"flex:1\">Differential Diagnosis</span><button class=\"flag\" data-qid=\"" +
-        n +
-        "\" data-qidn=4 style=\"margin-right:0\">⚐</button></p></div><textarea class=\"long-answer\" data-qidn=4 name=\"Differential Diagnosis\" style=\"overflow-x: hidden; overflow-wrap: break-word; height: 80px;\"></textarea></div>",
+        '<div class="answer-item"><div class="answer-label-outer"><p class="answer-label-inner"><span class="answer-label-number">' +
+          display_n +
+          '.4</span><span style="flex:1">Differential Diagnosis</span><button class="flag" data-qid="' +
+          n +
+          '" data-qidn=4 style="margin-right:0">⚐</button></p></div><textarea class="long-answer" data-qidn=4 name="Differential Diagnosis" style="overflow-x: hidden; overflow-wrap: break-word; height: 80px;"></textarea></div>'
       );
       ap.append(
-          "<div class=\"answer-item\"><div class=\"answer-label-outer\"><p class=\"answer-label-inner\"><span class=\"answer-label-number\">" +
-        display_n +
-        ".5</span><span style=\"flex:1\">Management (if appropriate)</span><button class=\"flag\" data-qid=\"" +
-        n +
-        "\" data-qidn=5 style=\"margin-right:0\">⚐</button></p></div><textarea class=\"long-answer\" data-qidn=5 name=\"Management (if appropriate)\" style=\"overflow-x: hidden; overflow-wrap: break-word; height: 80px;\"></textarea></div>",
+        '<div class="answer-item"><div class="answer-label-outer"><p class="answer-label-inner"><span class="answer-label-number">' +
+          display_n +
+          '.5</span><span style="flex:1">Management (if appropriate)</span><button class="flag" data-qid="' +
+          n +
+          '" data-qidn=5 style="margin-right:0">⚐</button></p></div><textarea class="long-answer" data-qidn=5 name="Management (if appropriate)" style="overflow-x: hidden; overflow-wrap: break-word; height: 80px;"></textarea></div>'
       );
 
       // Save long answers on textchange
-      $(".long-answer").change(function(evt) {
+      $(".long-answer").change(function (evt) {
         const qidn = evt.target.dataset.qidn.toString();
 
         // ignore blank text and delete any stored value
         if (evt.target.value.length < 1) {
           db.answers.delete([cid, eid, qid, qidn]);
           $(
-              "#question-list-item-" + window.question_order.indexOf(qid) + "-" + qidn,
+            "#question-list-item-" +
+              window.question_order.indexOf(qid) +
+              "-" +
+              qidn
           ).removeClass("question-saved-localdb");
           return;
         }
@@ -629,7 +625,10 @@ function loadQuestion(n, section = 1, force_reload = false) {
         console.log("SAVE", qid, qidn, evt.target.value);
 
         $(
-            "#question-list-item-" + window.question_order.indexOf(qid) + "-" + qidn,
+          "#question-list-item-" +
+            window.question_order.indexOf(qid) +
+            "-" +
+            qidn
         ).addClass("question-saved-localdb");
 
         updateQuestionListPanel();
@@ -641,18 +640,18 @@ function loadQuestion(n, section = 1, force_reload = false) {
 
       for (let qidn_count = 1; qidn_count < 6; qidn_count++) {
         db.answers
-            .get({cid: cid, eid: eid, qid: qid, qidn: qidn_count.toString()})
-            .then(function(answer) {
-              if (answer != undefined) {
-                $(".long-answer")
-                    .eq(parseInt(answer.qidn) - 1)
-                    .text(answer.ans);
-              }
+          .get({ cid: cid, eid: eid, qid: qid, qidn: qidn_count.toString() })
+          .then(function (answer) {
+            if (answer != undefined) {
+              $(".long-answer")
+                .eq(parseInt(answer.qidn) - 1)
+                .text(answer.ans);
+            }
             // markAnswer(qid, "anatomy");
-            })
-            .catch(function(error) {
-              console.log(error);
-            });
+          })
+          .catch(function (error) {
+            console.log(error);
+          });
       }
 
       addFlagEvents();
@@ -676,7 +675,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
  */
 function setFocus(section) {
   // Horrible (but it works)
-  setTimeout(function() {
+  setTimeout(function () {
     // In pratique it selects the end of a textarea but I'm not sure if I can be bothered...
     $("*[data-answer-section-qidn=" + section + "]").focus();
   }, 200);
@@ -684,63 +683,67 @@ function setFocus(section) {
 
 /**
  * Updates the question list panel
- * Test with just a global update (may need to do these individually 
+ * Test with just a global update (may need to do these individually
  * if it gets slow...)
  */
 function updateQuestionListPanel() {
   console.log("UP");
   // Reset all classes
   db.answers
-      .where({cid: cid, eid: eid})
-      .toArray()
-      .then(function(answers) {
-        $(".question-list-panel div")
-            .slice(1)
-            .attr("class", "question-list-item");
-        answers.forEach(function(answer, n) {
-          $(
-              "#question-list-item-" +
-          window.question_order.indexOf(answer.qid) +
-          "-" +
-          answer.qidn,
-          ).addClass("question-saved-localdb");
+    .where({ cid: cid, eid: eid })
+    .toArray()
+    .then(function (answers) {
+      $(".question-list-panel div")
+        .slice(1)
+        .attr("class", "question-list-item");
+      answers.forEach(function (answer, n) {
+        $(
+          "#question-list-item-" +
+            window.question_order.indexOf(answer.qid) +
+            "-" +
+            answer.qidn
+        ).addClass("question-saved-localdb");
 
-          if (window.question_type == "rapid" && answer.qidn == "1") {
-            if (answer.ans == "Abnormal") {
-              $(
-                  "#question-list-item-" + window.question_order.indexOf(answer.qid) + "-2",
-              ).css("display", "block");
-            } else {
-              $(
-                  "#question-list-item-" + window.question_order.indexOf(answer.qid) + "-2",
-              ).css("display", "none");
-            }
+        if (window.question_type == "rapid" && answer.qidn == "1") {
+          if (answer.ans == "Abnormal") {
+            $(
+              "#question-list-item-" +
+                window.question_order.indexOf(answer.qid) +
+                "-2"
+            ).css("display", "block");
+          } else {
+            $(
+              "#question-list-item-" +
+                window.question_order.indexOf(answer.qid) +
+                "-2"
+            ).css("display", "none");
           }
-        });
-      // $(".long-answer").text(answer.ans);
-      })
-      .catch(function(error) {
-        console.log("error - ", error);
+        }
       });
+      // $(".long-answer").text(answer.ans);
+    })
+    .catch(function (error) {
+      console.log("error - ", error);
+    });
 
   db.flags
-      .where({cid: cid, eid: eid})
-      .toArray()
-      .then(function(answers) {
-        answers.forEach(function(answer, n) {
-          $(
-              "#question-list-item-" +
-          window.question_order.indexOf(answer.qid) +
-          "-" +
-          answer.qidn +
-          " span",
-          ).css("visibility", "visible");
-        });
-      // $(".long-answer").text(answer.ans);
-      })
-      .catch(function(error) {
-        console.log("error - ", error);
+    .where({ cid: cid, eid: eid })
+    .toArray()
+    .then(function (answers) {
+      answers.forEach(function (answer, n) {
+        $(
+          "#question-list-item-" +
+            window.question_order.indexOf(answer.qid) +
+            "-" +
+            answer.qidn +
+            " span"
+        ).css("visibility", "visible");
       });
+      // $(".long-answer").text(answer.ans);
+    })
+    .catch(function (error) {
+      console.log("error - ", error);
+    });
 }
 
 /**
@@ -749,7 +752,7 @@ function updateQuestionListPanel() {
 function createQuestionListPanel() {
   $(".question-list-panel").empty();
   $(".question-list-panel").append(
-      "<div class=\"review-heading\">Questions</div>",
+    '<div class="review-heading">Questions</div>'
   );
 
   /**
@@ -761,19 +764,19 @@ function createQuestionListPanel() {
   function appendReviewItem(n, qidn) {
     const qn = n - 1;
     const el = $(
-        "<div id=\"question-list-item-" +
-      qn +
-      "-" +
-      qidn +
-      "\" data-qid=" +
-      qn +
-      " data-qidn=\"" +
-      qidn +
-      "\" class=\"question-list-item\">" +
-      n +
-      "." +
-      qidn +
-      "<span class=\"question-list-flag\">⚑</span></div>",
+      '<div id="question-list-item-' +
+        qn +
+        "-" +
+        qidn +
+        '" data-qid=' +
+        qn +
+        ' data-qidn="' +
+        qidn +
+        '" class="question-list-item">' +
+        n +
+        "." +
+        qidn +
+        '<span class="question-list-flag">⚑</span></div>'
     );
     $(".question-list-panel").append(el);
     // return the new element so it can be hidden if necessary
@@ -800,7 +803,7 @@ function createQuestionListPanel() {
     }
   }
 
-  $(".question-list-item").click(function(evt) {
+  $(".question-list-item").click(function (evt) {
     loadQuestion($(this).attr("data-qid"), $(this).attr("data-qidn"));
   });
 }
@@ -987,25 +990,25 @@ function changeControlSelection() {
   const dicom_element = document.getElementById("dicom-image");
   switch (sel.options[sel.selectedIndex].value) {
     case "pan": {
-      cornerstoneTools.setToolActive("Pan", {mouseButtonMask: 1});
+      cornerstoneTools.setToolActive("Pan", { mouseButtonMask: 1 });
       break;
     }
     case "zoom": {
-      cornerstoneTools.setToolActive("Zoom", {mouseButtonMask: 1});
+      cornerstoneTools.setToolActive("Zoom", { mouseButtonMask: 1 });
       break;
     }
     case "rotate": {
-      cornerstoneTools.setToolActive("Rotate", {mouseButtonMask: 1});
+      cornerstoneTools.setToolActive("Rotate", { mouseButtonMask: 1 });
       break;
     }
     case "scroll": {
-      cornerstoneTools.setToolActive("StackScroll", {mouseButtonMask: 1});
+      cornerstoneTools.setToolActive("StackScroll", { mouseButtonMask: 1 });
       // _this.left.onstart = _this.scroll_start;
       // _this.selected_control = t.selectedIndex;
       break;
     }
     case "window": {
-      cornerstoneTools.setToolActive("Wwwc", {mouseButtonMask: 1});
+      cornerstoneTools.setToolActive("Wwwc", { mouseButtonMask: 1 });
       break;
     }
     case "abdomen": {
@@ -1059,9 +1062,7 @@ function changeControlSelection() {
         cornerstone.removeElementData(dicom_element);
         cornerstone.disable(dicom_element);
         $(".canvas-panel").remove();
-        $(".figure-open")
-            .removeClass("figure-open")
-            .addClass("figure");
+        $(".figure-open").removeClass("figure-open").addClass("figure");
         $(dicom_element).remove();
       }
       break;
@@ -1090,16 +1091,17 @@ function onImageRendered(e) {
     ")";
 
   // update stack data
-  const stack = eventData.enabledElement.toolStateManager.toolState.stack.data[0];
+  const stack =
+    eventData.enabledElement.toolStateManager.toolState.stack.data[0];
   if (stack.imageIds.length > 1) {
     $("option[value=scroll").prop("disabled", false);
     $("option[value=scroll").prop("hidden", false);
     $("option[value=scroll").text(
-        "scroll (" +
-      (stack.currentImageIdIndex + 1) +
-      "/" +
-      stack.imageIds.length +
-      ")",
+      "scroll (" +
+        (stack.currentImageIdIndex + 1) +
+        "/" +
+        stack.imageIds.length +
+        ")"
     );
 
     // Temp way to enable CT window presets
@@ -1122,12 +1124,10 @@ function onImageRendered(e) {
 function disableFullscreen(dicom_element) {
   // TODO: rescale the image to stop it getting zoomed in
   $(".canvas-panel-fullscreen").toggleClass(
-      "canvas-panel canvas-panel-fullscreen",
+    "canvas-panel canvas-panel-fullscreen"
   );
   $(".question").append($(".canvas-panel"));
-  $(".canvas-panel")
-      .get(0)
-      .scrollIntoView();
+  $(".canvas-panel").get(0).scrollIntoView();
 
   setDicomCanvasNonFullscreen(dicom_element);
 }
@@ -1135,19 +1135,19 @@ function disableFullscreen(dicom_element) {
 // Register Key Event Listener
 window.addEventListener("keydown", keydown_handler);
 
-$("#submit-button").click(function(evt) {
+$("#submit-button").click(function (evt) {
   submitAnswers();
 });
 
-$("#review-button").click(function(evt) {
+$("#review-button").click(function (evt) {
   $(".question-list-panel").toggle();
 });
 
-$("#options-button").click(function(evt) {
+$("#options-button").click(function (evt) {
   $("#options-panel").toggle();
 });
 
-$("#review-overlay-button").click(function(evt) {
+$("#review-overlay-button").click(function (evt) {
   if (window.review == true) {
     reviewQuestions();
   } else {
@@ -1155,21 +1155,21 @@ $("#review-overlay-button").click(function(evt) {
   }
 });
 
-$("#finish-exam").click(function(evt) {
+$("#finish-exam").click(function (evt) {
   window.review = true;
   reviewQuestions();
   $.modal.close();
 });
 
-$("#finish-cancel").click(function(evt) {
+$("#finish-cancel").click(function (evt) {
   $.modal.close();
 });
 
-$("#overlay-close").click(function(evt) {
+$("#overlay-close").click(function (evt) {
   $("#options-panel").hide();
 });
 
-$("#review-overlay-close").click(function(evt) {
+$("#review-overlay-close").click(function (evt) {
   $("#review-overlay").hide();
 });
 
@@ -1178,7 +1178,7 @@ $("#review-overlay-close").click(function(evt) {
  * @return {JSON} - answers
  */
 function getJsonAnswers() {
-  return db.answers.where({cid: cid, eid: eid}).toArray();
+  return db.answers.where({ cid: cid, eid: eid }).toArray();
   // .then(function(ans) {
   // console.log(ans);
   // submitAnswers(ans);
@@ -1193,9 +1193,9 @@ function postAnswers(ans) {
   console.log(ans);
   // ans = {"test" : 1}
   $.post("http://localhost:8000/submit_answers", JSON.stringify(ans)).done(
-      (data) => {
-        console.log(data);
-      },
+    (data) => {
+      console.log(data);
+    }
   );
   // $.post( "http://localhost:8000/submit_answers", JSON.stringify(ans));
 }
@@ -1205,7 +1205,9 @@ function postAnswers(ans) {
  * This is defined in index.html
  */
 function loadLocalQuestionSet() {
-  let input; let file; let fr;
+  let input;
+  let file;
+  let fr;
 
   if (typeof window.FileReader !== "function") {
     alert("The file API isn't supported on this browser yet.");
@@ -1217,7 +1219,7 @@ function loadLocalQuestionSet() {
     alert("No fileinput element.");
   } else if (!input.files) {
     alert(
-        "This browser doesn't seem to support the `files` property of file inputs.",
+      "This browser doesn't seem to support the `files` property of file inputs."
     );
   } else if (!input.files[0]) {
     alert("Please select a file before clicking 'Load'");
@@ -1244,9 +1246,9 @@ function loadLocalQuestionSet() {
  */
 function submitAnswers() {
   console.log(
-      getJsonAnswers().then((a) => {
-        postAnswers(a);
-      }),
+    getJsonAnswers().then((a) => {
+      postAnswers(a);
+    })
   );
 }
 
@@ -1260,171 +1262,173 @@ function reviewQuestions() {
   loadQuestion(0);
 
   db.answers
-      .where({cid: cid, eid: eid})
-      .toArray()
-      .then(function(answers) {
-        current_answers = {};
-        answers.forEach(function(arr, n) {
-          answer = arr["ans"];
-          if (answer == undefined) {
-            answer = "Not answered";
-          }
+    .where({ cid: cid, eid: eid })
+    .toArray()
+    .then(function (answers) {
+      let current_answers = {};
+      answers.forEach(function (arr, n) {
+        answer = arr["ans"];
+        if (answer == undefined) {
+          answer = "Not answered";
+        }
 
-          current_answers[[arr["qid"], arr["qidn"]]] = answer;
-        });
-
-        correct_count = 0;
-        window.question_order.forEach(function(qid, n) {
-          $("#review-answer-list").append(
-              "<li id='review-answer-" +
-          qid +
-          "'><a href='#' data-qid=" +
-          n +
-          ">Question " +
-          (n + 1) +
-          ":</a> <span>Not answered</span></li>",
-          );
-          $("#review-answer-list a").click(function(evt) {
-            loadQuestion(this.dataset.qid);
-            $("#review-overlay").hide();
-          });
-          db.user_answers
-              .get({qid: qid})
-              .then(function(answers) {
-                question_answers = questions[qid]["answers"];
-                if (answers == undefined) {
-                } else {
-                  question_answers = question_answers.concat(answers.ans);
-                }
-
-                section_1_answer = current_answers[[qid, "1"]];
-                section_2_answer = current_answers[[qid, "2"]];
-
-                if (section_1_answer == undefined) {
-                  section_1_answer = "Not Answered";
-                }
-                if (section_2_answer == undefined) {
-                  if (section_1_answer == "Normal") {
-                    section_2_answer = "Normal";
-                  } else {
-                    section_2_answer = "Not Answered";
-                  }
-                }
-
-                el = $("#review-answer-" + qid + " span");
-
-                /**
-         * Helper function to define how review items are displayed
-         * Yes it is a bit shit
-         * @param {*} el - element
-         * @param {*} c - clans
-         * @param {*} user_answer -
-         * @param {*} normal -
-         * @param {*} question_answers -
-         */
-                function setReviewAnswer(
-                    el,
-                    c,
-                    user_answer,
-                    normal,
-                    question_answers,
-                ) {
-                  if (normal) {
-                    el.html(
-                        "<span class='" +
-                  c +
-                  "'>Answer: " +
-                  user_answer +
-                  " (Normal)</span>",
-                    );
-                  } else {
-                    el.html(
-                        "<span class='" +
-                  c +
-                  "'>Answer: " +
-                  user_answer +
-                  " (Abnormal: " +
-                  question_answers.join(", ") +
-                  ")</span>",
-                    );
-                  }
-                }
-
-                if (window.question_type == "rapid") {
-                  // First check normal vs abnormal
-                  if (questions[qid]["normal"] == true) {
-                    if (section_1_answer == "Normal") {
-                      setReviewAnswer(
-                          el,
-                          "correct",
-                          section_1_answer,
-                          true,
-                          question_answers,
-                      );
-                      correct_count++;
-                    } else {
-                      setReviewAnswer(
-                          el,
-                          "incorrect",
-                          section_1_answer,
-                          true,
-                          question_answers,
-                      );
-                    }
-                  } else {
-                    if (answerInArray(question_answers, section_2_answer)) {
-                      correct_count++;
-                      setReviewAnswer(
-                          el,
-                          "correct",
-                          section_2_answer,
-                          false,
-                          question_answers,
-                      );
-                    } else {
-                      setReviewAnswer(
-                          el,
-                          "incorrect",
-                          section_2_answer,
-                          false,
-                          question_answers,
-                      );
-                    }
-                  }
-                } else if (window.question_type == "anatomy") {
-                  // Anatomy answers are either correct or incorrect
-                  if (answerInArray(question_answers, section_1_answer)) {
-                    correct_count++;
-                    setReviewAnswer(
-                        el,
-                        "correct",
-                        section_1_answer,
-                        false,
-                        question_answers,
-                    );
-                  } else {
-                    setReviewAnswer(
-                        el,
-                        "incorrect",
-                        section_1_answer,
-                        false,
-                        question_answers,
-                    );
-                  }
-                }
-
-                $("#review-score").text(
-                    "Score: " + correct_count + " out of " + window.question_order.length,
-                );
-              })
-              .catch(function(error) {
-                console.log("error-", error);
-              });
-        });
-      })
-      .catch(function(error) {
-        console.log("error - ", error);
+        current_answers[[arr["qid"], arr["qidn"]]] = answer;
       });
+
+      correct_count = 0;
+      window.question_order.forEach(function (qid, n) {
+        $("#review-answer-list").append(
+          "<li id='review-answer-" +
+            qid +
+            "'><a href='#' data-qid=" +
+            n +
+            ">Question " +
+            (n + 1) +
+            ":</a> <span>Not answered</span></li>"
+        );
+        $("#review-answer-list a").click(function (evt) {
+          loadQuestion(this.dataset.qid);
+          $("#review-overlay").hide();
+        });
+        db.user_answers
+          .get({ qid: qid })
+          .then(function (answers) {
+            let question_answers = window.questions[qid]["answers"];
+            if (answers != undefined) {
+              question_answers = question_answers.concat(answers.ans);
+            }
+
+            let section_1_answer = current_answers[[qid, "1"]];
+            let section_2_answer = current_answers[[qid, "2"]];
+
+            if (section_1_answer == undefined) {
+              section_1_answer = "Not Answered";
+            }
+            if (section_2_answer == undefined) {
+              if (section_1_answer == "Normal") {
+                section_2_answer = "Normal";
+              } else {
+                section_2_answer = "Not Answered";
+              }
+            }
+
+            el = $("#review-answer-" + qid + " span");
+
+            /**
+             * Helper function to define how review items are displayed
+             * Yes it is a bit shit
+             * @param {*} el - element
+             * @param {*} c - clans
+             * @param {*} user_answer -
+             * @param {*} normal -
+             * @param {*} question_answers -
+             */
+            function setReviewAnswer(
+              el,
+              c,
+              user_answer,
+              normal,
+              question_answers
+            ) {
+              if (normal) {
+                el.html(
+                  "<span class='" +
+                    c +
+                    "'>Answer: " +
+                    user_answer +
+                    " (Normal)</span>"
+                );
+              } else {
+                el.html(
+                  "<span class='" +
+                    c +
+                    "'>Answer: " +
+                    user_answer +
+                    " (Abnormal: " +
+                    question_answers.join(", ") +
+                    ")</span>"
+                );
+              }
+            }
+
+            if (window.question_type == "rapid") {
+              // First check normal vs abnormal
+              if (window.questions[qid]["normal"] == true) {
+                if (section_1_answer == "Normal") {
+                  setReviewAnswer(
+                    el,
+                    "correct",
+                    section_1_answer,
+                    true,
+                    question_answers
+                  );
+                  correct_count++;
+                } else {
+                  setReviewAnswer(
+                    el,
+                    "incorrect",
+                    section_1_answer,
+                    true,
+                    question_answers
+                  );
+                }
+              } else {
+                if (answerInArray(question_answers, section_2_answer)) {
+                  correct_count++;
+                  setReviewAnswer(
+                    el,
+                    "correct",
+                    section_2_answer,
+                    false,
+                    question_answers
+                  );
+                } else {
+                  setReviewAnswer(
+                    el,
+                    "incorrect",
+                    section_2_answer,
+                    false,
+                    question_answers
+                  );
+                }
+              }
+            } else if (window.question_type == "anatomy") {
+              // Anatomy answers are either correct or incorrect
+              if (answerInArray(question_answers, section_1_answer)) {
+                correct_count++;
+                setReviewAnswer(
+                  el,
+                  "correct",
+                  section_1_answer,
+                  false,
+                  question_answers
+                );
+              } else {
+                setReviewAnswer(
+                  el,
+                  "incorrect",
+                  section_1_answer,
+                  false,
+                  question_answers
+                );
+              }
+            }
+
+            $("#review-score").text(
+              "Score: " +
+                correct_count +
+                " out of " +
+                window.question_order.length
+            );
+          })
+          .catch(function (error) {
+            console.log("error-", error);
+          });
+      });
+    })
+    .catch(function (error) {
+      console.log("error - ", error);
+    });
 }
 
 /**
@@ -1443,7 +1447,7 @@ function markAnswer(qid, type) {
       option = document.getElementById("rapid-option");
       if (current_question.normal == true) {
         $(".answer-panel").append(
-            "<div id='correct-answer-block'>This is normal</div>",
+          "<div id='correct-answer-block'>This is normal</div>"
         );
         if (option.value == "Normal") {
           option.classList.add("correct");
@@ -1456,7 +1460,7 @@ function markAnswer(qid, type) {
     }
 
     $(".answer-panel").append(
-        "<div id='correct-answer-block'>Correct answer(s):<ul id='answer-list'></ul></div>",
+      "<div id='correct-answer-block'>Correct answer(s):<ul id='answer-list'></ul></div>"
     );
     ul = $("#answer-list");
 
@@ -1466,46 +1470,46 @@ function markAnswer(qid, type) {
     user_answer = textarea.val();
 
     db.user_answers
-        .get({qid: qid})
-        .then(function(answers) {
-          if (answers != undefined) {
-            answers.ans.forEach(function(answer, n) {
-              ul.append("<li>" + answer + "</li>");
-              if (compareString(answer, user_answer)) {
-                textarea.removeClass("incorrect").addClass("correct");
-              }
-            });
-          }
-
-          current_question.answers.forEach(function(answer, n) {
+      .get({ qid: qid })
+      .then(function (answers) {
+        if (answers != undefined) {
+          answers.ans.forEach(function (answer, n) {
             ul.append("<li>" + answer + "</li>");
             if (compareString(answer, user_answer)) {
               textarea.removeClass("incorrect").addClass("correct");
             }
           });
+        }
 
-          if (type == "rapid" && option.value != "Abnormal") {
-            option.classList.add("incorrect");
-          } else {
-            if (
-              textarea.hasClass("incorrect") == true &&
+        current_question.answers.forEach(function (answer, n) {
+          ul.append("<li>" + answer + "</li>");
+          if (compareString(answer, user_answer)) {
+            textarea.removeClass("incorrect").addClass("correct");
+          }
+        });
+
+        if (type == "rapid" && option.value != "Abnormal") {
+          option.classList.add("incorrect");
+        } else {
+          if (
+            textarea.hasClass("incorrect") == true &&
             user_answer.replace(/\s/g, "") != ""
-            ) {
-              if (window.allow_self_marking) {
-                $(".answer-panel").append(
-                    $("<button id='mark-correct'>Mark Correct</button>").click(
-                        function() {
-                          markCorrect(qid, user_answer);
-                        },
-                    ),
-                );
-              }
+          ) {
+            if (window.allow_self_marking) {
+              $(".answer-panel").append(
+                $("<button id='mark-correct'>Mark Correct</button>").click(
+                  function () {
+                    markCorrect(qid, user_answer);
+                  }
+                )
+              );
             }
           }
-        })
-        .catch(function(error) {
-          console.log("error-", error);
-        });
+        }
+      })
+      .catch(function (error) {
+        console.log("error-", error);
+      });
     addFeedback();
   }
 }
@@ -1516,11 +1520,11 @@ function addFeedback() {
     current_question.feedback.length > 0
   ) {
     $(".answer-panel").append(
-        $(
-            "<div class='feedback'><h4>Feedback</h4>" +
-        current_question.feedback +
-        "</div>",
-        ),
+      $(
+        "<div class='feedback'><h4>Feedback</h4>" +
+          current_question.feedback +
+          "</div>"
+      )
     );
   }
 }
@@ -1531,26 +1535,25 @@ function markCorrect(qid, user_answer) {
   }
 
   db.user_answers
-      .get({qid: qid})
-      .then(function(answers) {
-        if (answers == undefined) {
-          new_answers = [];
-        } else {
-          new_answers = answers.ans;
-        }
+    .get({ qid: qid })
+    .then(function (answers) {
+      let new_answers = [];
+      if (answers != undefined) {
+        new_answers = answers.ans;
+      }
 
-        new_answers.push(user_answer);
-        db.user_answers.put({qid: qid, ans: new_answers});
-      })
-      .catch(function(error) {
-        console.log("error-", error);
-      });
+      new_answers.push(user_answer);
+      db.user_answers.put({ qid: qid, ans: new_answers });
+    })
+    .catch(function (error) {
+      console.log("error-", error);
+    });
 
   if (window.allow_self_marking) {
     $("#mark-correct").remove();
   }
 
-  textarea = $(".long-answer").attr("class", "correct");
+  let textarea = $(".long-answer").attr("class", "correct");
 }
 
 function compareString(a, b) {
@@ -1562,33 +1565,33 @@ function compareString(a, b) {
 function answerInArray(arr, ans) {
   return (
     arr
-        .map((v) => v.toLowerCase().replace(/\s/g, ""))
-        .includes(ans.toLowerCase().replace(/\s/g, "")) == true
+      .map((v) => v.toLowerCase().replace(/\s/g, ""))
+      .includes(ans.toLowerCase().replace(/\s/g, "")) == true
   );
 }
 
 function addFlagEvents() {
   // Bind flag change events
-  $("button.flag").click(function(event) {
-    el = $(this);
-    nqid = el.attr("data-qid");
-    qid = window.question_order[nqid];
-    qidn = el.attr("data-qidn");
+  $("button.flag").click(function (event) {
+    const el = $(this);
+    const nqid = el.attr("data-qid");
+    const qid = window.question_order[nqid];
+    const qidn = el.attr("data-qidn");
 
     el.toggleClass("flag flag-selected");
 
     if (el.hasClass("flag")) {
       $("#question-list-item-" + nqid + "-" + qidn + " span").css(
-          "visibility",
-          "hidden",
+        "visibility",
+        "hidden"
       );
       db.flags.delete([cid, eid, qid, qidn]);
     } else {
       $("#question-list-item-" + nqid + "-" + qidn + " span").css(
-          "visibility",
-          "visible",
+        "visibility",
+        "visible"
       );
-      db.flags.put({cid: cid, eid: eid, qid: qid, qidn: qidn});
+      db.flags.put({ cid: cid, eid: eid, qid: qid, qidn: qidn });
     }
     updateQuestionListPanel();
   });
@@ -1597,27 +1600,27 @@ function addFlagEvents() {
 function loadFlagsFromDb(qid, n) {
   console.log("loadFlagsFromDb", cid, eid, qid, n);
   db.flags
-      .get({cid: cid, eid: eid, qid: qid, qidn: n})
-      .then(function(answer) {
-        if (answer != undefined) {
-          $("button.flag, button.flag-selected")
-              .eq(parseInt(answer.qidn) - 1)
-              .toggleClass("flag flag-selected");
-        }
-      })
-      .catch(function(error) {
-        console.log(error);
-      });
+    .get({ cid: cid, eid: eid, qid: qid, qidn: n })
+    .then(function (answer) {
+      if (answer != undefined) {
+        $("button.flag, button.flag-selected")
+          .eq(parseInt(answer.qidn) - 1)
+          .toggleClass("flag flag-selected");
+      }
+    })
+    .catch(function (error) {
+      console.log(error);
+    });
 }
 
 function urltoFile(url, filename, mimeType) {
   return fetch(url)
-      .then(function(res) {
-        return res.arrayBuffer();
-      })
-      .then(function(buf) {
-        return new File([buf], filename, {type: mimeType});
-      });
+    .then(function (res) {
+      return res.arrayBuffer();
+    })
+    .then(function (buf) {
+      return new File([buf], filename, { type: mimeType });
+    });
 }
 
 function loadMainImage(image, stack) {
@@ -1641,7 +1644,7 @@ function loadMainImage(image, stack) {
   cornerstoneTools.addTool(RotateTool);
   cornerstoneTools.addTool(StackScrollTool);
 
-  cornerstoneTools.setToolActive("Pan", {mouseButtonMask: 1});
+  cornerstoneTools.setToolActive("Pan", { mouseButtonMask: 1 });
 
   element.addEventListener("cornerstoneimagerendered", onImageRendered);
 
@@ -1650,7 +1653,7 @@ function loadMainImage(image, stack) {
   element.scrollIntoView(false);
   // element.scrollTo(0);
 
-  $(element).dblclick(function() {
+  $(element).dblclick(function () {
     if ($(".canvas-panel").length == 0) {
       // already fullscreen (disable it)
       disableFullscreen(this);
@@ -1669,12 +1672,14 @@ function loadMainImage(image, stack) {
 
   // Add tool selector
   $(".canvas-panel").append(
-      "<select class=\"control-overlay\"><option value=\"pan\">pan [p]</option><option value=\"zoom\">zoom [z]</option><option value=\"rotate\">rotate [r]</option><option value=\"scroll\" hidden=\"\" disabled=\"\">scroll (1/1)</option><option value=\"window\">window ()</option><option value=\"abdomen\" hidden=\"\" disabled=\"\">window = abdomen [a]</option><option value=\"pulmonary\" hidden=\"\" disabled=\"\">window = pulmonary [u]</option><option value=\"brain\" hidden=\"\" disabled=\"\">window = brain [b]</option><option value=\"bone\" hidden=\"\" disabled=\"\">window = bone [o]</option><option value=\"reset\">reset [e]</option><option value=\"close\">close [c]</option><option disabled=\"true\" value=\"notes\">[modality = CR][size = 9.8]</option></select>",
+    '<select class="control-overlay"><option value="pan">pan [p]</option><option value="zoom">zoom [z]</option><option value="rotate">rotate [r]</option><option value="scroll" hidden="" disabled="">scroll (1/1)</option><option value="window">window ()</option><option value="abdomen" hidden="" disabled="">window = abdomen [a]</option><option value="pulmonary" hidden="" disabled="">window = pulmonary [u]</option><option value="brain" hidden="" disabled="">window = brain [b]</option><option value="bone" hidden="" disabled="">window = bone [o]</option><option value="reset">reset [e]</option><option value="close">close [c]</option><option disabled="true" value="notes">[modality = CR][size = 9.8]</option></select>'
   );
 
   $(".control-overlay")
-      .get(0)
-      .addEventListener("change", function() {changeControlSelection();});
+    .get(0)
+    .addEventListener("change", function () {
+      changeControlSelection();
+    });
 }
 
 function setDicomCanvasNonFullscreen(element) {
@@ -1693,11 +1698,10 @@ function showLoginDialog() {
   $("#login-dialog").modal();
 }
 
-$("#start-exam-button").click(function(evt) {
+$("#start-exam-button").click(function (evt) {
   cid = parseInt($("#candidate-number").val());
   $.modal.close();
 });
-
 
 function manualPanDicom(x, y) {
   dicom_element = document.getElementById("dicom-image");
