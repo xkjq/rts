@@ -145,8 +145,8 @@ cornerstoneTools.init();
 // Set up database
 const db = new Dexie("answers_database");
 db.version(1).stores({
-  answers: "[cid+eid+qid+qidn], [cid+eid], ans",
-  flags: "[cid+eid+qid+qidn], [cid+eid]",
+  answers: "[cid+eid+qid+qidn], [cid+eid], qid, ans",
+  flags: "[cid+eid+qid+qidn], [cid+eid], qid",
   user_answers: "qid, ans",
 });
 
@@ -1634,6 +1634,43 @@ function showLoginDialog() {
 $("#start-exam-button").click(function (evt) {
   window.cid = parseInt($("#candidate-number").val());
   $.modal.close();
+});
+
+$("#btn-delete-databases").click(function (evt) {
+  var r = confirm("This will delete ALL saved answers!");
+  if (r == true) {
+    db.delete()
+      .then(() => {
+        $.notify("Database successfully deleted", "success");
+        $.notify("The page will now reload", "warn");
+        setTimeout(() => {location.reload();}, 2000);
+        console.log("Database successfully deleted");
+      })
+      .catch((err) => {
+        $.notify("Error deleting databases", "error");
+        console.error("Could not delete database");
+      })
+      .finally(() => {
+        // Do what should be done next...
+      });
+  } else {
+  }
+});
+
+$("#btn-delete-current").click(function (evt) {
+db.answers
+    .where("qid").anyOf(window.question_order)
+    .delete()
+    .then(function (deleteCount) {
+        $.notify("Packet successfully reset", "success");
+        $.notify("The page will now reload", "warn");
+        setTimeout(() => {location.reload();}, 2000);
+        console.log( "Deleted " + deleteCount + " objects");
+    }).catch((err) => {
+        $.notify("Error reseting packet", "error");
+        console.error("Could not answers");
+      });
+
 });
 
 $(document).ajaxStart(function () {

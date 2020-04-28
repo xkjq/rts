@@ -740,12 +740,16 @@ select option:disabled {
     padding-top:  0.8rem;
 }
 
-#localFileloader {
+#options-panel {
     padding: 20px;
 }
 
+#localFileloader {
+    padding-bottom: 20px;
+}
+
 #packet-list {
-    padding: 20px;
+    padding-top: 20px;
 }
 
 .packet-button {
