@@ -1,4 +1,6 @@
+/* global Dexie, cornerstone, cornerstoneTools, cornerstoneBase64ImageLoader, cornerstoneWebImageLoader, cornerstoneWADOImageLoader */
 import * as helper from "./helpers.js";
+import * as viewer from "./viewer.js";
 
 // cid = null;
 window.cid = 1234;
@@ -17,7 +19,7 @@ window.review = false;
 
 window.allow_self_marking = true;
 
-window.dfile = null;
+//window.dfile = null;
 
 retrievePacketList();
 
@@ -105,7 +107,8 @@ function setUpQuestions() {
   // Horrible way to get type of questions
   // We assume they are all of the same type....
   if (window.question_type == null) {
-    window.question_type = window.questions[Object.keys(window.questions)[0]].type;
+    window.question_type =
+      window.questions[Object.keys(window.questions)[0]].type;
   }
 
   if (window.exam_mode) {
@@ -185,6 +188,9 @@ function setUpPacket(data) {
  * @param {boolean} force_reload - Force question to be reloaded if already loaded
  */
 function loadQuestion(n, section = 1, force_reload = false) {
+  const cid = window.cid;
+  const eid = window.eid;
+
   // Make sure we have an integer
   n = parseInt(n);
   console.log(n);
@@ -287,7 +293,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
         // otherwise try to load it as a dicom
       } else {
         // convert the data url to a file
-        urltoFile(based_img, "dicom", "application/dicom").then(function (
+        helper.urltoFile(based_img, "dicom", "application/dicom").then(function (
           dfile
         ) {
           // load the file using cornerstoneWADO file loader
@@ -326,6 +332,42 @@ function loadQuestion(n, section = 1, force_reload = false) {
    * @param {*} source
    */
   function view(t, source) {
+    /**
+     * Load image
+     * @param {*} images - list of images
+     */
+    async function load(images) {
+      const imageIds = [];
+      for (let i = 0; i < images.length; i++) {
+        const data_url = images[i];
+        // check stack type
+        if (data_url.startsWith("data:image")) {
+          const imageId = "base64://" + data_url.split(",")[1];
+
+          imageIds.push(imageId);
+        } else if (data_url.startsWith("data:application/dicom")) {
+          // stack = stack.split(";")[1];
+
+          const dfile = await helper.urltoFile(data_url, "dicom", "application/dicom");
+
+          const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(
+            dfile
+          );
+          imageIds.push(imageId);
+          // cornerstone.loadImage(imageId).then(function(image) {
+          //    tempFunction(image);
+          // });
+        }
+      }
+      const stack = {
+        currentImageIdIndex: 0,
+        imageIds,
+      };
+      cornerstone.loadAndCacheImage(imageIds[0]).then(function (image) {
+        viewer.loadMainImage(image, stack);
+      });
+    }
+
     if (current_question) {
       // Check if the figure is already loaded (or if another one is)
       const open_figure = $("#dicom-image").data("figure");
@@ -363,42 +405,6 @@ function loadQuestion(n, section = 1, force_reload = false) {
       }
 
       load(images);
-
-      /**
-       * Load image
-       * @param {*} images - list of images
-       */
-      async function load(images) {
-        const imageIds = [];
-        for (let i = 0; i < images.length; i++) {
-          const data_url = images[i];
-          // check stack type
-          if (data_url.startsWith("data:image")) {
-            const imageId = "base64://" + data_url.split(",")[1];
-
-            imageIds.push(imageId);
-          } else if (data_url.startsWith("data:application/dicom")) {
-            // stack = stack.split(";")[1];
-
-            dfile = await urltoFile(data_url, "dicom", "application/dicom");
-
-            const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(
-              dfile
-            );
-            imageIds.push(imageId);
-            // cornerstone.loadImage(imageId).then(function(image) {
-            //    tempFunction(image);
-            // });
-          }
-        }
-        const stack = {
-          currentImageIdIndex: 0,
-          imageIds,
-        };
-        cornerstone.loadAndCacheImage(imageIds[0]).then(function (image) {
-          loadMainImage(image, stack);
-        });
-      }
     }
   }
 
@@ -430,7 +436,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
           $("#rapid-text").css("display", "none");
         }
         db.answers.put({
-          cid,
+          cid: cid,
           eid: eid,
           qid: qid,
           qidn: "1",
@@ -468,7 +474,6 @@ function loadQuestion(n, section = 1, force_reload = false) {
       // We chain our db requests as we can only check answers once
       // they have been loaded (should probably use then or after)
 
-
       db.answers
         .get({ cid: cid, eid: eid, qid: qid, qidn: "1" })
         .then(function (answer) {
@@ -485,7 +490,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
           }
         })
         .catch(function (error) {
-      console.log("DB", cid, eid, qid);
+          console.log("DB", cid, eid, qid);
           console.log("error-", error);
         })
         .then(
@@ -496,7 +501,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
                 console.log(answer);
                 $(".long-answer").text(answer.ans);
               }
-              markAnswer(qid, "rapid");
+              markAnswer(qid, current_question);
             })
             .catch(function (error) {
               console.log("error-", error);
@@ -550,7 +555,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
           if (answer != undefined) {
             $(".long-answer").text(answer.ans);
           }
-          markAnswer(qid, "anatomy");
+          markAnswer(qid, current_question);
         })
         .catch(function (error) {
           console.log(error);
@@ -687,6 +692,9 @@ function setFocus(section) {
  * if it gets slow...)
  */
 function updateQuestionListPanel() {
+  const cid = window.cid;
+  const eid = window.eid;
+
   console.log("UP");
   // Reset all classes
   db.answers
@@ -808,20 +816,6 @@ function createQuestionListPanel() {
   });
 }
 
-/**
- * Finds a select options but its text value
- * @param {*} select - select element
- * @param {*} text - text value
- * @return {number} - number of found option or 'undefined'
- */
-function find_option(select, text) {
-  for (let i = 0; i < select.length; ++i) {
-    if (select.options[i].value == text) {
-      return i;
-    }
-  }
-  return undefined;
-}
 
 /**
  * Handle key button events
@@ -838,50 +832,50 @@ function keydown_handler(event) {
   const sel = $(".control-overlay").get(0);
   switch (event.code) {
     case "KeyP":
-      sel.selectedIndex = find_option(sel, "pan");
+      sel.selectedIndex = viewer.find_option(sel, "pan");
       changeControlSelection();
       break;
     case "KeyZ":
-      sel.selectedIndex = find_option(sel, "zoom");
+      sel.selectedIndex = viewer.find_option(sel, "zoom");
       changeControlSelection();
       break;
     case "KeyR":
-      sel.selectedIndex = find_option(sel, "rotate");
+      sel.selectedIndex = viewer.find_option(sel, "rotate");
       changeControlSelection();
       break;
     case "KeyS":
-      sel.selectedIndex = find_option(sel, "scroll");
+      sel.selectedIndex = viewer.find_option(sel, "scroll");
       changeControlSelection();
       break;
     case "KeyW":
-      sel.selectedIndex = find_option(sel, "window");
+      sel.selectedIndex = viewer.find_option(sel, "window");
       changeControlSelection();
       break;
     case "KeyA":
-      sel.selectedIndex = find_option(sel, "abdomen");
+      sel.selectedIndex = viewer.find_option(sel, "abdomen");
       changeControlSelection();
       break;
     case "KeyU":
-      sel.selectedIndex = find_option(sel, "pulmonary");
+      sel.selectedIndex = viewer.find_option(sel, "pulmonary");
       changeControlSelection();
       break;
     case "KeyB":
-      sel.selectedIndex = find_option(sel, "brain");
+      sel.selectedIndex = viewer.find_option(sel, "brain");
       changeControlSelection();
       break;
     case "KeyO":
-      sel.selectedIndex = find_option(sel, "bone");
+      sel.selectedIndex = viewer.find_option(sel, "bone");
       changeControlSelection();
       break;
     case "KeyE":
-      sel.selectedIndex = find_option(sel, "reset");
+      sel.selectedIndex = viewer.find_option(sel, "reset");
       // $("#dicom-image").get(0).scrollIntoView(false);
       changeControlSelection();
       break;
     // Escape and C do the same
     case "KeyC":
     case "Escape":
-      sel.selectedIndex = find_option(sel, "close");
+      sel.selectedIndex = viewer.find_option(sel, "close");
       changeControlSelection();
       break;
     case "Enter":
@@ -893,20 +887,20 @@ function keydown_handler(event) {
       // Arrow function depends on the currently selected option
       switch (sel.options[sel.selectedIndex].value) {
         case "pan":
-          manualPanDicom(0, -1);
+          viewer.manualPanDicom(0, -1);
           break;
         case "zoom":
           // _this.current_dicom.current_view.pre_scale_at(1.01, 1.01, _this.current_dicom.cols / 2, _this.current_dicom.rows / 2);
-          manualZoomDicom(1);
+          viewer.manualZoomDicom(1);
           break;
         case "rotate":
-          manualRotateDicom(-1);
+          viewer.manualRotateDicom(-1);
           break;
         case "scroll":
-          manualScrollDicom(-1);
+          viewer.manualScrollDicom(-1);
           break;
         case "window":
-          manualWindowDicom(1, 0);
+          viewer.manualWindowDicom(1, 0);
           break;
       }
       break;
@@ -914,19 +908,19 @@ function keydown_handler(event) {
     case "ArrowDown": {
       switch (sel.options[sel.selectedIndex].value) {
         case "pan":
-          manualPanDicom(0, 1);
+          viewer.manualPanDicom(0, 1);
           break;
         case "zoom":
-          manualZoomDicom(-1);
+          viewer.manualZoomDicom(-1);
           break;
         case "rotate":
-          manualRotateDicom(1);
+          viewer.manualRotateDicom(1);
           break;
         case "scroll":
-          manualScrollDicom(1);
+          viewer.manualScrollDicom(1);
           break;
         case "window":
-          manualWindowDicom(-1, 0);
+          viewer.manualWindowDicom(-1, 0);
           break;
       }
       break;
@@ -934,19 +928,19 @@ function keydown_handler(event) {
     case "ArrowLeft": {
       switch (sel.options[sel.selectedIndex].value) {
         case "pan":
-          manualPanDicom(-1, 0);
+          viewer.manualPanDicom(-1, 0);
           break;
         case "zoom":
-          manualZoomDicom(-1);
+          viewer.manualZoomDicom(-1);
           break;
         case "rotate":
-          manualRotateDicom(1);
+          viewer.manualRotateDicom(1);
           break;
         case "scroll":
-          manualScrollDicom(1);
+          viewer.manualScrollDicom(1);
           break;
         case "window":
-          manualWindowDicom(0, -1);
+          viewer.manualWindowDicom(0, -1);
           break;
       }
       break;
@@ -954,19 +948,19 @@ function keydown_handler(event) {
     case "ArrowRight": {
       switch (sel.options[sel.selectedIndex].value) {
         case "pan":
-          manualPanDicom(1, 0);
+          viewer.manualPanDicom(1, 0);
           break;
         case "zoom":
-          manualZoomDicom(1);
+          viewer.manualZoomDicom(1);
           break;
         case "rotate":
-          manualRotateDicom(-1);
+          viewer.manualRotateDicom(-1);
           break;
         case "scroll":
-          manualScrollDicom(-1);
+          viewer.manualScrollDicom(-1);
           break;
         case "window":
-          manualWindowDicom(0, 1);
+          viewer.manualWindowDicom(0, 1);
           break;
       }
       break;
@@ -1016,7 +1010,7 @@ function changeControlSelection() {
       viewport.voi.windowCenter = 150;
       viewport.voi.windowWidth = 500;
       cornerstone.setViewport(dicom_element, viewport);
-      sel.selectedIndex = find_option(sel, "window");
+      sel.selectedIndex = viewer.find_option(sel, "window");
       changeControlSelection();
       break;
     }
@@ -1025,7 +1019,7 @@ function changeControlSelection() {
       viewport.voi.windowCenter = -500;
       viewport.voi.windowWidth = 1500;
       cornerstone.setViewport(dicom_element, viewport);
-      sel.selectedIndex = find_option(sel, "window");
+      sel.selectedIndex = viewer.find_option(sel, "window");
       changeControlSelection();
       break;
     }
@@ -1034,7 +1028,7 @@ function changeControlSelection() {
       viewport.voi.windowCenter = 50;
       viewport.voi.windowWidth = 80;
       cornerstone.setViewport(dicom_element, viewport);
-      sel.selectedIndex = find_option(sel, "window");
+      sel.selectedIndex = viewer.find_option(sel, "window");
       changeControlSelection();
       break;
     }
@@ -1043,7 +1037,7 @@ function changeControlSelection() {
       viewport.voi.windowCenter = 570;
       viewport.voi.windowWidth = 3000;
       cornerstone.setViewport(dicom_element, viewport);
-      sel.selectedIndex = find_option(sel, "window");
+      sel.selectedIndex = viewer.find_option(sel, "window");
       changeControlSelection();
       break;
     }
@@ -1056,7 +1050,7 @@ function changeControlSelection() {
     case "close": {
       // disable fullscreen if required
       if ($(".canvas-panel").length == 0) {
-        disableFullscreen(dicom_element);
+        viewer.disableFullscreen(dicom_element);
       }
       if (dicom_element != undefined) {
         cornerstone.removeElementData(dicom_element);
@@ -1074,66 +1068,12 @@ function changeControlSelection() {
   }
 }
 
-/**
- * Called when a dicom image is rendered
- * @param {*} e - Event
- */
-function onImageRendered(e) {
-  const eventData = e.detail;
-
-  // Update ww/wl
-  const sel = $(".control-overlay").get(0);
-  sel.options[find_option(sel, "window")].firstChild.textContent =
-    "window (" +
-    Math.round(eventData.viewport.voi.windowCenter) +
-    " \u00b1 " +
-    Math.round(eventData.viewport.voi.windowWidth) +
-    ")";
-
-  // update stack data
-  const stack =
-    eventData.enabledElement.toolStateManager.toolState.stack.data[0];
-  if (stack.imageIds.length > 1) {
-    $("option[value=scroll").prop("disabled", false);
-    $("option[value=scroll").prop("hidden", false);
-    $("option[value=scroll").text(
-      "scroll (" +
-        (stack.currentImageIdIndex + 1) +
-        "/" +
-        stack.imageIds.length +
-        ")"
-    );
-
-    // Temp way to enable CT window presets
-    // Enable for all stacked images...
-    $("option[value=abdomen").prop("hidden", false);
-    $("option[value=pulmonary").prop("hidden", false);
-    $("option[value=brain").prop("hidden", false);
-    $("option[value=bone").prop("hidden", false);
-    $("option[value=abdomen").prop("disabled", false);
-    $("option[value=pulmonary").prop("disabled", false);
-    $("option[value=brain").prop("disabled", false);
-    $("option[value=bone").prop("disabled", false);
-  }
-}
-
-/**
- * Disables fullscreen mode
- * @param {*} dicom_element -
- */
-function disableFullscreen(dicom_element) {
-  // TODO: rescale the image to stop it getting zoomed in
-  $(".canvas-panel-fullscreen").toggleClass(
-    "canvas-panel canvas-panel-fullscreen"
-  );
-  $(".question").append($(".canvas-panel"));
-  $(".canvas-panel").get(0).scrollIntoView();
-
-  setDicomCanvasNonFullscreen(dicom_element);
-}
-
 // Register Key Event Listener
 window.addEventListener("keydown", keydown_handler);
+
+$("#btn-local-file-load").click(function (evt) {
+  loadLocalQuestionSet();
+});
 
 $("#submit-button").click(function (evt) {
   submitAnswers();
@@ -1178,6 +1118,8 @@ $("#review-overlay-close").click(function (evt) {
  * @return {JSON} - answers
  */
 function getJsonAnswers() {
+  const cid = window.cid;
+  const eid = window.eid;
   return db.answers.where({ cid: cid, eid: eid }).toArray();
   // .then(function(ans) {
   // console.log(ans);
@@ -1202,7 +1144,7 @@ function postAnswers(ans) {
 
 /**
  * Loads a local question set (from a file)
- * This is defined in index.html
+ * This is call in index.html
  */
 function loadLocalQuestionSet() {
   let input;
@@ -1236,8 +1178,9 @@ function loadLocalQuestionSet() {
    */
   function receivedText(e) {
     const lines = e.target.result;
-    j = JSON.parse(lines);
+    let j = JSON.parse(lines);
     setUpPacket(j);
+    $("#options-panel").hide();
   }
 }
 
@@ -1256,6 +1199,8 @@ function submitAnswers() {
  * Displays the review question panel with a summary of marks
  */
 function reviewQuestions() {
+  const cid = window.cid;
+  const eid = window.eid;
   $("#review-overlay").show();
   $("#review-answer-list").empty();
 
@@ -1267,7 +1212,7 @@ function reviewQuestions() {
     .then(function (answers) {
       let current_answers = {};
       answers.forEach(function (arr, n) {
-        answer = arr["ans"];
+        let answer = arr["ans"];
         if (answer == undefined) {
           answer = "Not answered";
         }
@@ -1434,11 +1379,14 @@ function reviewQuestions() {
 /**
  * Marks the loaded question and updates display
  * @param {*} qid -
- * @param {*} type -
+ * @param {*} current_question -
  */
-function markAnswer(qid, type) {
+function markAnswer(qid, current_question) {
   console.log("mark", qid);
 
+  const type = current_question.type;
+
+  let option = null;
   if (window.review == true) {
     // Disable all possible answer elements
     $("#rapid-option,.long-answer").attr("disabled", "true");
@@ -1455,19 +1403,19 @@ function markAnswer(qid, type) {
           option.classList.add("incorrect");
         }
         // If answer is normal we have nothing else to add.
-        addFeedback();
+        addFeedback(current_question);
       }
     }
 
     $(".answer-panel").append(
       "<div id='correct-answer-block'>Correct answer(s):<ul id='answer-list'></ul></div>"
     );
-    ul = $("#answer-list");
+    let ul = $("#answer-list");
 
-    textarea = $(".long-answer");
+    let textarea = $(".long-answer");
     textarea.addClass("incorrect");
 
-    user_answer = textarea.val();
+    let user_answer = textarea.val();
 
     db.user_answers
       .get({ qid: qid })
@@ -1510,11 +1458,11 @@ function markAnswer(qid, type) {
       .catch(function (error) {
         console.log("error-", error);
       });
-    addFeedback();
+    addFeedback(current_question);
   }
 }
 
-function addFeedback() {
+function addFeedback(current_question) {
   if (
     current_question.hasOwnProperty("feedback") &&
     current_question.feedback.length > 0
@@ -1571,6 +1519,9 @@ function answerInArray(arr, ans) {
 }
 
 function addFlagEvents() {
+  const cid = window.cid;
+  const eid = window.eid;
+
   // Bind flag change events
   $("button.flag").click(function (event) {
     const el = $(this);
@@ -1598,6 +1549,8 @@ function addFlagEvents() {
 }
 
 function loadFlagsFromDb(qid, n) {
+  const cid = window.cid;
+  const eid = window.eid;
   console.log("loadFlagsFromDb", cid, eid, qid, n);
   db.flags
     .get({ cid: cid, eid: eid, qid: qid, qidn: n })
@@ -1613,170 +1566,13 @@ function loadFlagsFromDb(qid, n) {
     });
 }
 
-function urltoFile(url, filename, mimeType) {
-  return fetch(url)
-    .then(function (res) {
-      return res.arrayBuffer();
-    })
-    .then(function (buf) {
-      return new File([buf], filename, { type: mimeType });
-    });
-}
-
-function loadMainImage(image, stack) {
-  const PanTool = cornerstoneTools.PanTool;
-  const ZoomTool = cornerstoneTools.ZoomTool;
-  const WwwcTool = cornerstoneTools.WwwcTool;
-  const RotateTool = cornerstoneTools.RotateTool;
-  const StackScrollTool = cornerstoneTools.StackScrollTool;
-
-  const element = document.getElementById("dicom-image");
-  cornerstone.enable(element);
-
-  cornerstone.displayImage(element, image);
-
-  cornerstoneTools.addStackStateManager(element, ["stack"]);
-  cornerstoneTools.addToolState(element, "stack", stack);
-
-  cornerstoneTools.addTool(PanTool);
-  cornerstoneTools.addTool(ZoomTool);
-  cornerstoneTools.addTool(WwwcTool);
-  cornerstoneTools.addTool(RotateTool);
-  cornerstoneTools.addTool(StackScrollTool);
-
-  cornerstoneTools.setToolActive("Pan", { mouseButtonMask: 1 });
-
-  element.addEventListener("cornerstoneimagerendered", onImageRendered);
-
-  setDicomCanvasNonFullscreen(element);
-  cornerstone.reset(element);
-  element.scrollIntoView(false);
-  // element.scrollTo(0);
-
-  $(element).dblclick(function () {
-    if ($(".canvas-panel").length == 0) {
-      // already fullscreen (disable it)
-      disableFullscreen(this);
-    } else {
-      $(".content-panel").append($(".canvas-panel"));
-      $(".canvas-panel").toggleClass("canvas-panel canvas-panel-fullscreen");
-      $("#dicom-image").attr("height", "100%");
-      $("#dicom-image").height("100%");
-      // $(".cornerstone-canvas").attr("height", "100%");
-      // $(".cornerstone-canvas").height("100%");
-      cornerstone.resize(this, true);
-    }
-  });
-
-  element.removeEventListener("wheel", element.wheelEventHandler);
-
-  // Add tool selector
-  $(".canvas-panel").append(
-    '<select class="control-overlay"><option value="pan">pan [p]</option><option value="zoom">zoom [z]</option><option value="rotate">rotate [r]</option><option value="scroll" hidden="" disabled="">scroll (1/1)</option><option value="window">window ()</option><option value="abdomen" hidden="" disabled="">window = abdomen [a]</option><option value="pulmonary" hidden="" disabled="">window = pulmonary [u]</option><option value="brain" hidden="" disabled="">window = brain [b]</option><option value="bone" hidden="" disabled="">window = bone [o]</option><option value="reset">reset [e]</option><option value="close">close [c]</option><option disabled="true" value="notes">[modality = CR][size = 9.8]</option></select>'
-  );
-
-  $(".control-overlay")
-    .get(0)
-    .addEventListener("change", function () {
-      changeControlSelection();
-    });
-}
-
-function setDicomCanvasNonFullscreen(element) {
-  const h = window.innerHeight - $(".nav-bar").height() - 4;
-  $("#dicom-image").attr("height", h);
-  $("#dicom-image").height(h);
-  // $("#dicom-image.cornerstone-canvas").attr("height", h);
-  // $("#dicom-image.cornerstone-canvas").height(h);
-
-  $("#dicom-image .cornerstone-canvas").attr("width", "100%");
-
-  cornerstone.resize(element, true);
-}
 
 function showLoginDialog() {
   $("#login-dialog").modal();
 }
 
 $("#start-exam-button").click(function (evt) {
-  cid = parseInt($("#candidate-number").val());
+  window.cid = parseInt($("#candidate-number").val());
   $.modal.close();
 });
 
-function manualPanDicom(x, y) {
-  dicom_element = document.getElementById("dicom-image");
-  const viewport = cornerstone.getViewport(dicom_element);
-
-  viewport.translation.x += x;
-  viewport.translation.y += y;
-
-  cornerstone.setViewport(dicom_element, viewport);
-}
-
-function manualZoomDicom(delta) {
-  dicom_element = document.getElementById("dicom-image");
-  const viewport = cornerstone.getViewport(dicom_element);
-
-  viewport.scale += delta / 100;
-
-  cornerstone.setViewport(dicom_element, viewport);
-}
-
-function manualRotateDicom(delta) {
-  dicom_element = document.getElementById("dicom-image");
-  const viewport = cornerstone.getViewport(dicom_element);
-
-  viewport.rotation += delta;
-
-  cornerstone.setViewport(dicom_element, viewport);
-}
-
-function manualScrollDicom(n) {
-  // There must be a better way to do this...
-  dicom_element = document.getElementById("dicom-image");
-  c = cornerstone.getEnabledElement(dicom_element);
-  max = c.toolStateManager.toolState.stack.data[0].imageIds.length;
-
-  if (max < 2) {
-    return;
-  }
-
-  current_index =
-    c.toolStateManager.toolState.stack.data[0].currentImageIdIndex;
-
-  // Loop through stack if out of bounds
-  // Yes it is annoying but it's the way it is done...
-  new_index = current_index + n;
-  if (new_index >= max) {
-    new_index = new_index - max;
-  } else if (new_index < 0) {
-    new_index = new_index + max;
-  }
-
-  c.toolStateManager.toolState.stack.data[0].currentImageIdIndex = new_index;
-  id = c.toolStateManager.toolState.stack.data[0].imageIds[new_index];
-  cornerstone.loadImage(id).then((b) => {
-    cornerstone.displayImage(dicom_element, b);
-  });
-  // c = cornerstone.getEnabledElement(dicom_element)
-}
-
-function manualWindowDicom(wl, ww) {
-  dicom_element = document.getElementById("dicom-image");
-  const viewport = cornerstone.getViewport(dicom_element);
-
-  // For reference
-  // brightness ~= wl
-  // contrast ~= ww
-
-  viewport.voi.windowCenter += wl;
-  viewport.voi.windowWidth += ww;
-
-  cornerstone.setViewport(dicom_element, viewport);
-}
-
-function debugCornerstone() {
-  dicom_element = document.getElementById("dicom-image");
-  viewport = cornerstone.getViewport(dicom_element);
-  c = cornerstone.getEnabledElement(dicom_element);
-}
