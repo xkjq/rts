@@ -589,9 +589,9 @@ function loadQuestion(n, section = 1, force_reload = false) {
       ap.append(
         '<div class="answer-item"><div class="answer-label-outer"><p class="answer-label-inner"><span class="answer-label-number">' +
           display_n +
-          '.3</span><span style="flex:1">Principle Diagnosis</span><button class="flag" data-qid="' +
+          '.3</span><span style="flex:1">Principal Diagnosis</span><button class="flag" data-qid="' +
           n +
-          '" data-qidn=3 style="margin-right:0">⚐</button></p></div><textarea class="long-answer" data-qidn=3 name="Principle Diagnosis" style="overflow-x: hidden; overflow-wrap: break-word; height: 80px;"></textarea></div>'
+          '" data-qidn=3 style="margin-right:0">⚐</button></p></div><textarea class="long-answer" data-qidn=3 name="Principal Diagnosis" style="overflow-x: hidden; overflow-wrap: break-word; height: 80px;"></textarea></div>'
       );
       ap.append(
         '<div class="answer-item"><div class="answer-label-outer"><p class="answer-label-inner"><span class="answer-label-number">' +
@@ -656,7 +656,10 @@ function loadQuestion(n, section = 1, force_reload = false) {
                 .eq(parseInt(answer.qidn) - 1)
                 .text(answer.ans);
             }
-            // markAnswer(qid, "anatomy");
+            // We only want to mark once...
+            if (qidn_count == 5) {
+              markAnswer(qid, current_question);
+            }
           })
           .catch(function (error) {
             console.log(error);
@@ -773,7 +776,7 @@ function createQuestionListPanel() {
    * @param {number} qidn - question section number
    * @return {*} el - element that has been created
    */
-  function appendReviewItem(n, qidn) {
+  function appendQuestionListItem(n, qidn) {
     const qn = n - 1;
     const el = $(
       '<div id="question-list-item-' +
@@ -798,20 +801,20 @@ function createQuestionListPanel() {
   if (window.question_type == "rapid") {
     // Loop through all questions and append list items
     for (let n = 1; n < window.number_of_questions + 1; n++) {
-      appendReviewItem(n, "1");
-      appendReviewItem(n, "2").hide();
+      appendQuestionListItem(n, "1");
+      appendQuestionListItem(n, "2").hide();
     }
   } else if (window.question_type == "anatomy") {
     for (let n = 1; n < window.number_of_questions + 1; n++) {
-      appendReviewItem(n, "1");
+      appendQuestionListItem(n, "1");
     }
   } else if (window.question_type == "long") {
     for (let n = 1; n < window.number_of_questions + 1; n++) {
-      appendReviewItem(n, "1");
-      appendReviewItem(n, "2");
-      appendReviewItem(n, "3");
-      appendReviewItem(n, "4");
-      appendReviewItem(n, "5");
+      appendQuestionListItem(n, "1");
+      appendQuestionListItem(n, "2");
+      appendQuestionListItem(n, "3");
+      appendQuestionListItem(n, "4");
+      appendQuestionListItem(n, "5");
     }
   }
 
@@ -1207,7 +1210,7 @@ function reviewQuestions() {
   $("#review-overlay").show();
   $("#review-answer-list").empty();
 
-  loadQuestion(0);
+  loadQuestion(0, 0, true);
 
   db.answers
     .where({ cid: cid, eid: eid })
@@ -1238,6 +1241,53 @@ function reviewQuestions() {
           loadQuestion(this.dataset.qid);
           $("#review-overlay").hide();
         });
+
+        if (window.question_type == "long") {
+          $(`#review-answer-${qid} span`)
+            .addClass("displayblock")
+            .empty()
+            .append(
+              "<ul class='user-review-answer-list'></ul><ul class='model-review-answer-list'></ul>"
+            );
+
+          const model_answers = window.questions[qid].answers;
+
+          const titles = [
+            "Observations",
+            "Interpretation",
+            "Principal Diagnosis",
+            "Differential Diagnosis",
+            "Management",
+          ];
+
+          let user_li = $(
+            `#review-answer-${qid} span .user-review-answer-list`
+          );
+          let model_li = $(
+            `#review-answer-${qid} span  .model-review-answer-list`
+          );
+
+          user_li.append("<div class='answer-sub'>Your answers</div>");
+          model_li.append("<div class='answer-sub'>Model answers</div>");
+
+          titles.forEach((title, n) => {
+            let user_answer = current_answers[`${qid},${n}`];
+            if (user_answer == undefined) {
+              user_answer = "Not answered";
+            }
+            user_li.append(
+              "<h4 class='review-list-header'>" + title + "</h4>" + user_answer
+            );
+            model_li.append(
+              `<h4 class="review-list-header" name=${n}>` +
+                title +
+                "</h4>" +
+                model_answers[0][title.toLowerCase()]
+            );
+          });
+
+          return;
+        }
         db.user_answers
           .get({ qid: qid })
           .then(function (answers) {
@@ -1385,8 +1435,6 @@ function reviewQuestions() {
  * @param {*} current_question -
  */
 function markAnswer(qid, current_question) {
-  console.log("mark", qid);
-
   const type = current_question.type;
 
   let option = null;
@@ -1407,7 +1455,18 @@ function markAnswer(qid, current_question) {
         }
         // If answer is normal we have nothing else to add.
         addFeedback(current_question);
+        return;
       }
+    }
+
+    if (type == "long") {
+      // For long cases we simple disable the texareas and append the
+      // model answers
+      const model_answers = current_question.answers[0];
+      for (let key of Object.keys(model_answers)) {
+        $("textarea[name*='" + key + "' i]").after(model_answers[key]);
+      }
+      return;
     }
 
     $(".answer-panel").append(
@@ -1554,7 +1613,6 @@ function addFlagEvents() {
 function loadFlagsFromDb(qid, n) {
   const cid = window.cid;
   const eid = window.eid;
-  console.log("loadFlagsFromDb", cid, eid, qid, n);
   db.flags
     .get({ cid: cid, eid: eid, qid: qid, qidn: n })
     .then(function (answer) {

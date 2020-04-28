@@ -153,6 +153,7 @@ td {
 
 .question-list-panel * {
     -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
 }
 
 .question-list-panel::after {
@@ -277,6 +278,7 @@ td {
     
     .question * {
         -webkit-transform: translate3d(0, 0, 0);
+        transform: translate3d(0, 0, 0);
     }
 
     .question::after {
@@ -301,6 +303,7 @@ td {
 
     .answers * {
         -webkit-transform: translate3d(0, 0, 0);
+        transform: translate3d(0, 0, 0);
     }
 
     .answer-panel {
@@ -334,6 +337,7 @@ td {
 
     .exam-content-panel * {
         -webkit-transform: translate3d(0, 0, 0);
+        transform: translate3d(0, 0, 0);
     }
 
     .question {
@@ -450,7 +454,6 @@ td {
     height: 8rem;
     min-height: 8rem;
     width: 100%;
-    vertical-align: top;
     border: 1px solid #4527A0;
     overflow: hidden;
     resize: none;
@@ -464,7 +467,6 @@ td {
 .rapid-option-answer {
     width: 100%;
     display: block;
-    vertical-align: top;
     border: 1px solid #4527A0;
     margin: 0.8rem 1.6rem 1.6rem 1.6rem;
     overflow: hidden;
@@ -830,3 +832,32 @@ select option:disabled {
             transform: scale3D(0, 0, 1);
   } 
 }
+
+.user-review-answer-list {
+float: left;
+width: 45%;
+padding-left: 5%;
+}
+.model-review-answer-list {
+float: right;
+width: 45%;
+padding-right: 5%;
+}
+
+#review-answer-list li {
+clear: both;
+}
+
+.displayblock {
+display: block
+}
+
+.review-list-header {
+    font-weight: bold;
+    text-decoration: underline;
+}
+
+.answer-sub {
+    opacity: 50%;
+    text-align: center;
+    }
