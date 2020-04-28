@@ -1275,7 +1275,7 @@ function reviewQuestions() {
         current_answers[[arr["qid"], arr["qidn"]]] = answer;
       });
 
-      correct_count = 0;
+      let correct_count = 0;
       window.question_order.forEach(function (qid, n) {
         $("#review-answer-list").append(
           "<li id='review-answer-" +
@@ -1312,7 +1312,7 @@ function reviewQuestions() {
               }
             }
 
-            el = $("#review-answer-" + qid + " span");
+            let el = $("#review-answer-" + qid + " span");
 
             /**
              * Helper function to define how review items are displayed
