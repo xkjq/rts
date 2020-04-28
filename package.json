@@ -1,0 +1,27 @@
+{
+  "name": "rts",
+  "version": "1.0.0",
+  "description": "RTS is a quick and dirty clone of the RCR radiology test system that supports the full set of RCR exam types (Anatomy / Rapid / Longs).",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xkjq/rts.git"
+  },
+  "author": "",
+  "license": "GPL",
+  "bugs": {
+    "url": "https://github.com/xkjq/rts/issues"
+  },
+  "homepage": "https://github.com/xkjq/rts#readme",
+  "devDependencies": {
+    "eslint": "^6.8.0",
+    "eslint-config-google": "^0.14.0"
+  },
+  "lint": "eslint --fix . && echo 'Lint complete.'"
+}

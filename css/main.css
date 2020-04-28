@@ -583,6 +583,7 @@ img {
     z-index: 2;
     cursor: pointer; 
     color: lightgray;
+    overflow: auto;
 }
 
 #review-overlay {

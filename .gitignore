@@ -5,3 +5,5 @@ packets/*
 img/*
 
 .htaccess
+
+node_modules
