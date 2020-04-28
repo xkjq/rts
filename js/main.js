@@ -293,29 +293,29 @@ function loadQuestion(n, section = 1, force_reload = false) {
         // otherwise try to load it as a dicom
       } else {
         // convert the data url to a file
-        helper.urltoFile(based_img, "dicom", "application/dicom").then(function (
-          dfile
-        ) {
-          // load the file using cornerstoneWADO file loader
-          const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(
-            dfile
-          );
-          cornerstone.loadAndCacheImage(imageId).then(function (image) {
-            const img = $("<div></div>").get(0);
-            img.id = "thumb-" + id;
-            img.class = "thumbnail";
-            img.title =
-              "Click on the thumbnail to view and manipulate the image.";
-            img.draggable = "false";
-            img.style = "height: 100px; width: 100px";
-            $("#figure-" + id).append(img);
+        helper
+          .urltoFile(based_img, "dicom", "application/dicom")
+          .then(function (dfile) {
+            // load the file using cornerstoneWADO file loader
+            const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(
+              dfile
+            );
+            cornerstone.loadAndCacheImage(imageId).then(function (image) {
+              const img = $("<div></div>").get(0);
+              img.id = "thumb-" + id;
+              img.class = "thumbnail";
+              img.title =
+                "Click on the thumbnail to view and manipulate the image.";
+              img.draggable = "false";
+              img.style = "height: 100px; width: 100px";
+              $("#figure-" + id).append(img);
 
-            const element = document.getElementById("thumb-" + id);
-            cornerstone.enable(element);
-            cornerstone.displayImage(element, image);
-            cornerstone.resize(element);
-          }); // .catch( function(error) {
-        });
+              const element = document.getElementById("thumb-" + id);
+              cornerstone.enable(element);
+              cornerstone.displayImage(element, image);
+              cornerstone.resize(element);
+            }); // .catch( function(error) {
+          });
       }
     });
   }
@@ -348,7 +348,11 @@ function loadQuestion(n, section = 1, force_reload = false) {
         } else if (data_url.startsWith("data:application/dicom")) {
           // stack = stack.split(";")[1];
 
-          const dfile = await helper.urltoFile(data_url, "dicom", "application/dicom");
+          const dfile = await helper.urltoFile(
+            data_url,
+            "dicom",
+            "application/dicom"
+          );
 
           const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(
             dfile
@@ -815,7 +819,6 @@ function createQuestionListPanel() {
     loadQuestion($(this).attr("data-qid"), $(this).attr("data-qidn"));
   });
 }
-
 
 /**
  * Handle key button events
@@ -1566,7 +1569,6 @@ function loadFlagsFromDb(qid, n) {
     });
 }
 
-
 function showLoginDialog() {
   $("#login-dialog").modal();
 }
@@ -1575,4 +1577,3 @@ $("#start-exam-button").click(function (evt) {
   window.cid = parseInt($("#candidate-number").val());
   $.modal.close();
 });
-

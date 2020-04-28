@@ -1,3 +1,4 @@
+/* global cornerstone, cornerstoneTools, cornerstoneBase64ImageLoader, cornerstoneWebImageLoader, cornerstoneWADOImageLoader */
 /**
  * Load the main image
  * @param {*} image -
