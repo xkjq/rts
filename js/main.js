@@ -55,9 +55,19 @@ function loadPacketList(data) {
   window.packet_list = data.packets;
   window.packet_list.forEach(function (packet) {
     $("#packet-list").append(
-      $("<div class='packet-button'>" + packet + "</div>").click(function () {
-        loadPacketFromAjax("packets/" + packet);
-      })
+      $("<div class='packet-button' title='Load packet'></div>")
+        .text(packet)
+        .click(function () {
+          loadPacketFromAjax("packets/" + packet);
+        })
+        .append(
+          $(
+            `<div class='save-button' title='Download packet for offline use (or to save bandwidth)'><a href='packets/${packet}'>💾</a></div>`
+          ).click(function () {
+            console.log("packets/" + packet);
+            event.stopPropagation();
+          })
+        )
     );
   });
   $("#options-panel").show();
@@ -69,11 +79,28 @@ function loadPacketList(data) {
  */
 function loadPacketFromAjax(path) {
   console.log("loading packet from " + path);
-  $.getJSON(path, function (data) {
-    setUpPacket(data);
-    $("#options-panel").hide();
+  // $.getJSON(path, function (data) {
+  //   setUpPacket(data);
+  //   $("#options-panel").hide();
+  // })
+  $.ajax({
+    dataType: "json",
+    url: path,
+    progress: function (e) {
+      if (e.lengthComputable) {
+        var completedPercentage = Math.round((e.loaded * 100) / e.total);
+        console.log(completedPercentage);
+
+        $("#progress").html(
+          `${completedPercentage}%<br/>${helper.formatBytes(e.total)}`
+        );
+      }
+    },
   })
-    .done(function () {})
+    .done(function (data) {
+      setUpPacket(data);
+      $("#options-panel").hide();
+    })
     .fail(function () {
       console.log("Unable to load packet at: " + path);
     });
@@ -1643,7 +1670,9 @@ $("#btn-delete-databases").click(function (evt) {
       .then(() => {
         $.notify("Database successfully deleted", "success");
         $.notify("The page will now reload", "warn");
-        setTimeout(() => {location.reload();}, 2000);
+        setTimeout(() => {
+          location.reload();
+        }, 2000);
         console.log("Database successfully deleted");
       })
       .catch((err) => {
@@ -1658,19 +1687,23 @@ $("#btn-delete-databases").click(function (evt) {
 });
 
 $("#btn-delete-current").click(function (evt) {
-db.answers
-    .where("qid").anyOf(window.question_order)
+  db.answers
+    .where("qid")
+    .anyOf(window.question_order)
     .delete()
     .then(function (deleteCount) {
-        $.notify("Packet successfully reset", "success");
-        $.notify("The page will now reload", "warn");
-        setTimeout(() => {location.reload();}, 2000);
-        console.log( "Deleted " + deleteCount + " objects");
-    }).catch((err) => {
-        $.notify("Error reseting packet", "error");
-        console.error("Could not answers");
-      });
-
+      $.notify("Packet successfully reset", "success");
+      $.notify("The page will now reload", "warn");
+      setTimeout(() => {
+        location.reload();
+      }, 2000);
+      console.log("Deleted " + deleteCount + " objects");
+    })
+    .catch((err) => {
+      $.notify("Error reseting packet", "error");
+      $.notify("You may have to delete all answers this time", "info");
+      console.error("Could not answers");
+    });
 });
 
 $(document).ajaxStart(function () {

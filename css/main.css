@@ -767,18 +767,36 @@ select option:disabled {
     transition: all 0.2s;
 }
 
+.save-button {
+    display:inline-block;
+    padding-left: 10px;
+    color:#FFFFFF;
+}
+
+.save-button a { 
+    color: inherit; 
+} 
+
+.save-button:hover {
+    color: blue;
+}
+
 .packet-button:hover{
     color:lightblue;
     border-color:blue;
 }
 
-.sk-cube-grid {
-  width: 60px;
-  height: 60px;
+.progress-block {
   position: fixed;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+  font-size: smaller;
+}
+
+.sk-cube-grid {
+  width: 60px;
+  height: 60px;
 }
 
 .sk-cube-grid .sk-cube {
