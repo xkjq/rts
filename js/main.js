@@ -62,7 +62,7 @@ function loadPacketList(data) {
         })
         .append(
           $(
-            `<div class='save-button' title='Download packet for offline use (or to save bandwidth)'><a href='packets/${packet}'>💾</a></div>`
+            `<div class='save-button' title='Download packet for offline use (or to save bandwidth)'><a href='packets/${packet}' download='${packet}'>💾</a></div>`
           ).click(function () {
             console.log("packets/" + packet);
             event.stopPropagation();
