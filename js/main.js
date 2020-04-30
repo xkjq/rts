@@ -149,16 +149,15 @@ function setUpQuestions() {
   loadQuestion(0, 1, true);
   createQuestionListPanel();
 
-
   if (window.question_type == "rapid") {
     window.exam_time = 35 * 60;
-  } else if (window.question_type == "anatomy"){
+  } else if (window.question_type == "anatomy") {
     window.exam_time = 90 * 60;
-  } else if (window.question_type == "long"){
+  } else if (window.question_type == "long") {
     window.exam_time = 75 * 60;
   }
 
-  $("#exam-time").text(window.exam_time / 60)
+  $("#exam-time").text(window.exam_time / 60);
 
   $("#start-dialog").modal();
 }
@@ -1683,29 +1682,50 @@ $("#start-exam-button").click(function (evt) {
 });
 
 $("#start-packet-button").click(function (evt) {
-  //window.cid = parseInt($("#candidate-number").val());
-  // const t = 35 * 60;
+  let timer = new easytimer.Timer();
+  //window.exam_time = 2;
+  timer.start({ countdown: true, startValues: { seconds: window.exam_time } });
+  timer.addEventListener("secondsUpdated", function (e) {
+    $('#timer').html("Time left: " + timer.getTimeValues().toString());
+  });
+  timer.addEventListener("targetAchieved", function (e) {
+    $("#time-up-dialog").modal();
+  });
 
-  //const t = 2;
-  let display = document.querySelector("#timer");
-  let timer = new helper.CountDownTimer(window.exam_time);
-  let timeObj = helper.CountDownTimer.parse(window.exam_time);
+  $("#timer").click(() => {
+    timer.pause();
+    $("#pause").empty();
+    $("#pause").append(
+      $(
+        '<button id="resume-exam-button" class="navigation dialog-yes">Resume</button>'
+      ).click(() => {
+        $("#pause").hide();
+        timer.start();
+      })
+    );
+    $("#pause").show();
+  });
 
-  format(timeObj.minutes, timeObj.seconds);
+  // //const t = 2;
+  // let display = document.querySelector("#timer");
+  // let timer = new helper.CountDownTimer(window.exam_time);
+  // let timeObj = helper.CountDownTimer.parse(window.exam_time);
 
-  timer.onTick(format);
+  // format(timeObj.minutes, timeObj.seconds);
 
-  timer.start();
+  // timer.onTick(format);
 
-  function format(minutes, seconds) {
-    minutes = minutes < 10 ? "0" + minutes : minutes;
-    seconds = seconds < 10 ? "0" + seconds : seconds;
-    display.textContent = "Time left: " + minutes + ":" + seconds;
+  // timer.start();
 
-    if (minutes == 0 && seconds == 0) {
-      $("#time-up-dialog").modal();
-    }
-  }
+  // function format(minutes, seconds) {
+  //   minutes = minutes < 10 ? "0" + minutes : minutes;
+  //   seconds = seconds < 10 ? "0" + seconds : seconds;
+  //   display.textContent = "Time left: " + minutes + ":" + seconds;
+
+  //   if (minutes == 0 && seconds == 0) {
+  //     $("#time-up-dialog").modal();
+  //   }
+  // }
 
   $.modal.close();
 });
