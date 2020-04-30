@@ -23,6 +23,7 @@
                 <button id="review-overlay-button" class="navigation nav-right">review</button>
                 <!--<button id="logout-button" class="navigation nav-right">logout</button>-->
                 <div class="app-name nav-left">RTS</div>
+                <div id="timer"></div>
                 <div class="exam-name"></div>
                 <input type="button" class="navigation nav-left" value="previous" disabled="disabled">
                 <input type="button" class="navigation nav-left" value="next">
@@ -92,29 +93,47 @@
         </div>
     </div>
 
+    <div id="start-dialog" class="dialog modal">
+        <h3 class="dialog-title">Start exam</h3>
+        <div class="dialog-text">
+            Click to start exam.
+            <p>You will have <span id='exam-time'></span> minutes.</p>
+        </div>
+        <button id="start-packet-button" class="navigation dialog-yes">Start</button>
+    </div>
+
+    <div id="time-up-dialog" class="dialog modal">
+        <h3 class="dialog-title">Time ended</h3>
+        <div class="dialog-text">
+        Allocated time has ended. You can review or continue.
+        </div>
+            <button id="time-up-review-button" class="navigation dialog-review">Review</button>
+            <button id="time-up-continue-button" class="navigation dialog-yes">Continue</button>
+    </div>
+
     <div id="login-dialog" class="dialog modal">
         <h3 class="dialog-title">Select exam</h3>
-        Candidate number: <input type="text" id="candidate-number" name="candidate" required size="10">
         <div class="dialog-text">
-            <button id="start-exam-button" class="navigation dialog-yes">Start</button>
+        Candidate number: <input type="text" id="candidate-number" name="candidate" required size="10">
         </div>
+            <button id="start-exam-button" class="navigation dialog-yes">Start</button>
     </div>
 
     <div id="loading" class="fullscreen-overlay">
         <div class="progress-block">
-        <div id="progress">
-        </div>
-        <div class="sk-cube-grid full">
-            <div class="sk-cube sk-cube1"></div>
-            <div class="sk-cube sk-cube2"></div>
-            <div class="sk-cube sk-cube3"></div>
-            <div class="sk-cube sk-cube4"></div>
-            <div class="sk-cube sk-cube5"></div>
-            <div class="sk-cube sk-cube6"></div>
-            <div class="sk-cube sk-cube7"></div>
-            <div class="sk-cube sk-cube8"></div>
-            <div class="sk-cube sk-cube9"></div>
-        </div>
+            <div id="progress">
+            </div>
+            <div class="sk-cube-grid full">
+                <div class="sk-cube sk-cube1"></div>
+                <div class="sk-cube sk-cube2"></div>
+                <div class="sk-cube sk-cube3"></div>
+                <div class="sk-cube sk-cube4"></div>
+                <div class="sk-cube sk-cube5"></div>
+                <div class="sk-cube sk-cube6"></div>
+                <div class="sk-cube sk-cube7"></div>
+                <div class="sk-cube sk-cube8"></div>
+                <div class="sk-cube sk-cube9"></div>
+            </div>
         </div>
     </div>
 

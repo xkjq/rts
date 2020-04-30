@@ -16,6 +16,7 @@ window.number_of_questions = null;
 window.question_type = null;
 window.loaded_question = null;
 window.review = false;
+window.exam_time = 60;
 
 window.allow_self_marking = true;
 
@@ -83,13 +84,14 @@ function loadPacketFromAjax(path) {
   //   setUpPacket(data);
   //   $("#options-panel").hide();
   // })
+  $("#progress").html(`Requesting packet: ${path}`);
+
   $.ajax({
     dataType: "json",
     url: path,
     progress: function (e) {
       if (e.lengthComputable) {
         var completedPercentage = Math.round((e.loaded * 100) / e.total);
-        console.log(completedPercentage);
 
         $("#progress").html(
           `${completedPercentage}%<br/>${helper.formatBytes(e.total)}`
@@ -146,6 +148,19 @@ function setUpQuestions() {
 
   loadQuestion(0, 1, true);
   createQuestionListPanel();
+
+
+  if (window.question_type == "rapid") {
+    window.exam_time = 35 * 60;
+  } else if (window.question_type == "anatomy"){
+    window.exam_time = 90 * 60;
+  } else if (window.question_type == "long"){
+    window.exam_time = 75 * 60;
+  }
+
+  $("#exam-time").text(window.exam_time / 60)
+
+  $("#start-dialog").modal();
 }
 
 // Set up cornerstone (the dicom viewer)
@@ -1128,9 +1143,13 @@ $("#review-overlay-button").click(function (evt) {
   }
 });
 
-$("#finish-exam").click(function (evt) {
+$("#finish-exam, #time-up-review-button").click(function (evt) {
   window.review = true;
   reviewQuestions();
+  $.modal.close();
+});
+
+$("#time-up-continue-button").click(function (evt) {
   $.modal.close();
 });
 
@@ -1660,6 +1679,34 @@ function showLoginDialog() {
 
 $("#start-exam-button").click(function (evt) {
   window.cid = parseInt($("#candidate-number").val());
+  $.modal.close();
+});
+
+$("#start-packet-button").click(function (evt) {
+  //window.cid = parseInt($("#candidate-number").val());
+  // const t = 35 * 60;
+
+  //const t = 2;
+  let display = document.querySelector("#timer");
+  let timer = new helper.CountDownTimer(window.exam_time);
+  let timeObj = helper.CountDownTimer.parse(window.exam_time);
+
+  format(timeObj.minutes, timeObj.seconds);
+
+  timer.onTick(format);
+
+  timer.start();
+
+  function format(minutes, seconds) {
+    minutes = minutes < 10 ? "0" + minutes : minutes;
+    seconds = seconds < 10 ? "0" + seconds : seconds;
+    display.textContent = "Time left: " + minutes + ":" + seconds;
+
+    if (minutes == 0 && seconds == 0) {
+      $("#time-up-dialog").modal();
+    }
+  }
+
   $.modal.close();
 });
 

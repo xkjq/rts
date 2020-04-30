@@ -550,7 +550,12 @@ img {
 }
 
 .dialog-text {
-    margin-bottom: 3.2rem;
+    padding: .4rem 2.8rem;
+    /* margin-bottom: 3.2rem; */
+}
+
+#exam-time {
+    font-weight: bold;
 }
 
 .dialog-cancel {
@@ -569,6 +574,17 @@ img {
     padding: 0.8rem !important;
     background-color: #b71c1c !important;
 }
+
+.dialog-review {
+    border-radius: 5px 5px 5px 5px !important;
+    border-width: 0px !important;
+    margin: 1.6rem 1.6rem 1.6rem 0.8rem !important;
+    width: 19.2rem !important;
+    padding: 0.8rem !important;
+    background-color: #4527A0 !important;
+}
+
+
 
 /* Options overlay */
 
@@ -769,8 +785,9 @@ select option:disabled {
 
 .save-button {
     display:inline-block;
-    padding-left: 10px;
+    margin-left: 10px;
     color:#FFFFFF;
+    border-bottom:2px solid transparent;
 }
 
 .save-button a { 
@@ -778,7 +795,8 @@ select option:disabled {
 } 
 
 .save-button:hover {
-    color: blue;
+    color: #311B92; 
+    border-bottom:2px solid #311B92;
 }
 
 .packet-button:hover{
@@ -792,6 +810,15 @@ select option:disabled {
   left: 50%;
   transform: translate(-50%, -50%);
   font-size: smaller;
+}
+
+#timer {
+  position: relative;
+  top: 50%;
+  /* left: 50%; */
+  transform: translate(0, -20%);
+  /* color: #4527A0; */
+  opacity: 25%;
 }
 
 .sk-cube-grid {
