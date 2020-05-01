@@ -556,6 +556,10 @@ img {
 
 #exam-time {
     font-weight: bold;
+    width: auto;
+    max-width: 50px;
+    border: none;
+    padding: 0px;
 }
 
 .dialog-cancel {
@@ -606,7 +610,12 @@ img {
 
 #review-overlay {
     overflow: scroll;
+    padding: 20px;
+}
 
+#exam-stats {
+    display: none;
+    float: right;
 }
 
 .close {
@@ -652,6 +661,12 @@ img {
 
 .incorrect {
     color: red;
+}
+
+.mark-correct {
+    /* float: right; */
+    color: lightblue;
+    font-size: smaller;
 }
 
 textarea.incorrect {
@@ -886,20 +901,6 @@ select option:disabled {
   } 
 }
 
-.user-review-answer-list {
-float: left;
-width: 45%;
-padding-left: 5%;
-}
-.model-review-answer-list {
-float: right;
-width: 45%;
-padding-right: 5%;
-}
-
-#review-answer-list li {
-clear: both;
-}
 
 .displayblock {
 display: block
@@ -910,7 +911,16 @@ display: block
     text-decoration: underline;
 }
 
+.answer-sub td {
+    text-align: center;
+    width: 50%;
+    padding-top: 0px;
+    padding-bottom: 0px;
+}
+
 .answer-sub {
+    padding-top: 0px;
+    padding-bottom: 0px;
     opacity: 50%;
     text-align: center;
     }
@@ -920,4 +930,31 @@ display: block
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+}
+
+.packet-database-options {
+    float: right;
+    font-size: xx-small;
+}
+
+.review-table-heading td {
+    text-align: center;
+}
+
+.review-table-heading td:hover {
+    background-color: #311B92;
+}
+
+#review-answer-table {
+    border: none;
+}
+
+#review-answer-table td {
+    border: none;
+    /* border: 3px solid transparent; */
+}
+
+#review-answer-table tr:hover {
+    /* border: 3px solid #4527A0; */
+    background-color: #4527A0;
 }

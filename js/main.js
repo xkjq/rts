@@ -20,6 +20,8 @@ window.exam_time = 60;
 
 window.allow_self_marking = true;
 
+window.timer = null;
+
 //window.dfile = null;
 
 retrievePacketList();
@@ -126,19 +128,14 @@ function setUpQuestions() {
     }
   });
 
-  console.log("pre", window.question_order);
   window.question_order = helper.shuffleArray(window.question_order);
-  console.log("post", window.question_order);
   window.number_of_questions = Object.keys(window.questions).length;
   window.review = false;
-  console.log(window.question_order);
 
   // Horrible way to get type of questions
   // We assume they are all of the same type....
-  if (window.question_type == null) {
-    window.question_type =
-      window.questions[Object.keys(window.questions)[0]].type;
-  }
+  window.question_type =
+    window.questions[Object.keys(window.questions)[0]].type;
 
   if (window.exam_mode) {
     $("#options-button, #review-overlay-button").hide();
@@ -149,6 +146,8 @@ function setUpQuestions() {
   loadQuestion(0, 1, true);
   createQuestionListPanel();
 
+  console.log(window.question_type);
+
   if (window.question_type == "rapid") {
     window.exam_time = 35 * 60;
   } else if (window.question_type == "anatomy") {
@@ -157,7 +156,11 @@ function setUpQuestions() {
     window.exam_time = 75 * 60;
   }
 
-  $("#exam-time").text(window.exam_time / 60);
+  $("#exam-time")
+    .val(window.exam_time / 60)
+    .change(() => {
+      window.exam_time = $("#exam-time").val() * 60;
+    });
 
   $("#start-dialog").modal();
 }
@@ -618,35 +621,35 @@ function loadQuestion(n, section = 1, force_reload = false) {
           display_n +
           '.1</span><span style="flex:1">Observations</span><button class="flag" data-qid="' +
           n +
-          '" data-qidn=1 style="margin-right:0">⚐</button></p></div><textarea class="long-answer" data-qidn=1 name="Observations" style="overflow-x: hidden; overflow-wrap: break-word; height: 80px;"></textarea></div>'
+          '" data-qidn=1 style="margin-right:0">⚐</button></p></div><textarea class="long-answer" data-qidn=1 data-answer-section-qidn=1 name="Observations" style="overflow-x: hidden; overflow-wrap: break-word; height: 80px;"></textarea></div>'
       );
       ap.append(
         '<div class="answer-item"><div class="answer-label-outer"><p class="answer-label-inner"><span class="answer-label-number">' +
           display_n +
           '.2</span><span style="flex:1">Interpretation</span><button class="flag" data-qid="' +
           n +
-          '" data-qidn=2 style="margin-right:0">⚐</button></p></div><textarea class="long-answer" data-qidn=2 name="Interpretation" style="overflow-x: hidden; overflow-wrap: break-word; , trueheight: 80px;"></textarea></div>'
+          '" data-qidn=2 style="margin-right:0">⚐</button></p></div><textarea class="long-answer" data-qidn=2 data-answer-section-qidn=2 name="Interpretation" style="overflow-x: hidden; overflow-wrap: break-word; , trueheight: 80px;"></textarea></div>'
       );
       ap.append(
         '<div class="answer-item"><div class="answer-label-outer"><p class="answer-label-inner"><span class="answer-label-number">' +
           display_n +
           '.3</span><span style="flex:1">Principal Diagnosis</span><button class="flag" data-qid="' +
           n +
-          '" data-qidn=3 style="margin-right:0">⚐</button></p></div><textarea class="long-answer" data-qidn=3 name="Principal Diagnosis" style="overflow-x: hidden; overflow-wrap: break-word; height: 80px;"></textarea></div>'
+          '" data-qidn=3 style="margin-right:0">⚐</button></p></div><textarea class="long-answer" data-qidn=3 data-answer-section-qidn=3 name="Principal Diagnosis" style="overflow-x: hidden; overflow-wrap: break-word; height: 80px;"></textarea></div>'
       );
       ap.append(
         '<div class="answer-item"><div class="answer-label-outer"><p class="answer-label-inner"><span class="answer-label-number">' +
           display_n +
           '.4</span><span style="flex:1">Differential Diagnosis</span><button class="flag" data-qid="' +
           n +
-          '" data-qidn=4 style="margin-right:0">⚐</button></p></div><textarea class="long-answer" data-qidn=4 name="Differential Diagnosis" style="overflow-x: hidden; overflow-wrap: break-word; height: 80px;"></textarea></div>'
+          '" data-qidn=4 style="margin-right:0">⚐</button></p></div><textarea class="long-answer" data-qidn=4 data-answer-section-qidn=4 name="Differential Diagnosis" style="overflow-x: hidden; overflow-wrap: break-word; height: 80px;"></textarea></div>'
       );
       ap.append(
         '<div class="answer-item"><div class="answer-label-outer"><p class="answer-label-inner"><span class="answer-label-number">' +
           display_n +
           '.5</span><span style="flex:1">Management (if appropriate)</span><button class="flag" data-qid="' +
           n +
-          '" data-qidn=5 style="margin-right:0">⚐</button></p></div><textarea class="long-answer" data-qidn=5 name="Management (if appropriate)" style="overflow-x: hidden; overflow-wrap: break-word; height: 80px;"></textarea></div>'
+          '" data-qidn=5 style="margin-right:0">⚐</button></p></div><textarea class="long-answer" data-qidn=5 data-answer-section-qidn=5 name="Management (if appropriate)" style="overflow-x: hidden; overflow-wrap: break-word; height: 80px;"></textarea></div>'
       );
 
       // Save long answers on textchange
@@ -730,7 +733,10 @@ function setFocus(section) {
   // Horrible (but it works)
   setTimeout(function () {
     // In pratique it selects the end of a textarea but I'm not sure if I can be bothered...
-    $("*[data-answer-section-qidn=" + section + "]").focus();
+    // Apparently I can...
+    const el = $("*[data-answer-section-qidn=" + section + "]");
+    const val = el.val();
+    el.focus().val("").val(val);
   }, 200);
 }
 
@@ -880,50 +886,50 @@ function keydown_handler(event) {
   switch (event.code) {
     case "KeyP":
       sel.selectedIndex = viewer.find_option(sel, "pan");
-      changeControlSelection();
+      viewer.changeControlSelection();
       break;
     case "KeyZ":
       sel.selectedIndex = viewer.find_option(sel, "zoom");
-      changeControlSelection();
+      viewer.changeControlSelection();
       break;
     case "KeyR":
       sel.selectedIndex = viewer.find_option(sel, "rotate");
-      changeControlSelection();
+      viewer.changeControlSelection();
       break;
     case "KeyS":
       sel.selectedIndex = viewer.find_option(sel, "scroll");
-      changeControlSelection();
+      viewer.changeControlSelection();
       break;
     case "KeyW":
       sel.selectedIndex = viewer.find_option(sel, "window");
-      changeControlSelection();
+      viewer.changeControlSelection();
       break;
     case "KeyA":
       sel.selectedIndex = viewer.find_option(sel, "abdomen");
-      changeControlSelection();
+      viewer.changeControlSelection();
       break;
     case "KeyU":
       sel.selectedIndex = viewer.find_option(sel, "pulmonary");
-      changeControlSelection();
+      viewer.changeControlSelection();
       break;
     case "KeyB":
       sel.selectedIndex = viewer.find_option(sel, "brain");
-      changeControlSelection();
+      viewer.changeControlSelection();
       break;
     case "KeyO":
       sel.selectedIndex = viewer.find_option(sel, "bone");
-      changeControlSelection();
+      viewer.changeControlSelection();
       break;
     case "KeyE":
       sel.selectedIndex = viewer.find_option(sel, "reset");
       // $("#dicom-image").get(0).scrollIntoView(false);
-      changeControlSelection();
+      viewer.changeControlSelection();
       break;
     // Escape and C do the same
     case "KeyC":
     case "Escape":
       sel.selectedIndex = viewer.find_option(sel, "close");
-      changeControlSelection();
+      viewer.changeControlSelection();
       break;
     case "Enter":
       t.focus();
@@ -1014,105 +1020,6 @@ function keydown_handler(event) {
     }
   }
   event.preventDefault();
-}
-
-/**
- * Registers the selected dicom tool
- */
-function changeControlSelection() {
-  // We also duplicate the sel that are available
-  const sel = $(".control-overlay").get(0);
-
-  const old = sel.oldSelectedIndex;
-  sel.oldSelectedIndex = sel.selectedIndex;
-
-  console.log(event);
-
-  const dicom_element = document.getElementById("dicom-image");
-  switch (sel.options[sel.selectedIndex].value) {
-    case "pan": {
-      cornerstoneTools.setToolActive("Pan", { mouseButtonMask: 1 });
-      break;
-    }
-    case "zoom": {
-      cornerstoneTools.setToolActive("Zoom", { mouseButtonMask: 1 });
-      break;
-    }
-    case "rotate": {
-      cornerstoneTools.setToolActive("Rotate", { mouseButtonMask: 1 });
-      break;
-    }
-    case "scroll": {
-      cornerstoneTools.setToolActive("StackScroll", { mouseButtonMask: 1 });
-      // _this.left.onstart = _this.scroll_start;
-      // _this.selected_control = t.selectedIndex;
-      break;
-    }
-    case "window": {
-      cornerstoneTools.setToolActive("Wwwc", { mouseButtonMask: 1 });
-      break;
-    }
-    case "abdomen": {
-      const viewport = cornerstone.getViewport(dicom_element);
-      viewport.voi.windowCenter = 150;
-      viewport.voi.windowWidth = 500;
-      cornerstone.setViewport(dicom_element, viewport);
-      sel.selectedIndex = viewer.find_option(sel, "window");
-      changeControlSelection();
-      break;
-    }
-    case "pulmonary": {
-      const viewport = cornerstone.getViewport(dicom_element);
-      viewport.voi.windowCenter = -500;
-      viewport.voi.windowWidth = 1500;
-      cornerstone.setViewport(dicom_element, viewport);
-      sel.selectedIndex = viewer.find_option(sel, "window");
-      changeControlSelection();
-      break;
-    }
-    case "brain": {
-      const viewport = cornerstone.getViewport(dicom_element);
-      viewport.voi.windowCenter = 50;
-      viewport.voi.windowWidth = 80;
-      cornerstone.setViewport(dicom_element, viewport);
-      sel.selectedIndex = viewer.find_option(sel, "window");
-      changeControlSelection();
-      break;
-    }
-    case "bone": {
-      const viewport = cornerstone.getViewport(dicom_element);
-      viewport.voi.windowCenter = 570;
-      viewport.voi.windowWidth = 3000;
-      cornerstone.setViewport(dicom_element, viewport);
-      sel.selectedIndex = viewer.find_option(sel, "window");
-      changeControlSelection();
-      break;
-    }
-    case "reset": {
-      cornerstone.reset(dicom_element);
-      sel.selectedIndex = old;
-      sel.oldSelectedIndex = old;
-      break;
-    }
-    case "close": {
-      // disable fullscreen if required
-      if ($(".canvas-panel").length == 0) {
-        viewer.disableFullscreen(dicom_element);
-      }
-      if (dicom_element != undefined) {
-        cornerstone.removeElementData(dicom_element);
-        cornerstone.disable(dicom_element);
-        $(".canvas-panel").remove();
-        $(".figure-open").removeClass("figure-open").addClass("figure");
-        $(dicom_element).remove();
-      }
-      break;
-    }
-  }
-  sel.blur();
-  if (event) {
-    event.preventDefault();
-  }
 }
 
 // Register Key Event Listener
@@ -1255,6 +1162,10 @@ function reviewQuestions() {
   $("#review-overlay").show();
   $("#review-answer-list").empty();
 
+  if (window.question_type == "long") {
+    $("#review-overlay").append("<table id='review-answer-table'></table>");
+  }
+
   loadQuestion(0, 0, true);
 
   db.answers
@@ -1272,7 +1183,67 @@ function reviewQuestions() {
       });
 
       let correct_count = 0;
+      let not_answered = 0;
+      let answered_normal = 0;
+      let answered_abnormal = 0;
+      let undercall_number = 0;
+      let overcall_number = 0;
+      let incorrectcall_number = 0;
       window.question_order.forEach(function (qid, n) {
+        if (window.question_type == "long") {
+          $("#review-answer-table").append(
+            $(
+              `<tr class='review-table-heading' title='Click to load question ${
+                n + 1
+              }'><td colspan=2>Question ${n + 1}</td></tr>`
+            ).click(() => {
+              loadQuestion(n);
+              $("#review-overlay").hide();
+            })
+          );
+          // $("#review-answer-table").append(`<tr id='review-answer-${qid}'><td class='review-user-answer-cell'></td><td class='review-model-answer-cell'></td></tr>`);
+          $("#review-answer-table").append(
+            `<tr class='answer-sub'><td>Your answers</td><td>Model answers</td></tr>`
+          );
+
+          const model_answers = window.questions[qid].answers;
+
+          const titles = [
+            "Observations",
+            "Interpretation",
+            "Principal Diagnosis",
+            "Differential Diagnosis",
+            "Management",
+          ];
+
+          // let user_td = $(
+          //   `#review-answer-${qid} td .review-user-answer-cell`
+          // );
+          // let model_td = $(
+          //   `#review-answer-${qid} td .review-model-answer-cell`
+          // );
+
+          titles.forEach((title, n) => {
+            let user_answer = current_answers[`${qid},${n}`];
+            if (user_answer == undefined) {
+              user_answer = "Not answered";
+            }
+            let user_ans =
+              "<h4 class='review-list-header'>" + title + "</h4>" + user_answer;
+            let model_ans =
+              `<h4 class="review-list-header" name=${n}>` +
+              title +
+              "</h4>" +
+              model_answers[0][title.toLowerCase()];
+
+            $("#review-answer-table").append(
+              `<tr class=''><td>${user_ans}</td><td>${model_ans}</td></tr>`
+            );
+          });
+
+          return;
+        }
+
         $("#review-answer-list").append(
           "<li id='review-answer-" +
             qid +
@@ -1287,55 +1258,10 @@ function reviewQuestions() {
           $("#review-overlay").hide();
         });
 
-        if (window.question_type == "long") {
-          $(`#review-answer-${qid} span`)
-            .addClass("displayblock")
-            .empty()
-            .append(
-              "<ul class='user-review-answer-list'></ul><ul class='model-review-answer-list'></ul>"
-            );
-
-          const model_answers = window.questions[qid].answers;
-
-          const titles = [
-            "Observations",
-            "Interpretation",
-            "Principal Diagnosis",
-            "Differential Diagnosis",
-            "Management",
-          ];
-
-          let user_li = $(
-            `#review-answer-${qid} span .user-review-answer-list`
-          );
-          let model_li = $(
-            `#review-answer-${qid} span  .model-review-answer-list`
-          );
-
-          user_li.append("<div class='answer-sub'>Your answers</div>");
-          model_li.append("<div class='answer-sub'>Model answers</div>");
-
-          titles.forEach((title, n) => {
-            let user_answer = current_answers[`${qid},${n}`];
-            if (user_answer == undefined) {
-              user_answer = "Not answered";
-            }
-            user_li.append(
-              "<h4 class='review-list-header'>" + title + "</h4>" + user_answer
-            );
-            model_li.append(
-              `<h4 class="review-list-header" name=${n}>` +
-                title +
-                "</h4>" +
-                model_answers[0][title.toLowerCase()]
-            );
-          });
-
-          return;
-        }
         db.user_answers
           .get({ qid: qid })
           .then(function (answers) {
+            // Merge the question answers with the user saved answers
             let question_answers = window.questions[qid]["answers"];
             if (answers != undefined) {
               question_answers = question_answers.concat(answers.ans);
@@ -1346,13 +1272,17 @@ function reviewQuestions() {
 
             if (section_1_answer == undefined) {
               section_1_answer = "Not Answered";
+              not_answered++;
             }
             if (section_2_answer == undefined) {
               if (section_1_answer == "Normal") {
                 section_2_answer = "Normal";
+                answered_normal++;
               } else {
                 section_2_answer = "Not Answered";
               }
+            } else {
+              answered_abnormal++;
             }
 
             let el = $("#review-answer-" + qid + " span");
@@ -1361,7 +1291,7 @@ function reviewQuestions() {
              * Helper function to define how review items are displayed
              * Yes it is a bit shit
              * @param {*} el - element
-             * @param {*} c - clans
+             * @param {*} c - class
              * @param {*} user_answer -
              * @param {*} normal -
              * @param {*} question_answers -
@@ -1407,6 +1337,9 @@ function reviewQuestions() {
                   );
                   correct_count++;
                 } else {
+                  if (section_1_answer != "Not Answered") {
+                    overcall_number++;
+                  }
                   setReviewAnswer(
                     el,
                     "incorrect",
@@ -1433,6 +1366,22 @@ function reviewQuestions() {
                     false,
                     question_answers
                   );
+
+                  if (section_1_answer == "Not Answered") {
+                  } else if (section_1_answer == "Normal") {
+                    undercall_number++;
+                  } else {
+                    // Incorrect calls could be correct if
+                    // the answer is not in the database
+                    incorrectcall_number++;
+
+                    el.append(
+                      "<span class='mark-correct'>[Mark correct]</span>"
+                    ).click(() => {
+                      markCorrect(qid, section_2_answer);
+                      reviewQuestions();
+                    });
+                  }
                 }
               }
             } else if (window.question_type == "anatomy") {
@@ -1463,6 +1412,18 @@ function reviewQuestions() {
                 " out of " +
                 window.question_order.length
             );
+
+            if (window.question_type == "rapid") {
+              $("#exam-stats").show();
+              $("#unanswered-number").html(not_answered);
+              $("#normal-number").html(answered_normal);
+              $("#abnormal-number").html(answered_abnormal);
+              $("#undercall-number").html(undercall_number);
+              $("#overcall-number").html(overcall_number);
+              $("#incorrectcall-number").html(incorrectcall_number);
+            } else {
+              $("#exam-stats").show();
+            }
           })
           .catch(function (error) {
             console.log("error-", error);
@@ -1489,6 +1450,7 @@ function markAnswer(qid, current_question) {
 
     if (type == "rapid") {
       option = document.getElementById("rapid-option");
+      // If the current question is normal
       if (current_question.normal == true) {
         $(".answer-panel").append(
           "<div id='correct-answer-block'>This is normal</div>"
@@ -1524,18 +1486,21 @@ function markAnswer(qid, current_question) {
 
     let user_answer = textarea.val();
 
+    // Load user saved answers
     db.user_answers
       .get({ qid: qid })
-      .then(function (answers) {
-        if (answers != undefined) {
-          answers.ans.forEach(function (answer, n) {
-            ul.append("<li>" + answer + "</li>");
-            if (compareString(answer, user_answer)) {
+      .then(function (saved_user_answers) {
+        // check if given answer matches a user saved answer
+        if (saved_user_answers != undefined) {
+          saved_user_answers.ans.forEach(function (saved_answer, n) {
+            ul.append("<li>" + saved_answer + "</li>");
+            if (compareString(saved_answer, user_answer)) {
               textarea.removeClass("incorrect").addClass("correct");
             }
           });
         }
 
+        // check if given answer matches an answer from the question
         current_question.answers.forEach(function (answer, n) {
           ul.append("<li>" + answer + "</li>");
           if (compareString(answer, user_answer)) {
@@ -1543,13 +1508,17 @@ function markAnswer(qid, current_question) {
           }
         });
 
+        // If the given answer is not abnormal it must be incorrect
         if (type == "rapid" && option.value != "Abnormal") {
           option.classList.add("incorrect");
         } else {
+          // If it is blank it must also be incorrect
           if (
             textarea.hasClass("incorrect") == true &&
             user_answer.replace(/\s/g, "") != ""
           ) {
+            // Otherwise there is a chance that it may be correct
+            // so we give the option to mark it correct
             if (window.allow_self_marking) {
               $(".answer-panel").append(
                 $("<button id='mark-correct'>Mark Correct</button>").click(
@@ -1682,6 +1651,11 @@ $("#start-exam-button").click(function (evt) {
 });
 
 $("#start-packet-button").click(function (evt) {
+  if (window.timer != null) {
+    window.timer.stop();
+  }
+  window.timer = null;
+
   let timer = new easytimer.Timer();
   //window.exam_time = 2;
   timer.start({ countdown: true, startValues: { seconds: window.exam_time } });
@@ -1691,6 +1665,8 @@ $("#start-packet-button").click(function (evt) {
   timer.addEventListener("targetAchieved", function (e) {
     $("#time-up-dialog").modal();
   });
+
+  window.timer = timer;
 
   $("#timer").click(() => {
     timer.pause();
@@ -1731,7 +1707,9 @@ $("#start-packet-button").click(function (evt) {
 });
 
 $("#btn-delete-databases").click(function (evt) {
-  var r = confirm("This will delete ALL saved answers!");
+  var r = confirm(
+    "This will delete ALL saved answers (including saved correct answers)!"
+  );
   if (r == true) {
     db.delete()
       .then(() => {
@@ -1754,22 +1732,59 @@ $("#btn-delete-databases").click(function (evt) {
 });
 
 $("#btn-delete-current").click(function (evt) {
+  if (window.question_order.length < 1) {
+    $.notify("No packet is currently loaded", "warn");
+    return;
+  }
+
+  db.flags
+    .where("qid")
+    .anyOf(window.question_order)
+    .delete()
+    .then(function (deleteCount) {
+      $.notify("Packet flags deleted", "success");
+    })
+    .catch((err) => {
+      $.notify("Error deleting packet flags", "error");
+      $.notify("You may have to delete all answers this time", "info");
+    });
+
   db.answers
     .where("qid")
     .anyOf(window.question_order)
     .delete()
     .then(function (deleteCount) {
       $.notify("Packet successfully reset", "success");
-      $.notify("The page will now reload", "warn");
-      setTimeout(() => {
-        location.reload();
-      }, 2000);
+      loadQuestion(0, 0, true);
+      // $.notify("The page will now reload", "warn");
+      // setTimeout(() => {
+      //   location.reload();
+      // }, 2000);
       console.log("Deleted " + deleteCount + " objects");
     })
     .catch((err) => {
       $.notify("Error reseting packet", "error");
       $.notify("You may have to delete all answers this time", "info");
-      console.error("Could not answers");
+      console.log(err);
+    });
+});
+
+$("#btn-delete-current-saved-answers").click(function (evt) {
+  if (window.question_order.length < 1) {
+    $.notify("No packet is currently loaded", "warn");
+    return;
+  }
+
+  db.user_answers
+    .where("qid")
+    .anyOf(window.question_order)
+    .delete()
+    .then(function (deleteCount) {
+      $.notify("Packet flags deleted", "success");
+    })
+    .catch((err) => {
+      $.notify("Error deleting saved answers", "error");
+      $.notify("You may have to delete all answers this time", "info");
     });
 });
 

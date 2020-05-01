@@ -71,7 +71,6 @@
                 </div>
                 <div id="database-buttons">
                     <input type='button' id='btn-delete-databases' value='Delete all saved answers'>
-                    <input type='button' id='btn-delete-current' value='Reset current packet answers'>
                 </div>
                 <div id="packet-list">
                     <p>Available Packets:</p>
@@ -79,8 +78,18 @@
             </div>
             <div id="review-overlay" class="fullscreen-overlay">
                 <a href="#" id="review-overlay-close" class="close"></a>
-                <ul id='review-answer-list'></ul>
                 <div id="review-score"></div>
+                <div id="exam-stats">
+                    <p>Performance breakdown:</p>
+                    Unanswered questions: <span id="unanswered-number"></span><br />
+                    Answered normal: <span id="normal-number"></span><br />
+                    Answered abnormal: <span id="abnormal-number"></span><br />
+                    <br />
+                    Undercall: <span id="undercall-number"></span><br />
+                    Overcall: <span id="overcall-number"></span><br />
+                    Incorrect call: <span id="incorrectcall-number"></span><br />
+                </div>
+                <ul id='review-answer-list'></ul>
             </div>
         </div>
     </div>
@@ -95,9 +104,13 @@
 
     <div id="start-dialog" class="dialog modal">
         <h3 class="dialog-title">Start exam</h3>
+        <div class="packet-database-options">
+            <input type='button' id='btn-delete-current' value='Reset current packet answers'><br />
+            <input type='button' id='btn-delete-current-saved-answers' value='Reset current packet saved answers'>
+        </div>
         <div class="dialog-text">
             Click to start exam.
-            <p>You will have <span id='exam-time'></span> minutes.</p>
+            <p>You will have <input type='number' size=2 id='exam-time'></input> minutes.</p>
         </div>
         <button id="start-packet-button" class="navigation dialog-yes">Start</button>
     </div>
@@ -105,18 +118,18 @@
     <div id="time-up-dialog" class="dialog modal">
         <h3 class="dialog-title">Time ended</h3>
         <div class="dialog-text">
-        Allocated time has ended. You can review or continue.
+            Allocated time has ended. You can review or continue.
         </div>
-            <button id="time-up-review-button" class="navigation dialog-review">Review</button>
-            <button id="time-up-continue-button" class="navigation dialog-yes">Continue</button>
+        <button id="time-up-review-button" class="navigation dialog-review">Review</button>
+        <button id="time-up-continue-button" class="navigation dialog-yes">Continue</button>
     </div>
 
     <div id="login-dialog" class="dialog modal">
         <h3 class="dialog-title">Select exam</h3>
         <div class="dialog-text">
-        Candidate number: <input type="text" id="candidate-number" name="candidate" required size="10">
+            Candidate number: <input type="text" id="candidate-number" name="candidate" required size="10">
         </div>
-            <button id="start-exam-button" class="navigation dialog-yes">Start</button>
+        <button id="start-exam-button" class="navigation dialog-yes">Start</button>
     </div>
 
     <div id="loading" class="fullscreen-overlay">

@@ -229,3 +229,102 @@ export function debugCornerstone() {
   let viewport = cornerstone.getViewport(dicom_element);
   let c = cornerstone.getEnabledElement(dicom_element);
 }
+
+/**
+ * Registers the selected dicom tool
+ */
+export function changeControlSelection() {
+  // We also duplicate the sel that are available
+  const sel = $(".control-overlay").get(0);
+
+  const old = sel.oldSelectedIndex;
+  sel.oldSelectedIndex = sel.selectedIndex;
+
+  console.log(event);
+
+  const dicom_element = document.getElementById("dicom-image");
+  switch (sel.options[sel.selectedIndex].value) {
+    case "pan": {
+      cornerstoneTools.setToolActive("Pan", { mouseButtonMask: 1 });
+      break;
+    }
+    case "zoom": {
+      cornerstoneTools.setToolActive("Zoom", { mouseButtonMask: 1 });
+      break;
+    }
+    case "rotate": {
+      cornerstoneTools.setToolActive("Rotate", { mouseButtonMask: 1 });
+      break;
+    }
+    case "scroll": {
+      cornerstoneTools.setToolActive("StackScroll", { mouseButtonMask: 1 });
+      // _this.left.onstart = _this.scroll_start;
+      // _this.selected_control = t.selectedIndex;
+      break;
+    }
+    case "window": {
+      cornerstoneTools.setToolActive("Wwwc", { mouseButtonMask: 1 });
+      break;
+    }
+    case "abdomen": {
+      const viewport = cornerstone.getViewport(dicom_element);
+      viewport.voi.windowCenter = 150;
+      viewport.voi.windowWidth = 500;
+      cornerstone.setViewport(dicom_element, viewport);
+      sel.selectedIndex = find_option(sel, "window");
+      changeControlSelection();
+      break;
+    }
+    case "pulmonary": {
+      const viewport = cornerstone.getViewport(dicom_element);
+      viewport.voi.windowCenter = -500;
+      viewport.voi.windowWidth = 1500;
+      cornerstone.setViewport(dicom_element, viewport);
+      sel.selectedIndex = find_option(sel, "window");
+      changeControlSelection();
+      break;
+    }
+    case "brain": {
+      const viewport = cornerstone.getViewport(dicom_element);
+      viewport.voi.windowCenter = 50;
+      viewport.voi.windowWidth = 80;
+      cornerstone.setViewport(dicom_element, viewport);
+      sel.selectedIndex = find_option(sel, "window");
+      changeControlSelection();
+      break;
+    }
+    case "bone": {
+      const viewport = cornerstone.getViewport(dicom_element);
+      viewport.voi.windowCenter = 570;
+      viewport.voi.windowWidth = 3000;
+      cornerstone.setViewport(dicom_element, viewport);
+      sel.selectedIndex = find_option(sel, "window");
+      changeControlSelection();
+      break;
+    }
+    case "reset": {
+      cornerstone.reset(dicom_element);
+      sel.selectedIndex = old;
+      sel.oldSelectedIndex = old;
+      break;
+    }
+    case "close": {
+      // disable fullscreen if required
+      if ($(".canvas-panel").length == 0) {
+        disableFullscreen(dicom_element);
+      }
+      if (dicom_element != undefined) {
+        cornerstone.removeElementData(dicom_element);
+        cornerstone.disable(dicom_element);
+        $(".canvas-panel").remove();
+        $(".figure-open").removeClass("figure-open").addClass("figure");
+        $(dicom_element).remove();
+      }
+      break;
+    }
+  }
+  sel.blur();
+  if (event) {
+    event.preventDefault();
+  }
+}
