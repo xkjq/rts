@@ -44,7 +44,10 @@ function retrievePacketList() {
     .fail(function () {
       $.getJSON("packets/packets.json", function (data) {
         loadPacketList(data);
-      }).fail(function () {
+      }).fail(function (jqXHR, textStatus, errorThrown) {
+        console.log(jqXHR);
+        console.log(textStatus);
+        console.log(errorThrown);
         console.log("No packet list available");
         showLoginDialog();
       });
