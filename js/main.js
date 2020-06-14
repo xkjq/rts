@@ -64,11 +64,11 @@ async function loadPacketList(data) {
   let sessions = await window.db.session.toArray().catch(function(error) {
     console.log("Error loading session", error);
     $("#database-error").text("Error loading the database, schema has probably changed and needs updating. You will probably need to delete the local database.")
-    delete_button = $("<button>").click(()=>{
+    let delete_button = $("<button>").click(()=>{
       window.indexedDB.deleteDatabase("answers_database");
       location.reload();
     })
-    $("#database-error").append("")
+    $("#database-error").append(delete_button);
   });
   // db.session
   //   .where("packet")
