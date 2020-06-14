@@ -69,6 +69,7 @@ async function loadPacketList(data) {
       location.reload();
     })
     $("#database-error").append(delete_button);
+    $("#database-error").show();
   });
   // db.session
   //   .where("packet")
