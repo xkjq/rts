@@ -61,13 +61,17 @@ function retrievePacketList() {
  * @param {JSON} data - json containing available packets
  */
 async function loadPacketList(data) {
-  let sessions = await window.db.session.toArray().catch(function(error) {
+  let sessions = await window.db.session.toArray().catch(function (error) {
     console.log("Error loading session", error);
-    $("#database-error").text("Error loading the database, schema has probably changed and needs updating. You will probably need to delete the local database.")
-    let delete_button = $("<button>Delete local database</button>").click(()=>{
-      window.indexedDB.deleteDatabase("answers_database");
-      location.reload();
-    })
+    $("#database-error").text(
+      "Error loading the database, schema has probably changed and needs updating. You will probably need to delete the local database."
+    );
+    let delete_button = $("<button>Delete local database</button>").click(
+      () => {
+        window.indexedDB.deleteDatabase("answers_database");
+        location.reload();
+      }
+    );
     $("#database-error").append(delete_button);
     $("#database-error").show();
   });
@@ -337,7 +341,8 @@ function setUpPacket(data, packet_name) {
           if (sessions[parseInt(s)].status == "complete") {
             window.review = true;
           }
-        } else { // If cancel is pressed or input is blank
+        } else {
+          // If cancel is pressed or input is blank
           window.aid = uuidv4();
           window.date_started = Date.now();
           console.log("new date", window.date_started);
