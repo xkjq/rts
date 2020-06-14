@@ -61,7 +61,9 @@ function retrievePacketList() {
  * @param {JSON} data - json containing available packets
  */
 async function loadPacketList(data) {
-  let sessions = await window.db.session.toArray();
+  let sessions = await window.db.session.toArray().catch(function(error) {
+    console.log("Error loading session", error);
+  });
   // db.session
   //   .where("packet")
   //   .equals()
