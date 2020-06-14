@@ -1,8 +1,10 @@
 /* global Dexie, cornerstone, cornerstoneTools, cornerstoneBase64ImageLoader, cornerstoneWebImageLoader, cornerstoneWADOImageLoader */
 import * as helper from "./helpers.js";
 import * as viewer from "./viewer.js";
+// const { v4: uuidv4 } = require('uuid');
 
 // cid = null;
+window.aid = null;
 window.cid = 1234;
 window.eid = 5678;
 
@@ -10,6 +12,7 @@ window.exam_mode = false;
 
 window.packet_list = [];
 
+window.packet_name = null;
 window.questions = null;
 window.question_order = [];
 window.number_of_questions = null;
@@ -17,6 +20,8 @@ window.question_type = null;
 window.loaded_question = null;
 window.review = false;
 window.exam_time = 60;
+window.date_started = null;
+window.score = 0;
 
 window.allow_self_marking = true;
 
@@ -45,8 +50,6 @@ function retrievePacketList() {
       });
     })
     .always(function () {});
-
-  // setUpPacket(questions);
 }
 
 /**
@@ -54,11 +57,32 @@ function retrievePacketList() {
  *
  * @param {JSON} data - json containing available packets
  */
-function loadPacketList(data) {
+async function loadPacketList(data) {
+  let sessions = await window.db.session.toArray();
+  // db.session
+  //   .where("packet")
+  //   .equals()
+  let packets_started = [];
+  let packets_completed = [];
+  sessions.forEach((s) => {
+    if (s.status == "active") {
+      packets_started.push(s.packet);
+    } else {
+      packets_completed.push(s.packet);
+    }
+  });
+
   window.packet_list = data.packets;
   window.packet_list.forEach(function (packet) {
+    let c = "";
+    if (packets_started.indexOf(packet) > -1) {
+      c = " session-started";
+    }
+    if (packets_completed.indexOf(packet) > -1) {
+      c = " session-completed";
+    }
     $("#packet-list").append(
-      $("<div class='packet-button' title='Load packet'></div>")
+      $(`<div class='packet-button${c}' title='Load packet'></div>`)
         .text(packet)
         .click(function () {
           loadPacketFromAjax("packets/" + packet);
@@ -82,10 +106,6 @@ function loadPacketList(data) {
  */
 function loadPacketFromAjax(path) {
   console.log("loading packet from " + path);
-  // $.getJSON(path, function (data) {
-  //   setUpPacket(data);
-  //   $("#options-panel").hide();
-  // })
   $("#progress").html(`Requesting packet: ${path}`);
 
   $.ajax({
@@ -102,7 +122,7 @@ function loadPacketFromAjax(path) {
     },
   })
     .done(function (data) {
-      setUpPacket(data);
+      setUpPacket(data, path.split("/").pop());
       $("#options-panel").hide();
     })
     .fail(function () {
@@ -113,22 +133,24 @@ function loadPacketFromAjax(path) {
 /**
  * Build the currently loaded quiz
  */
-function setUpQuestions() {
+function setUpQuestions(load_previous) {
   if (window.questions == undefined) {
     return;
   }
   // Set an order for the questions
-  window.question_order = [];
-  Object.keys(window.questions).forEach(function (e) {
-    window.question_order.push(e);
+  if (!load_previous) {
+    window.question_order = [];
+    Object.keys(window.questions).forEach(function (e) {
+      window.question_order.push(e);
 
-    // Make sure answers are arrays
-    if (!Array.isArray(window.questions[e]["answers"])) {
-      window.questions[e]["answers"] = [window.questions[e]["answers"]];
-    }
-  });
+      // Make sure answers are arrays
+      if (!Array.isArray(window.questions[e]["answers"])) {
+        window.questions[e]["answers"] = [window.questions[e]["answers"]];
+      }
+    });
 
-  window.question_order = helper.shuffleArray(window.question_order);
+    window.question_order = helper.shuffleArray(window.question_order);
+  }
   window.number_of_questions = Object.keys(window.questions).length;
   window.review = false;
 
@@ -148,12 +170,14 @@ function setUpQuestions() {
 
   console.log(window.question_type);
 
-  if (window.question_type == "rapid") {
-    window.exam_time = 35 * 60;
-  } else if (window.question_type == "anatomy") {
-    window.exam_time = 90 * 60;
-  } else if (window.question_type == "long") {
-    window.exam_time = 75 * 60;
+  if (!load_previous) {
+    if (window.question_type == "rapid") {
+      window.exam_time = 35 * 60;
+    } else if (window.question_type == "anatomy") {
+      window.exam_time = 90 * 60;
+    } else if (window.question_type == "long") {
+      window.exam_time = 75 * 60;
+    }
   }
 
   $("#exam-time")
@@ -189,20 +213,27 @@ cornerstoneTools.init();
 // Set up database
 const db = new Dexie("answers_database");
 db.version(1).stores({
-  answers: "[cid+eid+qid+qidn], [cid+eid], qid, ans",
-  flags: "[cid+eid+qid+qidn], [cid+eid], qid",
+  answers: "[aid+cid+eid+qid+qidn], [aid+cid+eid], qid, ans",
+  flags: "[aid+cid+eid+qid+qidn], [aid+cid+eid], qid",
   user_answers: "qid, ans",
+  session:
+    "[packet+aid], packet, aid, status, date, score, max_score, exam_time, time_left, question_order, questions_answered, total_questions",
 });
+
+window.db = db;
 
 /**
  * Parse the packet and extract metadata (if it exists)
  * Will then call setUpQuestions() to load the packet
  * @param {JSON} data
  */
-function setUpPacket(data) {
+function setUpPacket(data, packet_name) {
+  // Load the exam name from the json packet (if it exists)
   if (data.hasOwnProperty("exam_name")) {
-    $(".exam-name").text("Exam: " + data.exam_name);
+    packet_name = data.exam_name;
   }
+  $(".exam-name").text("Exam: " + packet_name);
+  window.packet_name = packet_name;
 
   if (data.hasOwnProperty("eid")) {
     window.eid = data.eid;
@@ -222,7 +253,87 @@ function setUpPacket(data) {
     window.questions = data;
   }
 
-  setUpQuestions();
+  // Either continue session or create a new one
+  db.session
+    // .where("status")
+    // .equals("active")
+    .where("[packet+aid]")
+    .between(
+      [window.packet_name, Dexie.minKey],
+      [window.packet_name, Dexie.maxKey]
+    )
+    .toArray()
+    .then((sessions) => {
+      console.log("sessions", sessions);
+
+      // let active_sessions = [];
+
+      // sessions.forEach((s) => {
+      //   if (s.status == "active") {
+      //     active_sessions.push(s);
+      //   }
+      // });
+
+      let load_previous = false;
+
+      // Start new session
+      if (sessions.length < 1) {
+        window.aid = uuidv4();
+        window.date_started = Date.now();
+      } else {
+        let text = "Select session to continue (leave blank to create new):";
+        console.log(sessions.date);
+
+        for (let i = 0; i < sessions.length; i++) {
+          let d = new Date(sessions[i].date);
+          let formatted_date =
+            d.getFullYear() +
+            "-" +
+            (d.getMonth() + 1) +
+            "-" +
+            d.getDate() +
+            " " +
+            d.getHours() +
+            ":" +
+            d.getMinutes() +
+            ":" +
+            d.getSeconds();
+
+          if (sessions[i].status == "active") {
+            text = text + `\r${i}: ${formatted_date} [In progress]`;
+          } else {
+            text =
+              text +
+              `\r${i}: ${formatted_date} [Complete - score ${sessions[i].score}/${sessions[i].max_score}]`;
+          }
+        }
+
+        let s = prompt(text, "0");
+
+        if (s != null && s != "") {
+          load_previous = true;
+
+          window.aid = sessions[parseInt(s)].aid;
+          window.date_started = sessions[parseInt(s)].date;
+
+          let time_left = sessions[parseInt(s)].time_left;
+
+          window.exam_time = time_left;
+
+          window.question_order = sessions[parseInt(s)].question_order;
+
+          if (sessions[parseInt(s)].status == "complete") {
+            window.review = true;
+          }
+        } else { // If cancel is pressed or input is blank
+          window.aid = uuidv4();
+          window.date_started = Date.now();
+          console.log("new date", window.date_started);
+        }
+      }
+
+      setUpQuestions(load_previous);
+    });
 }
 
 /**
@@ -232,6 +343,7 @@ function setUpPacket(data) {
  * @param {boolean} force_reload - Force question to be reloaded if already loaded
  */
 function loadQuestion(n, section = 1, force_reload = false) {
+  const aid = window.aid;
   const cid = window.cid;
   const eid = window.eid;
 
@@ -484,12 +596,14 @@ function loadQuestion(n, section = 1, force_reload = false) {
           $("#rapid-text").css("display", "none");
         }
         db.answers.put({
+          aid: aid,
           cid: cid,
           eid: eid,
           qid: qid,
           qidn: "1",
           ans: evt.target.value,
         });
+        saveSession();
         updateQuestionListPanel();
       });
 
@@ -497,7 +611,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
       $(".long-answer").change(function (evt) {
         // ignore blank text and delete any stored value
         if (evt.target.value.length < 1) {
-          db.answers.delete([cid, eid, qid, "2"]);
+          db.answers.delete([aid, cid, eid, qid, "2"]);
           $(
             "#question-list-item-" + window.question_order.indexOf(qid) + "-2"
           ).removeClass("question-saved-localdb");
@@ -505,6 +619,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
         }
         // db.answers.put({aid: [cid, eid, qidn], ans: evt.target.value});
         db.answers.put({
+          aid: aid,
           cid: cid,
           eid: eid,
           qid: qid,
@@ -516,6 +631,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
           "#question-list-item-" + window.question_order.indexOf(qid) + "-2"
         ).addClass("question-saved-localdb");
 
+        saveSession();
         updateQuestionListPanel();
       });
 
@@ -523,7 +639,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
       // they have been loaded (should probably use then or after)
 
       db.answers
-        .get({ cid: cid, eid: eid, qid: qid, qidn: "1" })
+        .get({ aid: aid, cid: cid, eid: eid, qid: qid, qidn: "1" })
         .then(function (answer) {
           if (answer != undefined) {
             $("#rapid-option option:contains(" + answer.ans + ")").prop(
@@ -543,7 +659,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
         })
         .then(
           db.answers
-            .get({ cid: cid, eid: eid, qid: qid, qidn: "2" })
+            .get({ aid: aid, cid: cid, eid: eid, qid: qid, qidn: "2" })
             .then(function (answer) {
               if (answer != undefined) {
                 console.log(answer);
@@ -576,7 +692,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
       $(".long-answer").change(function (evt) {
         // ignore blank text and delete any stored value
         if (evt.target.value.length < 1) {
-          db.answers.delete([cid, eid, qid, "1"]);
+          db.answers.delete([aid, cid, eid, qid, "1"]);
           $(
             "#question-list-item-" + window.question_order.indexOf(qid) + "-1"
           ).removeClass("question-saved-localdb");
@@ -584,6 +700,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
         }
         // db.answers.put({aid: [cid, eid, qidn], ans: evt.target.value});
         db.answers.put({
+          aid: aid,
           cid: cid,
           eid: eid,
           qid: qid,
@@ -594,11 +711,12 @@ function loadQuestion(n, section = 1, force_reload = false) {
         $(
           "#question-list-item-" + window.question_order.indexOf(qid) + "-1"
         ).addClass("question-saved-localdb");
+        saveSession();
         updateQuestionListPanel();
       });
 
       db.answers
-        .get({ cid: cid, eid: eid, qid: qid, qidn: "1" })
+        .get({ aid: aid, cid: cid, eid: eid, qid: qid, qidn: "1" })
         .then(function (answer) {
           if (answer != undefined) {
             $(".long-answer").text(answer.ans);
@@ -658,7 +776,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
 
         // ignore blank text and delete any stored value
         if (evt.target.value.length < 1) {
-          db.answers.delete([cid, eid, qid, qidn]);
+          db.answers.delete([aid, cid, eid, qid, qidn]);
           $(
             "#question-list-item-" +
               window.question_order.indexOf(qid) +
@@ -669,6 +787,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
         }
         // db.answers.put({aid: [cid, eid, qidn], ans: evt.target.value});
         db.answers.put({
+          aid: aid,
           cid: cid,
           eid: eid,
           qid: qid,
@@ -683,7 +802,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
             "-" +
             qidn
         ).addClass("question-saved-localdb");
-
+        saveSession();
         updateQuestionListPanel();
       });
 
@@ -693,7 +812,13 @@ function loadQuestion(n, section = 1, force_reload = false) {
 
       for (let qidn_count = 1; qidn_count < 6; qidn_count++) {
         db.answers
-          .get({ cid: cid, eid: eid, qid: qid, qidn: qidn_count.toString() })
+          .get({
+            aid: aid,
+            cid: cid,
+            eid: eid,
+            qid: qid,
+            qidn: qidn_count.toString(),
+          })
           .then(function (answer) {
             if (answer != undefined) {
               $(".long-answer")
@@ -735,8 +860,19 @@ function setFocus(section) {
     // In pratique it selects the end of a textarea but I'm not sure if I can be bothered...
     // Apparently I can...
     const el = $("*[data-answer-section-qidn=" + section + "]");
-    const val = el.val();
-    el.focus().val("").val(val);
+    // If the target is a textarea we move focus and reapply the value
+    // to move the cursor to the end
+    if (el.length < 1) {
+      return;
+    }
+
+    if (el.get(0).type == "textarea") {
+      const val = el.val();
+      el.focus().val("").val(val);
+      // else we just focus
+    } else {
+      el.focus();
+    }
   }, 200);
 }
 
@@ -752,7 +888,7 @@ function updateQuestionListPanel() {
   console.log("UP");
   // Reset all classes
   db.answers
-    .where({ cid: cid, eid: eid })
+    .where({ aid: aid, cid: cid, eid: eid })
     .toArray()
     .then(function (answers) {
       $(".question-list-panel div")
@@ -789,7 +925,7 @@ function updateQuestionListPanel() {
     });
 
   db.flags
-    .where({ cid: cid, eid: eid })
+    .where({ aid: aid, cid: cid, eid: eid })
     .toArray()
     .then(function (answers) {
       answers.forEach(function (answer, n) {
@@ -1078,7 +1214,7 @@ $("#review-overlay-close").click(function (evt) {
 function getJsonAnswers() {
   const cid = window.cid;
   const eid = window.eid;
-  return db.answers.where({ cid: cid, eid: eid }).toArray();
+  return db.answers.where({ aid: aid, cid: cid, eid: eid }).toArray();
   // .then(function(ans) {
   // console.log(ans);
   // submitAnswers(ans);
@@ -1157,19 +1293,21 @@ function submitAnswers() {
  * Displays the review question panel with a summary of marks
  */
 function reviewQuestions() {
+  // Stop timer
+  window.timer.stop();
+
   const cid = window.cid;
   const eid = window.eid;
   $("#review-overlay").show();
   $("#review-answer-list").empty();
-
-  if (window.question_type == "long") {
-    $("#review-overlay").append("<table id='review-answer-table'></table>");
-  }
+  $("#review-answer-table").empty();
+  $("#review-score").empty();
+  $("#exam-stats").hide();
 
   loadQuestion(0, 0, true);
 
   db.answers
-    .where({ cid: cid, eid: eid })
+    .where({ aid: aid, cid: cid, eid: eid })
     .toArray()
     .then(function (answers) {
       let current_answers = {};
@@ -1406,6 +1544,8 @@ function reviewQuestions() {
               }
             }
 
+            window.score = correct_count;
+
             $("#review-score").text(
               "Score: " +
                 correct_count +
@@ -1427,6 +1567,10 @@ function reviewQuestions() {
           })
           .catch(function (error) {
             console.log("error-", error);
+          })
+          .finally(() => {
+            // This will lead to saveSession being called after each question is marked
+            saveSession();
           });
       });
     })
@@ -1500,6 +1644,7 @@ function markAnswer(qid, current_question) {
           });
         }
 
+        console.log(current_question);
         // check if given answer matches an answer from the question
         current_question.answers.forEach(function (answer, n) {
           ul.append("<li>" + answer + "</li>");
@@ -1595,6 +1740,7 @@ function answerInArray(arr, ans) {
 }
 
 function addFlagEvents() {
+  const aid = window.aid;
   const cid = window.cid;
   const eid = window.eid;
 
@@ -1612,13 +1758,13 @@ function addFlagEvents() {
         "visibility",
         "hidden"
       );
-      db.flags.delete([cid, eid, qid, qidn]);
+      db.flags.delete([aid, cid, eid, qid, qidn]);
     } else {
       $("#question-list-item-" + nqid + "-" + qidn + " span").css(
         "visibility",
         "visible"
       );
-      db.flags.put({ cid: cid, eid: eid, qid: qid, qidn: qidn });
+      db.flags.put({ aid: aid, cid: cid, eid: eid, qid: qid, qidn: qidn });
     }
     updateQuestionListPanel();
   });
@@ -1628,7 +1774,7 @@ function loadFlagsFromDb(qid, n) {
   const cid = window.cid;
   const eid = window.eid;
   db.flags
-    .get({ cid: cid, eid: eid, qid: qid, qidn: n })
+    .get({ aid: aid, cid: cid, eid: eid, qid: qid, qidn: n })
     .then(function (answer) {
       if (answer != undefined) {
         $("button.flag, button.flag-selected")
@@ -1669,11 +1815,14 @@ $("#start-packet-button").click(function (evt) {
   window.timer = timer;
 
   $("#timer").click(() => {
-    timer.pause();
+    window.timer.pause();
+
+    let time_remaining = window.timer.getTimeValues().toString();
+
     $("#pause").empty();
     $("#pause").append(
       $(
-        '<button id="resume-exam-button" class="navigation dialog-yes">Resume</button>'
+        `<div id="pause-text">Session paused<div id="pause-time-remaining">You have ${time_remaining} remaining.</div></div><button id="resume-exam-button" class="navigation dialog-yes">Click to resume</button>`
       ).click(() => {
         $("#pause").hide();
         timer.start();
@@ -1795,3 +1944,31 @@ $(document).ajaxStart(function () {
 $(document).ajaxComplete(function () {
   $("#loading").hide();
 });
+
+function saveSession() {
+  let status = "active";
+  if (window.review == true) {
+    status = "complete";
+  }
+
+  console.log("save session", window.score);
+
+  let time_values = window.timer.getTimeValues();
+  let time_remaining =
+    time_values.hours * 60 * 60 +
+    time_values.minutes * 60 +
+    time_values.seconds;
+  db.session.put({
+    packet: window.packet_name,
+    aid: window.aid,
+    status: status,
+    date: window.date_started,
+    score: window.score,
+    max_score: window.number_of_questions,
+    exam_time: window.exam_time,
+    time_left: time_remaining,
+    question_order: window.question_order,
+    questions_answered: 0, // TODO
+    total_questions: window.number_of_questions,
+  });
+}

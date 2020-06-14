@@ -932,6 +932,23 @@ display: block
   transform: translate(-50%, -50%);
 }
 
+#pause-text {
+  position: fixed;
+  /* left: 50%; */
+  width: 100%;
+  text-align: center;
+  top: 20%;
+  font-size: xxx-large;
+  transform: translate(0%, 20%);
+}
+
+#pause-time-remaining {
+  width: auto;
+  font-size: large;
+  /* position: fixed; */
+  text-align: center;
+}
+
 .packet-database-options {
     float: right;
     font-size: xx-small;
@@ -957,4 +974,13 @@ display: block
 #review-answer-table tr:hover {
     /* border: 3px solid #4527A0; */
     background-color: #4527A0;
+}
+
+.session-started {
+    border-color: purple;
+    border-style: dashed;
+}
+
+.session-completed {
+    border-color: purple;
 }
