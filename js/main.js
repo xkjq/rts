@@ -425,6 +425,9 @@ function loadQuestion(n, section = 1, force_reload = false) {
     $(".canvas-panel").remove();
   }
 
+  // Remove feedback images
+  $(".feedback-image").remove();
+
   // Set up thumbnails
   const thumbnails = $(".thumbs");
   // Why are we checking this?
@@ -1290,7 +1293,7 @@ function loadLocalQuestionSet() {
   function receivedText(e) {
     const lines = e.target.result;
     let j = JSON.parse(lines);
-    setUpPacket(j);
+    setUpPacket(j, file.name);
     $("#options-panel").hide();
   }
 }
@@ -1712,6 +1715,18 @@ function addFeedback(current_question) {
           "</div>"
       )
     );
+  }
+  if (
+    current_question.hasOwnProperty("feedback_image") &&
+    current_question.feedback_image.length > 0
+  ) {
+  // TODO: finish (load in dicom viewer)
+    current_question.feedback_image.forEach((img) => {
+    $(".question").append(
+      $(`<img class="feedback-image" src="${img}" />`)
+      )
+    
+    })
   }
 }
 
