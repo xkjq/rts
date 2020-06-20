@@ -328,3 +328,241 @@ export function changeControlSelection() {
     event.preventDefault();
   }
 }
+
+/**
+ * Handle key button events
+ * These are the same as in the RCR pratique implementation
+ * @param {*} event - KeyEvent
+ */
+export function keydown_handler(event) {
+  const target_element = event.target.tagName;
+
+  // Catch all keypresses unless user is typing
+  if (target_element == "INPUT" || target_element == "TEXTAREA") {
+    return;
+  }
+  const sel = $(".control-overlay").get(0);
+  switch (event.code) {
+    case "KeyP":
+      sel.selectedIndex = find_option(sel, "pan");
+      changeControlSelection();
+      break;
+    case "KeyZ":
+      sel.selectedIndex = find_option(sel, "zoom");
+      changeControlSelection();
+      break;
+    case "KeyR":
+      sel.selectedIndex = find_option(sel, "rotate");
+      changeControlSelection();
+      break;
+    case "KeyS":
+      sel.selectedIndex = find_option(sel, "scroll");
+      changeControlSelection();
+      break;
+    case "KeyW":
+      sel.selectedIndex = find_option(sel, "window");
+      changeControlSelection();
+      break;
+    case "KeyA":
+      sel.selectedIndex = find_option(sel, "abdomen");
+      changeControlSelection();
+      break;
+    case "KeyU":
+      sel.selectedIndex = find_option(sel, "pulmonary");
+      changeControlSelection();
+      break;
+    case "KeyB":
+      sel.selectedIndex = find_option(sel, "brain");
+      changeControlSelection();
+      break;
+    case "KeyO":
+      sel.selectedIndex = find_option(sel, "bone");
+      changeControlSelection();
+      break;
+    case "KeyE":
+      sel.selectedIndex = find_option(sel, "reset");
+      // $("#dicom-image").get(0).scrollIntoView(false);
+      changeControlSelection();
+      break;
+    // Escape and C do the same
+    case "KeyC":
+    case "Escape":
+      sel.selectedIndex = find_option(sel, "close");
+      changeControlSelection();
+      break;
+    case "Enter":
+      t.focus();
+      break;
+    // TODO: implement arrow stuff
+    //
+    case "ArrowUp": {
+      // Arrow function depends on the currently selected option
+      switch (sel.options[sel.selectedIndex].value) {
+        case "pan":
+          manualPanDicom(0, -1);
+          break;
+        case "zoom":
+          // _this.current_dicom.current_view.pre_scale_at(1.01, 1.01, _this.current_dicom.cols / 2, _this.current_dicom.rows / 2);
+          manualZoomDicom(1);
+          break;
+        case "rotate":
+          manualRotateDicom(-1);
+          break;
+        case "scroll":
+          manualScrollDicom(-1);
+          break;
+        case "window":
+          manualWindowDicom(1, 0);
+          break;
+      }
+      break;
+    }
+    case "ArrowDown": {
+      switch (sel.options[sel.selectedIndex].value) {
+        case "pan":
+          manualPanDicom(0, 1);
+          break;
+        case "zoom":
+          manualZoomDicom(-1);
+          break;
+        case "rotate":
+          manualRotateDicom(1);
+          break;
+        case "scroll":
+          manualScrollDicom(1);
+          break;
+        case "window":
+          manualWindowDicom(-1, 0);
+          break;
+      }
+      break;
+    }
+    case "ArrowLeft": {
+      switch (sel.options[sel.selectedIndex].value) {
+        case "pan":
+          manualPanDicom(-1, 0);
+          break;
+        case "zoom":
+          manualZoomDicom(-1);
+          break;
+        case "rotate":
+          manualRotateDicom(1);
+          break;
+        case "scroll":
+          manualScrollDicom(1);
+          break;
+        case "window":
+          manualWindowDicom(0, -1);
+          break;
+      }
+      break;
+    }
+    case "ArrowRight": {
+      switch (sel.options[sel.selectedIndex].value) {
+        case "pan":
+          manualPanDicom(1, 0);
+          break;
+        case "zoom":
+          manualZoomDicom(1);
+          break;
+        case "rotate":
+          manualRotateDicom(-1);
+          break;
+        case "scroll":
+          manualScrollDicom(-1);
+          break;
+        case "window":
+          manualWindowDicom(0, 1);
+          break;
+      }
+      break;
+    }
+  }
+  event.preventDefault();
+}
+
+/**
+ * View cornstone image
+ * @param {*} t
+ * @param {*} source
+ */
+export function openMainImage(current_question, t, source) {
+  /**
+   * Load image
+   * @param {*} images - list of images
+   */
+  async function load(images) {
+    const imageIds = [];
+    for (let i = 0; i < images.length; i++) {
+      const data_url = images[i];
+      // check stack type
+      if (data_url.startsWith("data:image")) {
+        const imageId = "base64://" + data_url.split(",")[1];
+
+        imageIds.push(imageId);
+      } else if (data_url.startsWith("data:application/dicom")) {
+        // stack = stack.split(";")[1];
+
+        const dfile = await helper.urltoFile(
+          data_url,
+          "dicom",
+          "application/dicom"
+        );
+
+        const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(
+          dfile
+        );
+        imageIds.push(imageId);
+        // cornerstone.loadImage(imageId).then(function(image) {
+        //    tempFunction(image);
+        // });
+      }
+    }
+    const stack = {
+      currentImageIdIndex: 0,
+      imageIds,
+    };
+    cornerstone.loadAndCacheImage(imageIds[0]).then(function (image) {
+      loadMainImage(image, stack);
+    });
+  }
+
+  if (current_question) {
+    // Check if the figure is already loaded (or if another one is)
+    const open_figure = $("#dicom-image").data("figure");
+    const figure_to_load = source.id;
+
+    if (open_figure != undefined) {
+      // No full size figure / dicom loaded yet
+      if (figure_to_load == open_figure) {
+        return;
+      } else {
+        el = document.getElementById("dicom-image");
+        if (el != undefined) {
+          cornerstone.disable(el);
+          $(".canvas-panel").remove();
+        }
+      }
+    }
+
+    $(".figure-open").removeClass("figure-open").addClass("figure");
+
+    source.className = "figure-open";
+
+    $(".question").append(
+      '<div class= "canvas-panel"><div id="dicom-image" data-figure="' +
+        figure_to_load +
+        '"></div></div>'
+    );
+
+    let images = current_question.images[figure_to_load.split("-")[1]];
+    // images = current_question.images
+
+    // Make sure we have an array
+    if (!Array.isArray(images)) {
+      images = [images];
+    }
+
+    load(images);
+  }
+}
