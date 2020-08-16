@@ -88,7 +88,10 @@ async function loadPacketList(data) {
     }
   });
 
-  window.packet_list = data.packets;
+  if (data != null) {
+    window.packet_list = data.packets;
+  }
+  $("#packet-list").empty();
   window.packet_list.forEach(function (packet) {
     let c = "";
     if (packets_started.indexOf(packet) > -1) {
@@ -469,7 +472,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
         // otherwise try to load it as a dicom
       } else {
         // convert the data url to a file
-        helper
+        viewer
           .urltoFile(based_img, "dicom", "application/dicom")
           .then(function (dfile) {
             // load the file using cornerstoneWADO file loader
@@ -956,6 +959,7 @@ $("#review-button").click(function (evt) {
 });
 
 $("#options-button").click(function (evt) {
+  loadPacketList(null);
   $("#options-panel").toggle();
 });
 
@@ -1075,8 +1079,10 @@ function submitAnswers() {
  * Displays the review question panel with a summary of marks
  */
 function reviewQuestions() {
-  // Stop timer
+  // Stop timer (if it's running)
+  if (window.timer != null) {
   window.timer.stop();
+  }
 
   const cid = window.cid;
   const eid = window.eid;

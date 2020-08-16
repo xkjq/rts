@@ -19,16 +19,6 @@ export function shuffleArray(array) {
   return array;
 }
 
-export function urltoFile(url, filename, mimeType) {
-  return fetch(url)
-    .then(function (res) {
-      return res.arrayBuffer();
-    })
-    .then(function (buf) {
-      return new File([buf], filename, { type: mimeType });
-    });
-}
-
 export function formatBytes(bytes, decimals = 2) {
   if (bytes === 0) return "0 Bytes";
 

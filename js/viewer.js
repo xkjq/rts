@@ -503,7 +503,7 @@ export function openMainImage(current_question, t, source) {
       } else if (data_url.startsWith("data:application/dicom")) {
         // stack = stack.split(";")[1];
 
-        const dfile = await helper.urltoFile(
+        const dfile = await urltoFile(
           data_url,
           "dicom",
           "application/dicom"
@@ -565,4 +565,14 @@ export function openMainImage(current_question, t, source) {
 
     load(images);
   }
+}
+
+export function urltoFile(url, filename, mimeType) {
+  return fetch(url)
+    .then(function (res) {
+      return res.arrayBuffer();
+    })
+    .then(function (buf) {
+      return new File([buf], filename, { type: mimeType });
+    });
 }
