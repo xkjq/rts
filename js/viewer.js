@@ -537,6 +537,7 @@ export function openMainImage(current_question, t, source) {
       if (figure_to_load == open_figure) {
         return;
       } else {
+        let el;
         el = document.getElementById("dicom-image");
         if (el != undefined) {
           cornerstone.disable(el);
