@@ -828,11 +828,9 @@ select option:disabled {
 }
 
 #timer {
-  position: relative;
-  top: 50%;
   /* left: 50%; */
-  transform: translate(0, -20%);
-  /* color: #4527A0; */
+  margin: auto;
+  margin-right: 1em;
   opacity: 25%;
 }
 
