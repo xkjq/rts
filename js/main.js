@@ -971,6 +971,14 @@ $("#review-overlay-button").click(function (evt) {
   }
 });
 
+$("#fullscreen-overlay-button").click(function (evt) {
+  if (document.fullscreen == false) {
+    document.documentElement.requestFullscreen();
+  } else {
+    document.exitFullscreen();
+  }
+});
+
 $("#finish-exam, #time-up-review-button").click(function (evt) {
   window.review = true;
   reviewQuestions();
