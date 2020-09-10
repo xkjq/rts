@@ -15,6 +15,7 @@ window.packet_list = [];
 window.packet_name = null;
 window.questions = null;
 window.question_order = [];
+window.questions_correct = {};
 window.number_of_questions = null;
 window.question_type = null;
 window.loaded_question = null;
@@ -505,8 +506,6 @@ function loadQuestion(n, section = 1, force_reload = false) {
     };
   });
 
-
-
   // Answer setup
   const ap = $(".answer-panel");
   ap.empty();
@@ -881,6 +880,25 @@ function updateQuestionListPanel() {
     .catch(function (error) {
       console.log("error - ", error);
     });
+
+  if (window.review == true) {
+    $(".question-panel-ans").remove();
+    for (const qid in window.questions_correct) {
+      let q_no = window.question_order.indexOf(qid);
+      //console.log("q", q_no, qid, window.questions_correct[qid]);
+      let question_list_elements = $(`.question-list-item[data-qid='${q_no}']`);
+      //console.log(question_list_elements, window.questions_correct[qid]);
+      if (window.questions_correct[qid]) {
+        $(`.question-list-item[data-qid='${q_no}']`).append(
+          "<span class='question-panel-ans question-panel-correct'>✓</span>"
+        );
+      } else {
+        $(`.question-list-item[data-qid='${q_no}']`).append(
+          "<span class='question-panel-ans question-panel-incorrect'>✘</span>"
+        );
+      }
+    }
+  }
 }
 
 /**
@@ -944,7 +962,6 @@ function createQuestionListPanel() {
     loadQuestion($(this).attr("data-qid"), $(this).attr("data-qidn"));
   });
 }
-
 
 $("#btn-local-file-load").click(function (evt) {
   loadLocalQuestionSet();
@@ -1089,7 +1106,7 @@ function submitAnswers() {
 function reviewQuestions() {
   // Stop timer (if it's running)
   if (window.timer != null) {
-  window.timer.stop();
+    window.timer.stop();
   }
 
   const cid = window.cid;
@@ -1219,7 +1236,7 @@ function reviewQuestions() {
               answered_abnormal++;
             }
 
-            let el = $("#review-answer-" + qid + " span");
+            let el = $(`#review-answer-${qid} span`);
 
             /**
              * Helper function to define how review items are displayed
@@ -1270,6 +1287,7 @@ function reviewQuestions() {
                     question_answers
                   );
                   correct_count++;
+                  window.questions_correct[qid] = true;
                 } else {
                   if (section_1_answer != "Not Answered") {
                     overcall_number++;
@@ -1281,6 +1299,7 @@ function reviewQuestions() {
                     true,
                     question_answers
                   );
+                  window.questions_correct[qid] = false;
                 }
               } else {
                 if (answerInArray(question_answers, section_2_answer)) {
@@ -1292,6 +1311,7 @@ function reviewQuestions() {
                     false,
                     question_answers
                   );
+                  window.questions_correct[qid] = true;
                 } else {
                   setReviewAnswer(
                     el,
@@ -1300,6 +1320,7 @@ function reviewQuestions() {
                     false,
                     question_answers
                   );
+                  window.questions_correct[qid] = false;
 
                   if (section_1_answer == "Not Answered") {
                   } else if (section_1_answer == "Normal") {
@@ -1329,6 +1350,7 @@ function reviewQuestions() {
                   false,
                   question_answers
                 );
+                window.questions_correct[qid] = true;
               } else {
                 setReviewAnswer(
                   el,
@@ -1337,6 +1359,7 @@ function reviewQuestions() {
                   false,
                   question_answers
                 );
+                window.questions_correct[qid] = false;
               }
             }
 
@@ -1367,6 +1390,7 @@ function reviewQuestions() {
           .finally(() => {
             // This will lead to saveSession being called after each question is marked
             saveSession();
+            updateQuestionListPanel();
           });
       });
     })
@@ -1440,7 +1464,6 @@ function markAnswer(qid, current_question) {
           });
         }
 
-        console.log(current_question);
         // check if given answer matches an answer from the question
         current_question.answers.forEach(function (answer, n) {
           ul.append("<li>" + answer + "</li>");
@@ -1476,6 +1499,7 @@ function markAnswer(qid, current_question) {
         console.log("error-", error);
       });
     addFeedback(current_question);
+    updateQuestionListPanel();
   }
 }
 
@@ -1496,13 +1520,10 @@ function addFeedback(current_question) {
     current_question.hasOwnProperty("feedback_image") &&
     current_question.feedback_image.length > 0
   ) {
-  // TODO: finish (load in dicom viewer)
+    // TODO: finish (load in dicom viewer)
     current_question.feedback_image.forEach((img) => {
-    $(".question").append(
-      $(`<img class="feedback-image" src="${img}" />`)
-      )
-    
-    })
+      $(".question").append($(`<img class="feedback-image" src="${img}" />`));
+    });
   }
 }
 
