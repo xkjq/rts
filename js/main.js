@@ -1157,7 +1157,13 @@ function reviewQuestions() {
             `<tr class='answer-sub'><td>Your answers</td><td>Model answers</td></tr>`
           );
 
-          const model_answers = window.questions[qid].answers;
+          let model_answers = window.questions[qid].answers;
+
+          // TODO: FIX
+          if (model_answers[0] != undefined) {
+            model_answers = model_answers[0];
+          }
+          console.log("test", window.questions[qid], model_answers)
 
           const titles = [
             "Observations",
@@ -1175,17 +1181,18 @@ function reviewQuestions() {
           // );
 
           titles.forEach((title, n) => {
-            let user_answer = current_answers[`${qid},${n}`];
+            let user_answer = current_answers[`${qid},${n+1}`];
+            console.log(`${qid},${n}`, user_answer)
             if (user_answer == undefined) {
               user_answer = "Not answered";
             }
             let user_ans =
               "<h4 class='review-list-header'>" + title + "</h4>" + user_answer;
             let model_ans =
-              `<h4 class="review-list-header" name=${n}>` +
+              `<h4 class="review-list-header" name=${n+1}>` +
               title +
               "</h4>" +
-              model_answers[0][title.toLowerCase()];
+              model_answers[title.toLowerCase()];
 
             $("#review-answer-table").append(
               `<tr class=''><td>${user_ans}</td><td>${model_ans}</td></tr>`
@@ -1410,7 +1417,9 @@ function markAnswer(qid, current_question) {
   let option = null;
   if (window.review == true) {
     // Disable all possible answer elements
-    $("#rapid-option,.long-answer").attr("disabled", "true");
+    $("#rapid-option").attr("disabled", "true");
+    $(".long-answer").attr("readonly", "true");
+    $(".long-answer").addClass("long-answer-marked");
 
     if (type == "rapid") {
       option = document.getElementById("rapid-option");
@@ -1433,7 +1442,13 @@ function markAnswer(qid, current_question) {
     if (type == "long") {
       // For long cases we simple disable the texareas and append the
       // model answers
-      const model_answers = current_question.answers[0];
+      console.log(current_question);
+      let model_answers = current_question.answers[0];
+
+      // TODO: FIX THIS
+      if (model_answers == undefined) {
+        model_answers = current_question.answers;
+      }
       for (let key of Object.keys(model_answers)) {
         $("textarea[name*='" + key + "' i]").after(model_answers[key]);
       }
