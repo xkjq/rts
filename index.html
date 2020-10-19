@@ -112,9 +112,22 @@
         </div>
         <div class="dialog-text">
             Click to start exam.
-            <p>You will have <input type='number' size=2 id='exam-time'></input> minutes.</p>
+            <p>You will have <input type='number' size=2 class='exam-time'></input> minutes.</p>
         </div>
-        <button id="start-packet-button" class="navigation dialog-yes">Start</button>
+        <button class="start-packet-button navigation dialog-yes">Start</button>
+    </div>
+
+    <div id="start-dialog-exam" class="dialog modal no-close">
+        <h3 class="dialog-title">Start exam</h3>
+        <div class="dialog-text">
+            Click to start exam.
+            <p>You will have <input type='number' size=2 class='exam-time'></input> minutes.</p>
+        </div>
+        <div class="dialog-text">
+            Check your below candidate number is correct.
+            <input type='number' size=10 id='candidate-number2'></input>
+        </div>
+        <button class="start-packet-button navigation dialog-yes">Start</button>
     </div>
 
     <div id="time-up-dialog" class="dialog modal">
