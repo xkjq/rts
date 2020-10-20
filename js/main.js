@@ -1,6 +1,7 @@
 /* global Dexie, cornerstone, cornerstoneTools, cornerstoneBase64ImageLoader, cornerstoneWebImageLoader, cornerstoneWADOImageLoader */
 import * as helper from "./helpers.js";
 import * as viewer from "./viewer.js";
+import * as interact from "./viewer.js";
 // const { v4: uuidv4 } = require('uuid');
 
 // cid = null;
@@ -92,6 +93,7 @@ async function loadPacketList(data) {
   if (data != null) {
     window.packet_list = data.packets;
   }
+
   $("#packet-list").empty();
   window.packet_list.forEach(function (packet) {
     let c = "";
@@ -968,7 +970,7 @@ $("#btn-local-file-load").click(function (evt) {
 });
 
 $("#submit-button").click(function (evt) {
-  submitAnswers();
+  interact.submitAnswers();
 });
 
 $("#review-button").click(function (evt) {
@@ -1033,21 +1035,6 @@ function getJsonAnswers() {
 }
 
 /**
- * Posts answers to url
- * @param {*} ans - json representation of answers
- */
-function postAnswers(ans) {
-  console.log(ans);
-  // ans = {"test" : 1}
-  $.post("http://localhost:8000/submit_answers", JSON.stringify(ans)).done(
-    (data) => {
-      console.log(data);
-    }
-  );
-  // $.post( "http://localhost:8000/submit_answers", JSON.stringify(ans));
-}
-
-/**
  * Loads a local question set (from a file)
  * This is call in index.html
  */
@@ -1089,16 +1076,6 @@ function loadLocalQuestionSet() {
   }
 }
 
-/**
- * Submits answers
- */
-function submitAnswers() {
-  console.log(
-    getJsonAnswers().then((a) => {
-      postAnswers(a);
-    })
-  );
-}
 
 /**
  * Displays the review question panel with a summary of marks
