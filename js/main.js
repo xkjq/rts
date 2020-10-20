@@ -2,6 +2,7 @@
 import * as helper from "./helpers.js";
 import * as viewer from "./viewer.js";
 import * as interact from "./viewer.js";
+import * as config from "./config.js";
 // const { v4: uuidv4 } = require('uuid');
 
 // cid = null;
@@ -12,6 +13,7 @@ window.eid = 5678;
 window.exam_mode = false;
 
 window.packet_list = [];
+window.exams = [];
 
 window.packet_name = null;
 window.questions = null;
@@ -31,6 +33,8 @@ window.timer = null;
 
 //window.dfile = null;
 
+window.config = config;
+
 retrievePacketList();
 
 /**
@@ -39,13 +43,29 @@ retrievePacketList();
  * and then fallback to packets.json
  */
 function retrievePacketList() {
-  $.getJSON("packets/", function (data) {
-    loadPacketList(data);
+  let url = "packets/";
+
+  console.log(window.config.exam_query_url)
+
+  if (window.config.exam_query_url != undefined) {
+    url = window.config.exam_query_url;
+  }
+
+  $.getJSON(url, function (data) {
+    if (data.hasOwnProperty("exams")) {
+      loadExamList(data);
+    } else {
+      loadPacketList(data);
+    }
   })
     .done(function () {})
     .fail(function () {
       $.getJSON("packets/packets.json", function (data) {
-        loadPacketList(data);
+        if (data.hasOwnProperty("exams")) {
+          loadExamList(data);
+        } else {
+          loadPacketList(data);
+        }
       }).fail(function (jqXHR, textStatus, errorThrown) {
         console.log(jqXHR);
         console.log(textStatus);
@@ -55,6 +75,65 @@ function retrievePacketList() {
       });
     })
     .always(function () {});
+}
+
+/**
+ * Generate a list of exams that are available to be loaded
+ * this is based on the subsequant function but gives less options
+ *
+ * @param {JSON} data - json containing available exams
+ */
+async function loadExamList(data) {
+  let sessions = await window.db.session.toArray().catch(function (error) {
+    console.log("Error loading session", error);
+    $("#database-error").text(
+      "Error loading the database, schema has probably changed and needs updating. You will probably need to delete the local database."
+    );
+    let delete_button = $("<button>Delete local database</button>").click(
+      () => {
+        window.indexedDB.deleteDatabase("answers_database");
+        location.reload();
+      }
+    );
+    $("#database-error").append(delete_button);
+    $("#database-error").show();
+  });
+  // db.session
+  //   .where("packet")
+  //   .equals()
+  let exams_started = [];
+  let exams_completed = [];
+  sessions.forEach((s) => {
+    if (s.status == "active") {
+      exams_started.push(s.packet);
+    } else {
+      exams_completed.push(s.packet);
+    }
+  });
+
+  if (data != null) {
+    window.exam_list = data.exams;
+  }
+  $("#packet-list").empty();
+  window.exam_list.forEach(function (exam) {
+    let name = exam["name"];
+    let url = exam["url"];
+    let c = "";
+    if (exams_started.indexOf(name) > -1) {
+      c = " session-started";
+    }
+    if (exams_completed.indexOf(name) > -1) {
+      c = " session-completed";
+    }
+    $("#packet-list").append(
+      $(`<div class='packet-button${c}' title='Load packet'></div>`)
+        .text(name)
+        .click(function () {
+          loadPacketFromAjax(url);
+        })
+    );
+  });
+  $("#options-panel").show();
 }
 
 /**
@@ -202,13 +281,25 @@ function setUpQuestions(load_previous) {
     }
   }
 
-  $("#exam-time")
+  $(".exam-time")
     .val(window.exam_time / 60)
     .change(() => {
-      window.exam_time = $("#exam-time").val() * 60;
+      window.exam_time = $(".exam-time").val() * 60;
     });
 
-  $("#start-dialog").modal();
+  if (window.exam_mode) {
+    $("#candidate-number2").val(window.cid).change(() => {
+      window.cid = parseInt($("#candidate-number2").val());
+    });
+
+
+    $("#start-dialog-exam").modal( {closeExisting: false,    // Close existing modals. Set this to false if you need to stack multiple modal instances.
+  escapeClose: false,      // Allows the user to close the modal by pressing `ESC`
+  clickClose: false,       // Allows the user to close the modal by clicking the overlay
+  showClose: false}  );
+  } else {
+    $("#start-dialog").modal();
+  }
 }
 
 // Set up cornerstone (the dicom viewer)
@@ -1617,7 +1708,7 @@ $("#start-exam-button").click(function (evt) {
   $.modal.close();
 });
 
-$("#start-packet-button").click(function (evt) {
+$(".start-packet-button").click(function (evt) {
   if (window.timer != null) {
     window.timer.stop();
   }

@@ -15,12 +15,16 @@ function submitAnswers() {
  * @param {*} ans - json representation of answers
  */
 function postAnswers(ans) {
-  console.log(ans);
+  $("#progress").html(`Submitting answers...`);
   // ans = {"test" : 1}
-  $.post("http://localhost:8000/submit_answers", JSON.stringify(ans)).done(
+  $.post(window.config.exam_submit_url, JSON.stringify(ans)).done(
     (data) => {
-      console.log(data);
+    console.log(data)
+    if (data.success) {
+      alert("Answers sucessfully submitted.");
+    } else {
+      alert(`Error submitting answers: ${data.error}`);
     }
-  );
+    });
   // $.post( "http://localhost:8000/submit_answers", JSON.stringify(ans));
 }
