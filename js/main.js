@@ -1,7 +1,7 @@
 /* global Dexie, cornerstone, cornerstoneTools, cornerstoneBase64ImageLoader, cornerstoneWebImageLoader, cornerstoneWADOImageLoader */
 import * as helper from "./helpers.js";
 import * as viewer from "./viewer.js";
-import * as interact from "./viewer.js";
+import * as interact from "./interact.js";
 import * as config from "./config.js";
 // const { v4: uuidv4 } = require('uuid');
 
@@ -281,10 +281,16 @@ function setUpQuestions(load_previous) {
     }
   }
 
-  $(".exam-time")
+  // We use a different dialog if we are in an exam
+  let et = ".exam-time";
+  if (window.exam_mode) {
+    et = ".exam-time2";
+  }
+
+  $(et)
     .val(window.exam_time / 60)
     .change(() => {
-      window.exam_time = $(".exam-time").val() * 60;
+      window.exam_time = $(et).val() * 60;
     });
 
   if (window.exam_mode) {
@@ -1061,7 +1067,7 @@ $("#btn-local-file-load").click(function (evt) {
 });
 
 $("#submit-button").click(function (evt) {
-  interact.submitAnswers();
+  interact.submitAnswers(window, db);
 });
 
 $("#review-button").click(function (evt) {
@@ -1111,19 +1117,6 @@ $("#review-overlay-close").click(function (evt) {
   $("#review-overlay").hide();
 });
 
-/**
- * Gets a json representation of answers
- * @return {JSON} - answers
- */
-function getJsonAnswers() {
-  const cid = window.cid;
-  const eid = window.eid;
-  return db.answers.where({ aid: aid, cid: cid, eid: eid }).toArray();
-  // .then(function(ans) {
-  // console.log(ans);
-  // submitAnswers(ans);
-  // });
-}
 
 /**
  * Loads a local question set (from a file)

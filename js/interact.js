@@ -2,19 +2,33 @@
 /**
  * Submits answers
  */
-function submitAnswers() {
+export function submitAnswers(window, db) {
   console.log(
-    getJsonAnswers().then((a) => {
+    getJsonAnswers(window, db).then((a) => {
       postAnswers(a);
     })
   );
 }
 
 /**
+ * Gets a json representation of answers
+ * @return {JSON} - answers
+ */
+export function getJsonAnswers(window, db) {
+  const cid = window.cid;
+  const eid = window.eid;
+  return db.answers.where({ aid: aid, cid: cid, eid: eid }).toArray();
+  // .then(function(ans) {
+  // console.log(ans);
+  // submitAnswers(ans);
+  // });
+}
+
+/**
  * Posts answers to url
  * @param {*} ans - json representation of answers
  */
-function postAnswers(ans) {
+export function postAnswers(ans) {
   $("#progress").html(`Submitting answers...`);
   // ans = {"test" : 1}
   $.post(window.config.exam_submit_url, JSON.stringify(ans)).done(
