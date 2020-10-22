@@ -995,3 +995,7 @@ display: block
 .session-completed {
     border-color: purple;
 }
+
+.hidden {
+    display: none;
+}

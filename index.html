@@ -18,10 +18,13 @@
         <div class="content-panel">
             <div class="nav-bar">
                 <button id="review-button" class="navigation nav-right"><b>☰</b></button>
-                <button id="submit-button" class="navigation nav-right"><b>submit</b></button>
-                <button id="options-button" class="navigation nav-right" title="click to load new packet or manage saved answers">options</button>
-                <button id="review-overlay-button" class="navigation nav-right" title="click to finish exam and review answers">review</button>
-                <button id="fullscreen-overlay-button" class="navigation nav-right" title="click to toggle fullscreen">fullscreen</button>
+                <button class="submit-button navigation nav-right"><b>submit</b></button>
+                <button id="options-button" class="navigation nav-right"
+                    title="click to load new packet or manage saved answers">options</button>
+                <button id="review-overlay-button" class="navigation nav-right"
+                    title="click to finish exam and review answers">review</button>
+                <button id="fullscreen-overlay-button" class="navigation nav-right"
+                    title="click to toggle fullscreen">fullscreen</button>
                 <!--<button id="logout-button" class="navigation nav-right">logout</button>-->
                 <div class="app-name nav-left">RTS</div>
                 <div id="timer" title="click to pause"></div>
@@ -114,16 +117,7 @@
             Click to start exam.
             <p>You will have <input type='number' size=2 class='exam-time'></input> minutes.</p>
         </div>
-        <button class="start-packet-button navigation dialog-yes">Start</button>
-    </div>
-
-    <div id="start-dialog-exam" class="dialog modal no-close">
-        <h3 class="dialog-title">Start exam</h3>
-        <div class="dialog-text">
-            Click to start exam.
-            <p>You will have <input type='number' size=2 class='exam-time2'></input> minutes.</p>
-        </div>
-        <div class="dialog-text">
+        <div id="exam-candidate-number" class="dialog-text hidden">
             Check your below candidate number is correct.
             <input type='number' size=10 id='candidate-number2'></input>
         </div>
@@ -137,6 +131,7 @@
         </div>
         <button id="time-up-review-button" class="navigation dialog-review">Review</button>
         <button id="time-up-continue-button" class="navigation dialog-yes">Continue</button>
+        <button id="dialog-submit-button" class="submit-button navigation dialog-review hidden"><b>submit</b></button>
     </div>
 
     <div id="login-dialog" class="dialog modal">

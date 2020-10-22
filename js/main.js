@@ -281,16 +281,10 @@ function setUpQuestions(load_previous) {
     }
   }
 
-  // We use a different dialog if we are in an exam
-  let et = ".exam-time";
-  if (window.exam_mode) {
-    et = ".exam-time2";
-  }
-
-  $(et)
+  $(".exam-time")
     .val(window.exam_time / 60)
     .change(() => {
-      window.exam_time = $(et).val() * 60;
+      window.exam_time = $(".exam-time").val() * 60;
     });
 
   if (window.exam_mode) {
@@ -298,8 +292,10 @@ function setUpQuestions(load_previous) {
       window.cid = parseInt($("#candidate-number2").val());
     });
 
-
-    $("#start-dialog-exam").modal( {closeExisting: false,    // Close existing modals. Set this to false if you need to stack multiple modal instances.
+    $("#start-dialog").addClass("no-close");
+    $("#exam-candidate-number").toggle();
+    $(".packet-database-options").toggle();
+    $("#start-dialog").modal( {closeExisting: false,    // Close existing modals. Set this to false if you need to stack multiple modal instances.
   escapeClose: false,      // Allows the user to close the modal by pressing `ESC`
   clickClose: false,       // Allows the user to close the modal by clicking the overlay
   showClose: false}  );
@@ -1066,7 +1062,7 @@ $("#btn-local-file-load").click(function (evt) {
   loadLocalQuestionSet();
 });
 
-$("#submit-button").click(function (evt) {
+$(".submit-button").click(function (evt) {
   interact.submitAnswers(window, db);
 });
 
@@ -1714,6 +1710,10 @@ $(".start-packet-button").click(function (evt) {
     $('#timer').html("Time left: " + timer.getTimeValues().toString());
   });
   timer.addEventListener("targetAchieved", function (e) {
+    if (window.exam_mode == true) {
+     $("#dialog-submit-button, #time-up-review-button, #time-up-continue-button").toggle();
+     $("#time-up-dialog .dialog-text").text("Allocated time has ended. Click to submit answers.")
+    }
     $("#time-up-dialog").modal();
   });
 
