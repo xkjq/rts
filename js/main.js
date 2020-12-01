@@ -293,6 +293,7 @@ function setUpQuestions(load_previous) {
     });
 
     $("#start-dialog").addClass("no-close");
+    $("#start-dialog .exam-time").prop("disabled", "true");
     $("#exam-candidate-number").toggle();
     $(".packet-database-options").toggle();
     $("#start-dialog").modal( {closeExisting: false,    // Close existing modals. Set this to false if you need to stack multiple modal instances.
