@@ -63,7 +63,15 @@
             </div>
             <div id="options-panel" class="fullscreen-overlay">
                 <a href="#" id="overlay-close" class="close"></a>
-                <div id="localFileloader">
+                <div id="database-buttons">
+                    <input type='button' id='btn-delete-databases' value='Delete all saved answers'>
+                </div>
+                <div id="packets">
+                    <p>Available Packets:</p>
+                    <span id="packet-list">
+                    </span>
+                </div>
+                <div id="local-fileloader">
                     <form id="jsonFile" name="jsonFile" enctype="multipart/form-data" method="post">
 
                         <fieldset>
@@ -72,12 +80,6 @@
                             <input type='button' id='btn-local-file-load' value='Load'>
                         </fieldset>
                     </form>
-                </div>
-                <div id="database-buttons">
-                    <input type='button' id='btn-delete-databases' value='Delete all saved answers'>
-                </div>
-                <div id="packet-list">
-                    <p>Available Packets:</p>
                 </div>
             </div>
             <div id="review-overlay" class="fullscreen-overlay">

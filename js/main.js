@@ -7,7 +7,7 @@ import * as config from "./config.js";
 
 // cid = null;
 window.aid = null;
-window.cid = 1234;
+window.cid = "";
 window.eid = 5678;
 
 window.exam_mode = false;
@@ -41,11 +41,13 @@ retrievePacketList();
  * Retrieves a list of available packets via JSON ajax requests
  * Will initially try /packets/ (for example if index.php generates the list)
  * and then fallback to packets.json
+ *
+ * if exam_query_url is defined in config.js this will be used in preference
  */
 function retrievePacketList() {
   let url = "packets/";
 
-  console.log(window.config.exam_query_url)
+  console.log(window.config.exam_query_url);
 
   if (window.config.exam_query_url != undefined) {
     url = window.config.exam_query_url;
@@ -79,7 +81,7 @@ function retrievePacketList() {
 
 /**
  * Generate a list of exams that are available to be loaded
- * this is based on the subsequant function but gives less options
+ * this is based on the subsequent function but gives less options
  *
  * @param {JSON} data - json containing available exams
  */
@@ -288,18 +290,23 @@ function setUpQuestions(load_previous) {
     });
 
   if (window.exam_mode) {
-    $("#candidate-number2").val(window.cid).change(() => {
-      window.cid = parseInt($("#candidate-number2").val());
-    });
+    // NOTE: changing the CID when restoring a session will not affect the time left
+    $("#candidate-number2")
+      .val(window.cid)
+      .change(() => {
+        window.cid = parseInt($("#candidate-number2").val());
+      });
 
     $("#start-dialog").addClass("no-close");
     $("#start-dialog .exam-time").prop("disabled", "true");
     $("#exam-candidate-number").toggle();
     $(".packet-database-options").toggle();
-    $("#start-dialog").modal( {closeExisting: false,    // Close existing modals. Set this to false if you need to stack multiple modal instances.
-  escapeClose: false,      // Allows the user to close the modal by pressing `ESC`
-  clickClose: false,       // Allows the user to close the modal by clicking the overlay
-  showClose: false}  );
+    $("#start-dialog").modal({
+      closeExisting: false, // Close existing modals. Set this to false if you need to stack multiple modal instances.
+      escapeClose: false, // Allows the user to close the modal by pressing `ESC`
+      clickClose: false, // Allows the user to close the modal by clicking the overlay
+      showClose: false,
+    });
   } else {
     $("#start-dialog").modal();
   }
@@ -392,12 +399,15 @@ function setUpPacket(data, packet_name) {
 
       let load_previous = false;
 
-      // Start new session
+      // Start new session if no session found
       if (sessions.length < 1) {
         window.aid = uuidv4();
         window.date_started = Date.now();
       } else {
         let text = "Select session to continue (leave blank to create new):";
+        if (window.exam_mode) {
+          text = "Session will be continued";
+        }
         console.log(sessions.date);
 
         for (let i = 0; i < sessions.length; i++) {
@@ -424,12 +434,20 @@ function setUpPacket(data, packet_name) {
           }
         }
 
-        let s = prompt(text, "0");
+        // If in exam mode we don't want to allow multiple sessions
+        let s;
+        if (window.exam_mode) {
+          s = "0";
+          alert(text);
+        } else {
+          s = prompt(text, "0");
+        }
 
         if (s != null && s != "") {
           load_previous = true;
 
           window.aid = sessions[parseInt(s)].aid;
+          window.cid = sessions[parseInt(s)].cid;
           window.date_started = sessions[parseInt(s)].date;
 
           let time_left = sessions[parseInt(s)].time_left;
@@ -1114,7 +1132,6 @@ $("#review-overlay-close").click(function (evt) {
   $("#review-overlay").hide();
 });
 
-
 /**
  * Loads a local question set (from a file)
  * This is call in index.html
@@ -1156,7 +1173,6 @@ function loadLocalQuestionSet() {
     $("#options-panel").hide();
   }
 }
-
 
 /**
  * Displays the review question panel with a summary of marks
@@ -1221,7 +1237,7 @@ function reviewQuestions() {
           if (model_answers[0] != undefined) {
             model_answers = model_answers[0];
           }
-          console.log("test", window.questions[qid], model_answers)
+          console.log("test", window.questions[qid], model_answers);
 
           const titles = [
             "Observations",
@@ -1239,15 +1255,15 @@ function reviewQuestions() {
           // );
 
           titles.forEach((title, n) => {
-            let user_answer = current_answers[`${qid},${n+1}`];
-            console.log(`${qid},${n}`, user_answer)
+            let user_answer = current_answers[`${qid},${n + 1}`];
+            console.log(`${qid},${n}`, user_answer);
             if (user_answer == undefined) {
               user_answer = "Not answered";
             }
             let user_ans =
               "<h4 class='review-list-header'>" + title + "</h4>" + user_answer;
             let model_ans =
-              `<h4 class="review-list-header" name=${n+1}>` +
+              `<h4 class="review-list-header" name=${n + 1}>` +
               title +
               "</h4>" +
               model_answers[title.toLowerCase()];
@@ -1699,6 +1715,14 @@ $("#start-exam-button").click(function (evt) {
 });
 
 $(".start-packet-button").click(function (evt) {
+  if (window.exam_mode) {
+      if (!Number.isInteger(parseInt($("#candidate-number2").val()))) {
+        alert("Please enter a valid candidate number.")
+        return
+      }
+  }
+
+
   if (window.timer != null) {
     window.timer.stop();
   }
@@ -1708,12 +1732,16 @@ $(".start-packet-button").click(function (evt) {
   //window.exam_time = 2;
   timer.start({ countdown: true, startValues: { seconds: window.exam_time } });
   timer.addEventListener("secondsUpdated", function (e) {
-    $('#timer').html("Time left: " + timer.getTimeValues().toString());
+    $("#timer").html("Time left: " + timer.getTimeValues().toString());
   });
   timer.addEventListener("targetAchieved", function (e) {
     if (window.exam_mode == true) {
-     $("#dialog-submit-button, #time-up-review-button, #time-up-continue-button").toggle();
-     $("#time-up-dialog .dialog-text").text("Allocated time has ended. Click to submit answers.")
+      $(
+        "#dialog-submit-button, #time-up-review-button, #time-up-continue-button"
+      ).toggle();
+      $("#time-up-dialog .dialog-text").text(
+        "Allocated time has ended. Click to submit answers."
+      );
     }
     $("#time-up-dialog").modal();
   });
@@ -1757,6 +1785,8 @@ $(".start-packet-button").click(function (evt) {
   //     $("#time-up-dialog").modal();
   //   }
   // }
+
+  loadQuestion(0, 0, true);
 
   $.modal.close();
 });
@@ -1867,6 +1897,7 @@ function saveSession() {
   db.session.put({
     packet: window.packet_name,
     aid: window.aid,
+    cid: window.cid,
     status: status,
     date: window.date_started,
     score: window.score,

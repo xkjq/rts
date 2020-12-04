@@ -788,8 +788,13 @@ select option:disabled {
     padding: 20px;
 }
 
-#localFileloader {
-    padding-bottom: 20px;
+#local-fileloader {
+    position: absolute;
+    bottom: 10px;
+}
+
+#packets {
+    padding-top: 40px;
 }
 
 #packet-list {
