@@ -35,7 +35,7 @@ export function postAnswers(ans) {
     (data) => {
     console.log(data)
     if (data.success) {
-      alert("Answers sucessfully submitted.");
+      alert(`${data.question_count} answers sucessfully submitted.`);
     } else {
       alert(`Error submitting answers: ${data.error}`);
     }

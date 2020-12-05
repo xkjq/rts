@@ -20,7 +20,11 @@ export function loadMainImage(image, stack) {
   cornerstoneTools.addToolState(element, "stack", stack);
 
   cornerstoneTools.addTool(PanTool);
-  cornerstoneTools.addTool(ZoomTool);
+  cornerstoneTools.addTool(ZoomTool, {
+    configuration: {
+      invert: true,
+    },
+  });
   cornerstoneTools.addTool(WwwcTool);
   cornerstoneTools.addTool(RotateTool);
   cornerstoneTools.addTool(StackScrollTool);
@@ -503,11 +507,7 @@ export function openMainImage(current_question, t, source) {
       } else if (data_url.startsWith("data:application/dicom")) {
         // stack = stack.split(";")[1];
 
-        const dfile = await urltoFile(
-          data_url,
-          "dicom",
-          "application/dicom"
-        );
+        const dfile = await urltoFile(data_url, "dicom", "application/dicom");
 
         const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(
           dfile
@@ -535,6 +535,8 @@ export function openMainImage(current_question, t, source) {
     if (open_figure != undefined) {
       // No full size figure / dicom loaded yet
       if (figure_to_load == open_figure) {
+        // Scroll to the image if it is already open
+        document.getElementById("dicom-image").scrollIntoView();
         return;
       } else {
         let el;

@@ -1748,22 +1748,25 @@ $(".start-packet-button").click(function (evt) {
 
   window.timer = timer;
 
-  $("#timer").click(() => {
-    window.timer.pause();
+  // If we are not in an exam we can pause the session
+  if (!window.exam_mode) {
+    $("#timer").click(() => {
+      window.timer.pause();
 
-    let time_remaining = window.timer.getTimeValues().toString();
+      let time_remaining = window.timer.getTimeValues().toString();
 
-    $("#pause").empty();
-    $("#pause").append(
-      $(
-        `<div id="pause-text">Session paused<div id="pause-time-remaining">You have ${time_remaining} remaining.</div></div><button id="resume-exam-button" class="navigation dialog-yes">Click to resume</button>`
-      ).click(() => {
-        $("#pause").hide();
-        timer.start();
-      })
-    );
-    $("#pause").show();
-  });
+      $("#pause").empty();
+      $("#pause").append(
+        $(
+          `<div id="pause-text">Session paused<div id="pause-time-remaining">You have ${time_remaining} remaining.</div></div><button id="resume-exam-button" class="navigation dialog-yes">Click to resume</button>`
+        ).click(() => {
+          $("#pause").hide();
+          timer.start();
+        })
+      );
+      $("#pause").show();
+    });
+  }
 
   // //const t = 2;
   // let display = document.querySelector("#timer");
