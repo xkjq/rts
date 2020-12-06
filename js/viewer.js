@@ -508,13 +508,29 @@ export function openMainImage(current_question, t, source) {
    * Load image
    * @param {*} images - list of images
    */
-  async function load(images) {
+  function loadAnnotation(imageId, annotation) {
+    const toolStateManager = cornerstoneTools.globalImageIdSpecificToolStateManager;
+
+    if (annotation.length < 1) { return }
+
+    let tool_state_no_id = JSON.parse(annotation);
+
+    let tool_state = {};
+    tool_state[imageId] = tool_state_no_id;
+
+    toolStateManager.restoreToolState(tool_state);
+  }
+  async function load(images, annotations) {
     const imageIds = [];
     for (let i = 0; i < images.length; i++) {
       const data_url = images[i];
+      const annotation = annotations[i];
+
       // check stack type
       if (data_url.startsWith("data:image")) {
         const imageId = "base64://" + data_url.split(",")[1];
+
+        loadAnnotation(imageId, annotation);
 
         imageIds.push(imageId);
       } else if (data_url.startsWith("data:application/dicom")) {
@@ -525,6 +541,9 @@ export function openMainImage(current_question, t, source) {
         const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(
           dfile
         );
+
+        loadAnnotation(imageId, annotation);
+
         imageIds.push(imageId);
         // cornerstone.loadImage(imageId).then(function(image) {
         //    tempFunction(image);
@@ -574,12 +593,21 @@ export function openMainImage(current_question, t, source) {
     let images = current_question.images[figure_to_load.split("-")[1]];
     // images = current_question.images
 
+
     // Make sure we have an array
     if (!Array.isArray(images)) {
       images = [images];
     }
 
-    load(images);
+    let annotations = [];
+    if (current_question.annotations) { 
+      annotations = current_question.annotations[figure_to_load.split("-")[1]];
+      if (!Array.isArray(annotations)) {
+        annotations = [annotations];
+      }
+    }
+
+    load(images, annotations);
   }
 }
 
