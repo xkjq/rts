@@ -10,6 +10,7 @@ export function loadMainImage(image, stack) {
   const WwwcTool = cornerstoneTools.WwwcTool;
   const RotateTool = cornerstoneTools.RotateTool;
   const StackScrollTool = cornerstoneTools.StackScrollTool;
+  const ArrowAnnotateTool = cornerstoneTools.ArrowAnnotateTool;
 
   const element = document.getElementById("dicom-image");
   cornerstone.enable(element);
@@ -29,7 +30,19 @@ export function loadMainImage(image, stack) {
   cornerstoneTools.addTool(RotateTool);
   cornerstoneTools.addTool(StackScrollTool);
 
+  cornerstoneTools.addTool(ArrowAnnotateTool, {
+    configuration: {
+        getTextCallback: () => {},
+        changeTextCallback: () => {},
+        allowEmptyLabel: true,
+        renderDashed: false,
+        drawHandles: false,
+        drawHandlesOnHover: true,
+    },
+  });
+
   cornerstoneTools.setToolActive("Pan", { mouseButtonMask: 1 });
+  cornerstoneTools.setToolEnabled("ArrowAnnotate");
 
   element.addEventListener("cornerstoneimagerendered", onImageRendered);
 
