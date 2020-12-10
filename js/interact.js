@@ -1,4 +1,3 @@
-
 /**
  * Submits answers
  */
@@ -31,14 +30,38 @@ export function getJsonAnswers(window, db) {
 export function postAnswers(ans) {
   $("#progress").html(`Submitting answers...`);
   // ans = {"test" : 1}
-  $.post(window.config.exam_submit_url, JSON.stringify(ans)).done(
-    (data) => {
-    console.log(data)
+  $.post(window.config.exam_submit_url, JSON.stringify(ans)).done((data) => {
+    console.log(data);
     if (data.success) {
-      alert(`${data.question_count} answers sucessfully submitted.`);
+      if (data.question_count == window.number_of_questions) {
+        let ret = confirm(
+          `${data.question_count} answers sucessfully submitted. Click OK to finish the exam.`
+        );
+
+        if (ret) {
+          window.review = true;
+          window.saveSession();
+          if (config.exam_results_url != "") {
+            let url = config.exam_results_url;
+
+            if (window.cid != "") {
+              url = url + window.cid;
+            }
+            $("#options-link")
+              .empty()
+              .append(
+                `<a href="${url}" target="_blank"><div class="packet-button">Results and answers</div></a>`
+              );
+          }
+          $("#options-panel").show();
+        } else {
+        }
+      } else {
+        alert(`${data.question_count} answers sucessfully submitted.`);
+      }
     } else {
       alert(`Error submitting answers: ${data.error}`);
     }
-    });
+  });
   // $.post( "http://localhost:8000/submit_answers", JSON.stringify(ans));
 }

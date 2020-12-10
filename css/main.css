@@ -1004,3 +1004,7 @@ display: block
 .hidden {
     display: none;
 }
+
+#options-link {
+    padding-top: 40px;
+}

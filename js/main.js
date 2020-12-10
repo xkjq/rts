@@ -135,6 +135,15 @@ async function loadExamList(data) {
         })
     );
   });
+  if (config.exam_results_url != "") {
+    let url = config.exam_results_url;
+
+    $("#options-link")
+      .empty()
+      .append(
+        `<a href="${url}" target="_blank"><div class="packet-button">Results and answers</div></a>`
+      );
+  }
   $("#options-panel").show();
 }
 
@@ -252,7 +261,13 @@ function setUpQuestions(load_previous) {
       }
     });
 
-    window.question_order = helper.shuffleArray(window.question_order);
+    let randomise_order = true;
+    if (window.config.randomise_order != undefined) {
+      randomise_order = window.config.randomise_order;
+    }
+    if (randomise_order) {
+      window.question_order = helper.shuffleArray(window.question_order);
+    }
   }
   window.number_of_questions = Object.keys(window.questions).length;
   window.review = false;
@@ -299,8 +314,8 @@ function setUpQuestions(load_previous) {
 
     $("#start-dialog").addClass("no-close");
     $("#start-dialog .exam-time").prop("disabled", "true");
-    $("#exam-candidate-number").toggle();
-    $(".packet-database-options").toggle();
+    $("#exam-candidate-number").show();
+    $(".packet-database-options").hide();
     $("#start-dialog").modal({
       closeExisting: false, // Close existing modals. Set this to false if you need to stack multiple modal instances.
       escapeClose: false, // Allows the user to close the modal by pressing `ESC`
@@ -1716,12 +1731,11 @@ $("#start-exam-button").click(function (evt) {
 
 $(".start-packet-button").click(function (evt) {
   if (window.exam_mode) {
-      if (!Number.isInteger(parseInt($("#candidate-number2").val()))) {
-        alert("Please enter a valid candidate number.")
-        return
-      }
+    if (!Number.isInteger(parseInt($("#candidate-number2").val()))) {
+      alert("Please enter a valid candidate number.");
+      return;
+    }
   }
-
 
   if (window.timer != null) {
     window.timer.stop();
@@ -1912,6 +1926,8 @@ function saveSession() {
     total_questions: window.number_of_questions,
   });
 }
+
+window.saveSession = saveSession;
 
 // Register Key Event Listener
 window.addEventListener("keydown", viewer.keydown_handler);
