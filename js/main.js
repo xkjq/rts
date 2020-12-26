@@ -135,7 +135,7 @@ async function loadExamList(data) {
         })
     );
   });
-  if (config.exam_results_url != "") {
+  if (config.exam_results_url != "" && config.exam_results_url != undefined) {
     let url = config.exam_results_url;
 
     $("#options-link")
