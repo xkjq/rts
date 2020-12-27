@@ -251,15 +251,17 @@ function setUpQuestions(load_previous) {
   }
   // Set an order for the questions
   if (!load_previous) {
-    window.question_order = [];
-    Object.keys(window.questions).forEach(function (e) {
-      window.question_order.push(e);
+    if (window.question_order.length != window.questions.length) {
+      window.question_order = [];
+      Object.keys(window.questions).forEach(function (e) {
+        window.question_order.push(e);
 
-      // Make sure answers are arrays
-      if (!Array.isArray(window.questions[e]["answers"])) {
-        window.questions[e]["answers"] = [window.questions[e]["answers"]];
-      }
-    });
+        // Make sure answers are arrays
+        if (!Array.isArray(window.questions[e]["answers"])) {
+          window.questions[e]["answers"] = [window.questions[e]["answers"]];
+        }
+      });
+    }
 
     let randomise_order = true;
     if (window.config.randomise_order != undefined) {
@@ -389,6 +391,10 @@ function setUpPacket(data, packet_name) {
     window.questions = data.questions;
   } else {
     window.questions = data;
+  }
+
+  if (data.hasOwnProperty("exam_order")) {
+    window.question_order = data.exam_order;
   }
 
   // Either continue session or create a new one
