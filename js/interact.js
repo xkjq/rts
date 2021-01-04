@@ -63,7 +63,7 @@ export function postAnswers(ans) {
       alert(`Error submitting answers: ${data.error}`);
   var docHeight = $(document).height();
 
-    $("body").append(`<div id='overlay'><span style='color: yellow'><p>A copy of your answers are displayed below. Please refresh this page to continue.</p>${JSON.stringify(ans)</span>}</div>`);
+    $("body").append(`<div id='overlay'><span style='color: yellow'><p>A copy of your answers are displayed below. Please refresh this page to continue.</p>${JSON.stringify(ans)}</span></div>`);
 
     $("#overlay")
         .height(docHeight)
