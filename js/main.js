@@ -53,13 +53,13 @@ function retrievePacketList() {
     url = window.config.exam_query_url;
   }
 
-  $.getJSON(url, function (data) {
+  $.ajax({dataType: "json", cache: false, url: url, success : function (data) {
     if (data.hasOwnProperty("exams")) {
       loadExamList(data);
     } else {
       loadPacketList(data);
     }
-  })
+  },})
     .done(function () {})
     .fail(function () {
       $.getJSON("packets/packets.json", function (data) {
