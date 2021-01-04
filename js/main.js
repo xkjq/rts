@@ -23,7 +23,7 @@ window.number_of_questions = null;
 window.question_type = null;
 window.loaded_question = null;
 window.review = false;
-window.exam_time = 60;
+window.exam_time = null;
 window.date_started = null;
 window.score = 0;
 
@@ -135,7 +135,7 @@ async function loadExamList(data) {
         })
     );
   });
-  if (config.exam_results_url != "") {
+  if (config.exam_results_url != "" && config.exam_results_url != undefined) {
     let url = config.exam_results_url;
 
     $("#options-link")
@@ -251,15 +251,17 @@ function setUpQuestions(load_previous) {
   }
   // Set an order for the questions
   if (!load_previous) {
-    window.question_order = [];
-    Object.keys(window.questions).forEach(function (e) {
-      window.question_order.push(e);
+    if (window.question_order.length < 1) {
+      window.question_order = [];
+      Object.keys(window.questions).forEach(function (e) {
+        window.question_order.push(e);
 
-      // Make sure answers are arrays
-      if (!Array.isArray(window.questions[e]["answers"])) {
-        window.questions[e]["answers"] = [window.questions[e]["answers"]];
-      }
-    });
+        // Make sure answers are arrays
+        if (!Array.isArray(window.questions[e]["answers"])) {
+          window.questions[e]["answers"] = [window.questions[e]["answers"]];
+        }
+      });
+    }
 
     let randomise_order = true;
     if (window.config.randomise_order != undefined) {
@@ -288,7 +290,8 @@ function setUpQuestions(load_previous) {
 
   console.log(window.question_type);
 
-  if (!load_previous) {
+  // exam_time can be defined in packets
+  if (!load_previous && window.exam_time == null) {
     if (window.question_type == "rapid") {
       window.exam_time = 35 * 60;
     } else if (window.question_type == "anatomy") {
@@ -389,6 +392,14 @@ function setUpPacket(data, packet_name) {
     window.questions = data.questions;
   } else {
     window.questions = data;
+  }
+
+  if (data.hasOwnProperty("exam_order")) {
+    window.question_order = data.exam_order;
+  }
+
+  if (data.hasOwnProperty("exam_time")) {
+    window.exam_time = data.exam_time;
   }
 
   // Either continue session or create a new one
