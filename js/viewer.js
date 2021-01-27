@@ -511,7 +511,7 @@ export function openMainImage(current_question, t, source) {
   function loadAnnotation(imageId, annotation) {
     const toolStateManager = cornerstoneTools.globalImageIdSpecificToolStateManager;
 
-    if (annotation.length < 1) { return }
+    if (annotation == undefined || annotation.length < 1) { return }
 
     let tool_state_no_id = JSON.parse(annotation);
 
