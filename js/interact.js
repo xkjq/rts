@@ -61,7 +61,25 @@ export function postAnswers(ans) {
       }
     } else {
       alert(`Error submitting answers: ${data.error}`);
-    }
-  });
-  // $.post( "http://localhost:8000/submit_answers", JSON.stringify(ans));
+  var docHeight = $(document).height();
+
+    $("body").append(`<div id='overlay'><span style='color: white'><p>An error has occured when submit your answers. A copy of your answers are displayed below, you may wish to save a copy. Please refresh this page to continue.</p>${JSON.stringify(ans)}</span></div>`);
+
+    $("#overlay")
+        .height(docHeight)
+        .css({
+          'opacity' : 0.9,
+          'position': 'absolute',
+          'top': 0,
+          'left': 0,
+          'background-color': 'black',
+          'width': '100%',
+          'user-select': 'text',
+          '-moz-user-select': 'text',
+          '-webkit-user-select': 'text',
+          'z-index': 5000
+        });
+      }
+    });
+    // $.post( "http://localhost:8000/submit_answers", JSON.stringify(ans));
 }
