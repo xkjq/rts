@@ -4,7 +4,11 @@
 export function submitAnswers(window, db) {
   console.log(
     getJsonAnswers(window, db).then((a) => {
-      postAnswers(a);
+    let json = {
+        "eid": window.eid,
+        "answers": JSON.stringify(a),
+      };
+      postAnswers(json);
     })
   );
 }
@@ -28,9 +32,10 @@ export function getJsonAnswers(window, db) {
  * @param {*} ans - json representation of answers
  */
 export function postAnswers(ans) {
-  $("#progress").html(`Submitting answers...`);
+  $("#progress").html("Submitting answers...");
   // ans = {"test" : 1}
-  $.post(window.config.exam_submit_url, JSON.stringify(ans)).done((data) => {
+  console.log(ans)
+  $.post(window.config.exam_submit_url, ans, null, "json").done((data) => {
     console.log(data);
     if (data.success) {
       if (data.question_count == window.number_of_questions) {
@@ -61,25 +66,27 @@ export function postAnswers(ans) {
       }
     } else {
       alert(`Error submitting answers: ${data.error}`);
-  var docHeight = $(document).height();
+      var docHeight = $(document).height();
 
-    $("body").append(`<div id='overlay'><span style='color: white'><p>An error has occured when submit your answers. A copy of your answers are displayed below, you may wish to save a copy. Please refresh this page to continue.</p>${JSON.stringify(ans)}</span></div>`);
+      $("body").append(
+        `<div id='overlay'><span style='color: white'><p>An error has occured when submit your answers. A copy of your answers are displayed below, you may wish to save a copy. Please refresh this page to continue.</p>${JSON.stringify(
+          ans
+        )}</span></div>`
+      );
 
-    $("#overlay")
-        .height(docHeight)
-        .css({
-          'opacity' : 0.9,
-          'position': 'absolute',
-          'top': 0,
-          'left': 0,
-          'background-color': 'black',
-          'width': '100%',
-          'user-select': 'text',
-          '-moz-user-select': 'text',
-          '-webkit-user-select': 'text',
-          'z-index': 5000
-        });
-      }
-    });
-    // $.post( "http://localhost:8000/submit_answers", JSON.stringify(ans));
+      $("#overlay").height(docHeight).css({
+        opacity: 0.9,
+        position: "absolute",
+        top: 0,
+        left: 0,
+        "background-color": "black",
+        width: "100%",
+        "user-select": "text",
+        "-moz-user-select": "text",
+        "-webkit-user-select": "text",
+        "z-index": 5000,
+      });
+    }
+  });
+  // $.post( "http://localhost:8000/submit_answers", JSON.stringify(ans));
 }
