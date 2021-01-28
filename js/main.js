@@ -127,7 +127,19 @@ async function loadExamList(data) {
     if (exams_completed.indexOf(name) > -1) {
       c = " session-completed";
     }
-    $("#packet-list").append(
+
+    let list;
+    if (exam.type != undefined) {
+      if ($(`#packet-list .${exam.type}`).length) {
+        list = $(`#packet-list .${exam.type}`);
+      } else {
+        list = $("#packet-list").append(`<div class='packet-list ${exam.type}'><span class='packet-list-title'>${exam.type}</span><br/></div>`);
+      }
+    } else {
+      list = $("#packet-list");
+    }
+    
+    list.append(
       $(`<div class='packet-button${c}' title='Load packet'></div>`)
         .text(name)
         .click(function () {
@@ -186,6 +198,19 @@ async function loadPacketList(data) {
 
   $("#packet-list").empty();
   window.packet_list.forEach(function (packet) {
+    // Seperate packet types
+    let list;
+    if (packet.type != undefined) {
+      if ($(`#packet-list .${packet.type}`)) {
+        list = $(`#packet-list .${packet.type}`);
+      } else {
+        list = $(`<div class='packet-list ${packet.type}'>${packet.type}<br/></div>`);
+        $("#packet-list").append(list);
+      }
+    } else {
+      list = $("#packet-list");
+    }
+
     let c = "";
     if (packets_started.indexOf(packet) > -1) {
       c = " session-started";
@@ -193,7 +218,7 @@ async function loadPacketList(data) {
     if (packets_completed.indexOf(packet) > -1) {
       c = " session-completed";
     }
-    $("#packet-list").append(
+    list.append(
       $(`<div class='packet-button${c}' title='Load packet'></div>`)
         .text(packet)
         .click(function () {
