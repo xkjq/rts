@@ -1008,3 +1008,8 @@ display: block
 #options-link {
     padding-top: 40px;
 }
+
+.packet-list-title {
+    text-transform: capitalize;
+    font-weight: bolder;
+}
