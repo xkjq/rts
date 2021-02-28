@@ -1,3 +1,4 @@
+import * as helper from "./helpers.js";
 /**
  * Submits answers
  */
@@ -67,7 +68,7 @@ export function postAnswers(ans) {
           alert(`${data.question_count} answers sucessfully submitted.`);
         }
       } else {
-            submissionError(data, ans);
+        submissionError(data, ans);
       }
     })
     .fail((e) => {
@@ -107,4 +108,30 @@ function submissionError(data, ans) {
     "-webkit-user-select": "text",
     "z-index": 5000,
   });
+}
+
+// TODO: async request
+export function getQuestion(url, question_number, question_total) {
+  console.log("Downloading ", url, question_number, question_total);
+  return $.ajax({
+    dataType: "json",
+    url: url,
+    progress: function (e) {
+      console.log(e);
+      if (e.lengthComputable) {
+        var completedPercentage = Math.round((e.loaded * 100) / e.total);
+
+        $("#progress").html(
+          `Downloading [${question_number}/${question_total}]${completedPercentage}%<br/>${helper.formatBytes(
+            e.total
+          )}`
+        );
+      }
+    },
+    //success: function (data) {
+    //  strReturn = data;
+    //},
+    //async: false,
+  });
+
 }
