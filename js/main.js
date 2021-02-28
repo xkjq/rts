@@ -448,26 +448,37 @@ function setUpPacket(data, path) {
     var request_numbers = [];
 
     // For loop to generate requests
+    (async () => {
     for (const n in data["questions"]) {
       const question_url = `${path}/${n}`;
       question_number++;
 
       console.log("Creating ", question_url, question_number, question_total);
       //$("#progress").html(`Downloading [${question_number}/${question_total}]`);
-      const request = interact.getQuestion(
+      const question_json = await interact.getQuestion(
         question_url,
         question_number,
         question_total
       );
 
-      requests.push(request)
-      request_numbers.push(n)
-      //data["questions"][n] = question_json;
+      //requests.push(request)
+      //request_numbers.push(n)
+      data["questions"][n] = question_json;
     }
+    loadSession();
+    })()
 
-    $.when.apply($,requests).then(function(){
-      console.log(arguments); //array of responses [0][data, status, xhrObj],[1][data, status, xhrObj]...
-    })
+
+    //(async () => { 
+    //  for(let f of requests){
+    //    var json = await f;
+    //    console.log(json)
+    //};
+    //})()
+
+    //$.when.apply($,requests).then(function(){
+    //  console.log(arguments); //array of responses [0][data, status, xhrObj],[1][data, status, xhrObj]...
+    //})
 
   } else {
   // Just carry on loading
