@@ -110,19 +110,17 @@ function submissionError(data, ans) {
   });
 }
 
-// TODO: async request
 export function getQuestion(url, question_number, question_total) {
-  console.log("Downloading ", url, question_number, question_total);
+  console.log("Downloading question ", url, question_number, question_total);
   return $.ajax({
     dataType: "json",
     url: url,
     progress: function (e) {
-      console.log(e);
       if (e.lengthComputable) {
         var completedPercentage = Math.round((e.loaded * 100) / e.total);
 
         $("#progress").html(
-          `Downloading [${question_number}/${question_total}]${completedPercentage}%<br/>${helper.formatBytes(
+          `Downloading question [${question_number}/${question_total}]<br/>${completedPercentage}%<br/>${helper.formatBytes(
             e.total
           )}`
         );

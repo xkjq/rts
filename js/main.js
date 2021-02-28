@@ -465,20 +465,9 @@ function setUpPacket(data, path) {
       //request_numbers.push(n)
       data["questions"][n] = question_json;
     }
+    // Once all questions have been downloaded we carry on loading
     loadSession();
     })()
-
-
-    //(async () => { 
-    //  for(let f of requests){
-    //    var json = await f;
-    //    console.log(json)
-    //};
-    //})()
-
-    //$.when.apply($,requests).then(function(){
-    //  console.log(arguments); //array of responses [0][data, status, xhrObj],[1][data, status, xhrObj]...
-    //})
 
   } else {
   // Just carry on loading
