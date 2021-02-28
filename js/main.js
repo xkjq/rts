@@ -660,10 +660,13 @@ function loadQuestion(n, section = 1, force_reload = false) {
         image = image[0]; // Do we want the middle image?
       }
 
+      let caption = "...";
+      if (current_question.image_titles != undefined) {
+        caption = current_question.image_titles[id];
+      }
+
       thumbnails.append(
-        '<div class="figure" id="figure-' +
-          id +
-          '"><div class="figcaption">...</div></div>'
+        `<div class="figure" id="figure-${id}"><div class="figcaption">${caption}</div></div>`
       );
 
       // const thumbnail = $(".figure .thumbnail").get(id);
