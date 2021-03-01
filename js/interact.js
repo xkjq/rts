@@ -117,7 +117,7 @@ export function getQuestion(url, question_number, question_total) {
     url: url,
     progress: function (e) {
       $("#progress").html(
-        `Downloading question [${question_number}/${question_total}]<br/>This file is compressed (no size available)`
+        `Downloading question [${question_number}/${question_total}]<br/>This file is compressed (no size available)`)
       if (e.lengthComputable) {
         var completedPercentage = Math.round((e.loaded * 100) / e.total);
 
