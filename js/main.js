@@ -1982,7 +1982,7 @@ $(document).ajaxStart(function () {
   $("#loading").show();
 });
 
-$(document).ajaxComplete(function () {
+$(document).ajaxStop(function () {
   $("#loading").hide();
 });
 
