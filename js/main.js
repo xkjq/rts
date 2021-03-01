@@ -259,6 +259,7 @@ function loadPacketFromAjax(path) {
     url: path,
     progress: function (e) {
       if (e.lengthComputable) {
+      console.log("1")
         var completedPercentage = Math.round((e.loaded * 100) / e.total);
 
         $("#progress").html(
