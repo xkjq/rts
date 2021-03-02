@@ -201,6 +201,10 @@ export function manualScrollDicom(n) {
   // There must be a better way to do this...
   let dicom_element = document.getElementById("dicom-image");
   let c = cornerstone.getEnabledElement(dicom_element);
+
+  // Cancel if no active element
+  if (el == undefined) { return }
+
   let max = c.toolStateManager.toolState.stack.data[0].imageIds.length;
 
   if (max < 2) {
