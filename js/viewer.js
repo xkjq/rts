@@ -44,6 +44,8 @@ export function loadMainImage(image, stack) {
   cornerstoneTools.setToolActive("Pan", { mouseButtonMask: 1 });
   cornerstoneTools.setToolEnabled("ArrowAnnotate");
 
+  //cornerstoneTools.keyboardInput.enable(element);
+
   element.addEventListener("cornerstoneimagerendered", onImageRendered);
 
   setDicomCanvasNonFullscreen(element);
@@ -78,6 +80,10 @@ export function loadMainImage(image, stack) {
     .addEventListener("change", function () {
       changeControlSelection();
     });
+
+
+  // Register Key Event Listener
+  document.addEventListener("keydown", keydown_handler);
 }
 
 /**
@@ -201,9 +207,6 @@ export function manualScrollDicom(n) {
   // There must be a better way to do this...
   let dicom_element = document.getElementById("dicom-image");
   let c = cornerstone.getEnabledElement(dicom_element);
-
-  // Cancel if no active element
-  if (el == undefined) { return }
 
   let max = c.toolStateManager.toolState.stack.data[0].imageIds.length;
 
@@ -356,7 +359,12 @@ export function changeControlSelection() {
  * @param {*} event - KeyEvent
  */
 export function keydown_handler(event) {
+  console.log(event);
   const target_element = event.target.tagName;
+
+  // Cancel if no active element
+  let dicom_element = document.getElementById("dicom-image");
+  if (dicom_element == undefined) { return }
 
   // Catch all keypresses unless user is typing
   if (target_element == "INPUT" || target_element == "TEXTAREA") {

@@ -270,6 +270,7 @@ function loadPacketFromAjax(path) {
   })
     .done(function (data) {
       //setUpPacket(data, path.split("/").pop());
+      if (data.hasOwnProperty("cached") && data["cached"]) { console.log("loading cached packet")}
       setUpPacket(data, path);
       $("#options-panel").hide();
     })
@@ -378,6 +379,8 @@ cornerstoneWebImageLoader.external.cornerstone = cornerstone;
 
 cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
 
+cornerstone.imageCache.setMaximumSizeBytes(52428800)
+
 // cornerstoneWADOImageLoader.configure({
 //  beforeSend: function(xhr) {
 //    // Add custom headers here (e.g. auth tokens)
@@ -461,6 +464,8 @@ function setUpPacket(data, path) {
         question_number,
         question_total
       );
+
+      if (question_json.hasOwnProperty("cached") && question_json["cached"]) { console.log("loading cached packet")}
 
       //requests.push(request)
       //request_numbers.push(n)
@@ -644,6 +649,13 @@ function loadQuestion(n, section = 1, force_reload = false) {
     $(".canvas-panel").remove();
   }
 
+  // disable any further enabled elements
+  cornerstone.getEnabledElements().forEach((el) => {
+    cornerstone.disable(el.element);
+  })
+
+  cornerstone.imageCache.purgeCache();
+
   // Remove feedback images
   $(".feedback-image").remove();
 
@@ -656,6 +668,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
     // TODO: figure captions (need to extend base json)
 
     current_question.images.forEach(function createThumbnail(image, id) {
+      console.log("create thumb", image);
       // For thumbnails we only want a single image
       if (Array.isArray(image)) {
         image = image[0]; // Do we want the middle image?
@@ -2018,5 +2031,3 @@ function saveSession() {
 
 window.saveSession = saveSession;
 
-// Register Key Event Listener
-window.addEventListener("keydown", viewer.keydown_handler);
