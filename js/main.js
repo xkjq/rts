@@ -459,11 +459,28 @@ function setUpPacket(data, path) {
 
       console.log("Creating ", question_url, question_number, question_total);
       //$("#progress").html(`Downloading [${question_number}/${question_total}]`);
-      const question_json = await interact.getQuestion(
+        let question_json = {}
+      try {
+        question_json = await interact.getQuestion(
         question_url,
         question_number,
         question_total
-      );
+      ).fail(( jqXHR, textStatus, errorThrown ) => { 
+        console.log(jqXHR, textStatus, errorThrown);
+        console.log("error loading question");
+        data["questions"][n] = {};
+      });
+      } catch (error) {
+        console.log(error);
+        console.log("error loading question ", question_url);
+
+        question_json = await interact.getQuestion(
+        question_url,
+        question_number,
+        question_total
+      )
+      
+      }
 
       if (question_json.hasOwnProperty("cached") && question_json["cached"]) { console.log("loading cached packet")}
 
