@@ -53,13 +53,18 @@ function retrievePacketList() {
     url = window.config.exam_query_url;
   }
 
-  $.ajax({dataType: "json", cache: false, url: url, success : function (data) {
-    if (data.hasOwnProperty("exams")) {
-      loadExamList(data);
-    } else {
-      loadPacketList(data);
-    }
-  },})
+  $.ajax({
+    dataType: "json",
+    cache: false,
+    url: url,
+    success: function (data) {
+      if (data.hasOwnProperty("exams")) {
+        loadExamList(data);
+      } else {
+        loadPacketList(data);
+      }
+    },
+  })
     .done(function () {})
     .fail(function () {
       $.getJSON("packets/packets.json", function (data) {
@@ -133,12 +138,14 @@ async function loadExamList(data) {
       if ($(`#packet-list .${exam.type}`).length) {
         list = $(`#packet-list .${exam.type}`);
       } else {
-        list = $("#packet-list").append(`<div class='packet-list ${exam.type}'><span class='packet-list-title'>${exam.type}</span><br/></div>`);
+        list = $("#packet-list").append(
+          `<div class='packet-list ${exam.type}'><span class='packet-list-title'>${exam.type}</span><br/></div>`
+        );
       }
     } else {
       list = $("#packet-list");
     }
-    
+
     list.append(
       $(`<div class='packet-button${c}' title='Load packet'></div>`)
         .text(name)
@@ -204,7 +211,9 @@ async function loadPacketList(data) {
       if ($(`#packet-list .${packet.type}`)) {
         list = $(`#packet-list .${packet.type}`);
       } else {
-        list = $(`<div class='packet-list ${packet.type}'>${packet.type}<br/></div>`);
+        list = $(
+          `<div class='packet-list ${packet.type}'>${packet.type}<br/></div>`
+        );
         $("#packet-list").append(list);
       }
     } else {
@@ -250,6 +259,7 @@ function loadPacketFromAjax(path) {
     url: path,
     progress: function (e) {
       if (e.lengthComputable) {
+      console.log("1")
         var completedPercentage = Math.round((e.loaded * 100) / e.total);
 
         $("#progress").html(
@@ -259,7 +269,8 @@ function loadPacketFromAjax(path) {
     },
   })
     .done(function (data) {
-      setUpPacket(data, path.split("/").pop());
+      //setUpPacket(data, path.split("/").pop());
+      setUpPacket(data, path);
       $("#options-panel").hide();
     })
     .fail(function () {
@@ -393,7 +404,8 @@ window.db = db;
  * Will then call setUpQuestions() to load the packet
  * @param {JSON} data
  */
-function setUpPacket(data, packet_name) {
+function setUpPacket(data, path) {
+  let packet_name = path;
   // Load the exam name from the json packet (if it exists)
   if (data.hasOwnProperty("exam_name")) {
     packet_name = data.exam_name;
@@ -427,6 +439,44 @@ function setUpPacket(data, packet_name) {
     window.exam_time = data.exam_time;
   }
 
+  // If the question_requests is set we need to do a request for each question
+  if (data.hasOwnProperty("question_requests") && data["question_requests"]) {
+
+    const question_total = Object.keys(data["questions"]).length;
+    let question_number = 0;
+
+    var requests = [];
+    var request_numbers = [];
+
+    // For loop to generate requests
+    (async () => {
+    for (const n in data["questions"]) {
+      const question_url = `${path}/${n}`;
+      question_number++;
+
+      console.log("Creating ", question_url, question_number, question_total);
+      //$("#progress").html(`Downloading [${question_number}/${question_total}]`);
+      const question_json = await interact.getQuestion(
+        question_url,
+        question_number,
+        question_total
+      );
+
+      //requests.push(request)
+      //request_numbers.push(n)
+      data["questions"][n] = question_json;
+    }
+    // Once all questions have been downloaded we carry on loading
+    loadSession();
+    })()
+
+  } else {
+  // Just carry on loading
+    loadSession();
+  }
+}
+
+function loadSession() {
   // Either continue session or create a new one
   db.session
     // .where("status")
@@ -611,10 +661,13 @@ function loadQuestion(n, section = 1, force_reload = false) {
         image = image[0]; // Do we want the middle image?
       }
 
+      let caption = "...";
+      if (current_question.image_titles != undefined) {
+        caption = current_question.image_titles[id];
+      }
+
       thumbnails.append(
-        '<div class="figure" id="figure-' +
-          id +
-          '"><div class="figcaption">...</div></div>'
+        `<div class="figure" id="figure-${id}"><div class="figcaption">${caption}</div></div>`
       );
 
       // const thumbnail = $(".figure .thumbnail").get(id);
@@ -1930,7 +1983,7 @@ $(document).ajaxStart(function () {
   $("#loading").show();
 });
 
-$(document).ajaxComplete(function () {
+$(document).ajaxStop(function () {
   $("#loading").hide();
 });
 
