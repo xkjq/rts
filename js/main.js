@@ -379,7 +379,7 @@ cornerstoneWebImageLoader.external.cornerstone = cornerstone;
 
 cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
 
-cornerstone.imageCache.setMaximumSizeBytes(52428800)
+cornerstone.imageCache.setMaximumSizeBytes(22428800)
 
 // cornerstoneWADOImageLoader.configure({
 //  beforeSend: function(xhr) {
