@@ -2,11 +2,11 @@ import * as helper from "./helpers.js";
 /**
  * Submits answers
  */
-export function submitAnswers(window, db) {
+export function submitAnswers(exam_details, db) {
   console.log(
-    getJsonAnswers(window, db).then((a) => {
+    getJsonAnswers(exam_details, db).then((a) => {
       let json = {
-        eid: window.eid,
+        eid: exam_details.eid,
         answers: JSON.stringify(a),
       };
       postAnswers(json);
@@ -18,9 +18,9 @@ export function submitAnswers(window, db) {
  * Gets a json representation of answers
  * @return {JSON} - answers
  */
-export function getJsonAnswers(window, db) {
-  const cid = window.cid;
-  const eid = window.eid;
+export function getJsonAnswers(exam_details, db) {
+  const cid = exam_details.cid;
+  const eid = exam_details.eid;
   return db.answers.where({ aid: aid, cid: cid, eid: eid }).toArray();
   // .then(function(ans) {
   // console.log(ans);
@@ -52,8 +52,8 @@ export function postAnswers(ans) {
             if (config.exam_results_url != "") {
               let url = config.exam_results_url;
 
-              if (window.cid != "") {
-                url = url + window.cid;
+              if (window.exam_details.cid != "") {
+                url = url + window.exam_details.cid;
               }
               $("#options-link")
                 .empty()

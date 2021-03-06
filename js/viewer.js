@@ -20,17 +20,17 @@ export function loadMainImage(image, stack) {
   cornerstoneTools.addStackStateManager(element, ["stack"]);
   cornerstoneTools.addToolState(element, "stack", stack);
 
-  cornerstoneTools.addTool(PanTool);
-  cornerstoneTools.addTool(ZoomTool, {
+  cornerstoneTools.addToolForElement(element, PanTool);
+  cornerstoneTools.addToolForElement(element, ZoomTool, {
     configuration: {
       invert: true,
     },
   });
-  cornerstoneTools.addTool(WwwcTool);
-  cornerstoneTools.addTool(RotateTool);
-  cornerstoneTools.addTool(StackScrollTool);
+  cornerstoneTools.addToolForElement(element, WwwcTool);
+  cornerstoneTools.addToolForElement(element, RotateTool);
+  cornerstoneTools.addToolForElement(element, StackScrollTool);
 
-  cornerstoneTools.addTool(ArrowAnnotateTool, {
+  cornerstoneTools.addToolForElement(element, ArrowAnnotateTool, {
     configuration: {
         getTextCallback: () => {},
         changeTextCallback: () => {},
@@ -41,8 +41,8 @@ export function loadMainImage(image, stack) {
     },
   });
 
-  cornerstoneTools.setToolActive("Pan", { mouseButtonMask: 1 });
-  cornerstoneTools.setToolEnabled("ArrowAnnotate");
+  cornerstoneTools.setToolActiveForElement(element, "Pan", { mouseButtonMask: 1 });
+  cornerstoneTools.setToolEnabledForElement(element, "ArrowAnnotate");
 
   //cornerstoneTools.keyboardInput.enable(element);
 
@@ -269,25 +269,25 @@ export function changeControlSelection() {
   const dicom_element = document.getElementById("dicom-image");
   switch (sel.options[sel.selectedIndex].value) {
     case "pan": {
-      cornerstoneTools.setToolActive("Pan", { mouseButtonMask: 1 });
+      cornerstoneTools.setToolActiveForElement(dicom_element, "Pan", { mouseButtonMask: 1 });
       break;
     }
     case "zoom": {
-      cornerstoneTools.setToolActive("Zoom", { mouseButtonMask: 1 });
+      cornerstoneTools.setToolActiveForElement(dicom_element, "Zoom", { mouseButtonMask: 1 });
       break;
     }
     case "rotate": {
-      cornerstoneTools.setToolActive("Rotate", { mouseButtonMask: 1 });
+      cornerstoneTools.setToolActiveForElement(dicom_element, "Rotate", { mouseButtonMask: 1 });
       break;
     }
     case "scroll": {
-      cornerstoneTools.setToolActive("StackScroll", { mouseButtonMask: 1 });
+      cornerstoneTools.setToolActiveForElement(dicom_element, "StackScroll", { mouseButtonMask: 1 });
       // _this.left.onstart = _this.scroll_start;
       // _this.selected_control = t.selectedIndex;
       break;
     }
     case "window": {
-      cornerstoneTools.setToolActive("Wwwc", { mouseButtonMask: 1 });
+      cornerstoneTools.setToolActiveForElement(dicom_element, "Wwwc", { mouseButtonMask: 1 });
       break;
     }
     case "abdomen": {
@@ -533,6 +533,7 @@ export function openMainImage(current_question, t, source) {
     toolStateManager.restoreToolState(tool_state);
   }
   async function load(images, annotations) {
+    console.log("Load function", images)
     const imageIds = [];
     for (let i = 0; i < images.length; i++) {
       const data_url = images[i];
@@ -587,6 +588,8 @@ export function openMainImage(current_question, t, source) {
         el = document.getElementById("dicom-image");
         if (el != undefined) {
           cornerstone.disable(el);
+          // Explicitly remove the dicom-image element
+          el.remove();
           $(".canvas-panel").remove();
         }
       }

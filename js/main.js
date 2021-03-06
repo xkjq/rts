@@ -6,11 +6,19 @@ import * as config from "./config.js";
 // const { v4: uuidv4 } = require('uuid');
 
 // cid = null;
-window.aid = null;
-window.cid = "";
-window.eid = 5678;
+//window.aid = null;
+//window.cid = "";
+//window.eid = 5678;
 
-window.exam_mode = false;
+window.exam_details = {
+  aid: null,
+  cid: "",
+  eid: 5678,
+  exam_mode: false,
+
+}
+
+//window.exam_mode = false;
 
 window.packet_list = [];
 window.exams = [];
@@ -257,6 +265,7 @@ function loadPacketFromAjax(path) {
   $.ajax({
     dataType: "json",
     url: path,
+    cache: true,
     progress: function (e) {
       if (e.lengthComputable) {
       console.log("1")
@@ -316,7 +325,7 @@ function setUpQuestions(load_previous) {
   window.question_type =
     window.questions[Object.keys(window.questions)[0]].type;
 
-  if (window.exam_mode) {
+  if (window.exam_details.exam_mode) {
     $("#options-button, #review-overlay-button").hide();
   } else {
     $("#submit-button").hide();
@@ -344,12 +353,12 @@ function setUpQuestions(load_previous) {
       window.exam_time = $(".exam-time").val() * 60;
     });
 
-  if (window.exam_mode) {
+  if (window.exam_details.exam_mode) {
     // NOTE: changing the CID when restoring a session will not affect the time left
     $("#candidate-number2")
-      .val(window.cid)
+      .val(window.exam_details.cid)
       .change(() => {
-        window.cid = parseInt($("#candidate-number2").val());
+        window.exam_details.cid = parseInt($("#candidate-number2").val());
       });
 
     $("#start-dialog").addClass("no-close");
@@ -417,7 +426,7 @@ function setUpPacket(data, path) {
   window.packet_name = packet_name;
 
   if (data.hasOwnProperty("eid")) {
-    window.eid = data.eid;
+    window.exam_details.eid = data.eid;
   }
 
   if (data.hasOwnProperty("type")) {
@@ -425,7 +434,7 @@ function setUpPacket(data, path) {
   }
 
   if (data.hasOwnProperty("exam_mode")) {
-    window.exam_mode = data.exam_mode;
+    window.exam_details.exam_mode = data.exam_mode;
   }
 
   if (data.hasOwnProperty("questions")) {
@@ -470,6 +479,13 @@ function setUpPacket(data, path) {
         console.log("error loading question");
         data["questions"][n] = {};
       });
+
+      if (question_json.hasOwnProperty("cached") && question_json["cached"]) { console.log("loading cached packet")}
+
+      //requests.push(request)
+      //request_numbers.push(n)
+      data["questions"][n] = question_json;
+
       } catch (error) {
         console.log(error);
         console.log("error loading question ", question_url);
@@ -479,14 +495,12 @@ function setUpPacket(data, path) {
         question_number,
         question_total
       )
+        data["questions"][n] = question_json;
+      
+      } finally {
       
       }
 
-      if (question_json.hasOwnProperty("cached") && question_json["cached"]) { console.log("loading cached packet")}
-
-      //requests.push(request)
-      //request_numbers.push(n)
-      data["questions"][n] = question_json;
     }
     // Once all questions have been downloaded we carry on loading
     loadSession();
@@ -499,8 +513,9 @@ function setUpPacket(data, path) {
 }
 
 function loadSession() {
+  console.log("load session")
   // Either continue session or create a new one
-  db.session
+  window.db.session
     // .where("status")
     // .equals("active")
     .where("[packet+aid]")
@@ -524,11 +539,11 @@ function loadSession() {
 
       // Start new session if no session found
       if (sessions.length < 1) {
-        window.aid = uuidv4();
+        window.exam_details.aid = uuidv4();
         window.date_started = Date.now();
       } else {
         let text = "Select session to continue (leave blank to create new):";
-        if (window.exam_mode) {
+        if (window.exam_details.exam_mode) {
           text = "Session will be continued";
         }
         console.log(sessions.date);
@@ -559,7 +574,7 @@ function loadSession() {
 
         // If in exam mode we don't want to allow multiple sessions
         let s;
-        if (window.exam_mode) {
+        if (window.exam_details.exam_mode) {
           s = "0";
           alert(text);
         } else {
@@ -569,8 +584,8 @@ function loadSession() {
         if (s != null && s != "") {
           load_previous = true;
 
-          window.aid = sessions[parseInt(s)].aid;
-          window.cid = sessions[parseInt(s)].cid;
+          window.exam_details.aid = sessions[parseInt(s)].aid;
+          window.exam_details.cid = sessions[parseInt(s)].cid;
           window.date_started = sessions[parseInt(s)].date;
 
           let time_left = sessions[parseInt(s)].time_left;
@@ -584,7 +599,7 @@ function loadSession() {
           }
         } else {
           // If cancel is pressed or input is blank
-          window.aid = uuidv4();
+          window.exam_details.aid = uuidv4();
           window.date_started = Date.now();
           console.log("new date", window.date_started);
         }
@@ -601,9 +616,9 @@ function loadSession() {
  * @param {boolean} force_reload - Force question to be reloaded if already loaded
  */
 function loadQuestion(n, section = 1, force_reload = false) {
-  const aid = window.aid;
-  const cid = window.cid;
-  const eid = window.eid;
+  const aid = window.exam_details.aid;
+  const cid = window.exam_details.cid;
+  const eid = window.exam_details.eid;
 
   // Make sure we have an integer
   n = parseInt(n);
@@ -781,7 +796,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
         } else {
           $("#rapid-text").css("display", "none");
         }
-        db.answers.put({
+        window.db.answers.put({
           aid: aid,
           cid: cid,
           eid: eid,
@@ -797,14 +812,14 @@ function loadQuestion(n, section = 1, force_reload = false) {
       $(".long-answer").change(function (evt) {
         // ignore blank text and delete any stored value
         if (evt.target.value.length < 1) {
-          db.answers.delete([aid, cid, eid, qid, "2"]);
+          window.db.answers.delete([aid, cid, eid, qid, "2"]);
           $(
             "#question-list-item-" + window.question_order.indexOf(qid) + "-2"
           ).removeClass("question-saved-localdb");
           return;
         }
         // db.answers.put({aid: [cid, eid, qidn], ans: evt.target.value});
-        db.answers.put({
+        window.db.answers.put({
           aid: aid,
           cid: cid,
           eid: eid,
@@ -824,7 +839,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
       // We chain our db requests as we can only check answers once
       // they have been loaded (should probably use then or after)
 
-      db.answers
+      window.db.answers
         .get({ aid: aid, cid: cid, eid: eid, qid: qid, qidn: "1" })
         .then(function (answer) {
           if (answer != undefined) {
@@ -844,7 +859,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
           console.log("error-", error);
         })
         .then(
-          db.answers
+          window.db.answers
             .get({ aid: aid, cid: cid, eid: eid, qid: qid, qidn: "2" })
             .then(function (answer) {
               if (answer != undefined) {
@@ -878,14 +893,14 @@ function loadQuestion(n, section = 1, force_reload = false) {
       $(".long-answer").change(function (evt) {
         // ignore blank text and delete any stored value
         if (evt.target.value.length < 1) {
-          db.answers.delete([aid, cid, eid, qid, "1"]);
+          window.db.answers.delete([aid, cid, eid, qid, "1"]);
           $(
             "#question-list-item-" + window.question_order.indexOf(qid) + "-1"
           ).removeClass("question-saved-localdb");
           return;
         }
         // db.answers.put({aid: [cid, eid, qidn], ans: evt.target.value});
-        db.answers.put({
+        window.db.answers.put({
           aid: aid,
           cid: cid,
           eid: eid,
@@ -901,7 +916,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
         updateQuestionListPanel();
       });
 
-      db.answers
+      window.db.answers
         .get({ aid: aid, cid: cid, eid: eid, qid: qid, qidn: "1" })
         .then(function (answer) {
           if (answer != undefined) {
@@ -962,7 +977,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
 
         // ignore blank text and delete any stored value
         if (evt.target.value.length < 1) {
-          db.answers.delete([aid, cid, eid, qid, qidn]);
+          window.db.answers.delete([aid, cid, eid, qid, qidn]);
           $(
             "#question-list-item-" +
               window.question_order.indexOf(qid) +
@@ -972,7 +987,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
           return;
         }
         // db.answers.put({aid: [cid, eid, qidn], ans: evt.target.value});
-        db.answers.put({
+        window.db.answers.put({
           aid: aid,
           cid: cid,
           eid: eid,
@@ -997,7 +1012,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
       //
 
       for (let qidn_count = 1; qidn_count < 6; qidn_count++) {
-        db.answers
+        window.db.answers
           .get({
             aid: aid,
             cid: cid,
@@ -1068,12 +1083,13 @@ function setFocus(section) {
  * if it gets slow...)
  */
 function updateQuestionListPanel() {
-  const cid = window.cid;
-  const eid = window.eid;
+  const aid = window.exam_details.aid;
+  const cid = window.exam_details.cid;
+  const eid = window.exam_details.eid;
 
   console.log("UP");
   // Reset all classes
-  db.answers
+  window.db.answers
     .where({ aid: aid, cid: cid, eid: eid })
     .toArray()
     .then(function (answers) {
@@ -1110,7 +1126,7 @@ function updateQuestionListPanel() {
       console.log("error - ", error);
     });
 
-  db.flags
+  window.db.flags
     .where({ aid: aid, cid: cid, eid: eid })
     .toArray()
     .then(function (answers) {
@@ -1317,8 +1333,8 @@ function reviewQuestions() {
     window.timer.stop();
   }
 
-  const cid = window.cid;
-  const eid = window.eid;
+  const cid = window.exam_details.cid;
+  const eid = window.exam_details.eid;
   $("#review-overlay").show();
   $("#review-answer-list").empty();
   $("#review-answer-table").empty();
@@ -1327,7 +1343,7 @@ function reviewQuestions() {
 
   loadQuestion(0, 0, true);
 
-  db.answers
+  window.db.answers
     .where({ aid: aid, cid: cid, eid: eid })
     .toArray()
     .then(function (answers) {
@@ -1424,7 +1440,7 @@ function reviewQuestions() {
           $("#review-overlay").hide();
         });
 
-        db.user_answers
+        window.db.user_answers
           .get({ qid: qid })
           .then(function (answers) {
             // Merge the question answers with the user saved answers
@@ -1674,7 +1690,7 @@ function markAnswer(qid, current_question) {
     let user_answer = textarea.val();
 
     // Load user saved answers
-    db.user_answers
+    window.db.user_answers
       .get({ qid: qid })
       .then(function (saved_user_answers) {
         // check if given answer matches a user saved answer
@@ -1755,7 +1771,7 @@ function markCorrect(qid, user_answer) {
     return;
   }
 
-  db.user_answers
+  window.db.user_answers
     .get({ qid: qid })
     .then(function (answers) {
       let new_answers = [];
@@ -1764,7 +1780,7 @@ function markCorrect(qid, user_answer) {
       }
 
       new_answers.push(user_answer);
-      db.user_answers.put({ qid: qid, ans: new_answers });
+      window.db.user_answers.put({ qid: qid, ans: new_answers });
     })
     .catch(function (error) {
       console.log("error-", error);
@@ -1792,9 +1808,9 @@ function answerInArray(arr, ans) {
 }
 
 function addFlagEvents() {
-  const aid = window.aid;
-  const cid = window.cid;
-  const eid = window.eid;
+  const aid = window.exam_details.aid;
+  const cid = window.exam_details.cid;
+  const eid = window.exam_details.eid;
 
   // Bind flag change events
   $("button.flag").click(function (event) {
@@ -1810,22 +1826,23 @@ function addFlagEvents() {
         "visibility",
         "hidden"
       );
-      db.flags.delete([aid, cid, eid, qid, qidn]);
+      window.db.flags.delete([aid, cid, eid, qid, qidn]);
     } else {
       $("#question-list-item-" + nqid + "-" + qidn + " span").css(
         "visibility",
         "visible"
       );
-      db.flags.put({ aid: aid, cid: cid, eid: eid, qid: qid, qidn: qidn });
+      window.db.flags.put({ aid: aid, cid: cid, eid: eid, qid: qid, qidn: qidn });
     }
     updateQuestionListPanel();
   });
 }
 
 function loadFlagsFromDb(qid, n) {
-  const cid = window.cid;
-  const eid = window.eid;
-  db.flags
+  const aid = window.exam_details.aid;
+  const cid = window.exam_details.cid;
+  const eid = window.exam_details.eid;
+  window.db.flags
     .get({ aid: aid, cid: cid, eid: eid, qid: qid, qidn: n })
     .then(function (answer) {
       if (answer != undefined) {
@@ -1844,12 +1861,12 @@ function showLoginDialog() {
 }
 
 $("#start-exam-button").click(function (evt) {
-  window.cid = parseInt($("#candidate-number").val());
+  window.exam_details.cid = parseInt($("#candidate-number").val());
   $.modal.close();
 });
 
 $(".start-packet-button").click(function (evt) {
-  if (window.exam_mode) {
+  if (window.exam_details.exam_mode) {
     if (!Number.isInteger(parseInt($("#candidate-number2").val()))) {
       alert("Please enter a valid candidate number.");
       return;
@@ -1868,7 +1885,7 @@ $(".start-packet-button").click(function (evt) {
     $("#timer").html("Time left: " + timer.getTimeValues().toString());
   });
   timer.addEventListener("targetAchieved", function (e) {
-    if (window.exam_mode == true) {
+    if (window.exam_details.exam_mode == true) {
       $(
         "#dialog-submit-button, #time-up-review-button, #time-up-continue-button"
       ).toggle();
@@ -1932,7 +1949,7 @@ $("#btn-delete-databases").click(function (evt) {
     "This will delete ALL saved answers (including saved correct answers)!"
   );
   if (r == true) {
-    db.delete()
+    window.db.delete()
       .then(() => {
         $.notify("Database successfully deleted", "success");
         $.notify("The page will now reload", "warn");
@@ -1958,7 +1975,7 @@ $("#btn-delete-current").click(function (evt) {
     return;
   }
 
-  db.flags
+  window.db.flags
     .where("qid")
     .anyOf(window.question_order)
     .delete()
@@ -1970,7 +1987,7 @@ $("#btn-delete-current").click(function (evt) {
       $.notify("You may have to delete all answers this time", "info");
     });
 
-  db.answers
+  window.db.answers
     .where("qid")
     .anyOf(window.question_order)
     .delete()
@@ -1996,7 +2013,7 @@ $("#btn-delete-current-saved-answers").click(function (evt) {
     return;
   }
 
-  db.user_answers
+  window.db.user_answers
     .where("qid")
     .anyOf(window.question_order)
     .delete()
@@ -2030,10 +2047,10 @@ function saveSession() {
     time_values.hours * 60 * 60 +
     time_values.minutes * 60 +
     time_values.seconds;
-  db.session.put({
+  window.db.session.put({
     packet: window.packet_name,
-    aid: window.aid,
-    cid: window.cid,
+    aid: window.exam_details.aid,
+    cid: window.exam_details.cid,
     status: status,
     date: window.date_started,
     score: window.score,
