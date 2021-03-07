@@ -244,9 +244,9 @@ async function loadPacketList(data) {
         .append(
           $(
             `<div class='save-button' title='Download packet for offline use (or to save bandwidth)'><a href='packets/${packet}' download='${packet}'>💾</a></div>`
-          ).click(function () {
+          ).click(function (evt) {
             console.log("packets/" + packet);
-            event.stopPropagation();
+            evt.stopPropagation();
           })
         )
     );
@@ -268,7 +268,6 @@ function loadPacketFromAjax(path) {
     cache: true,
     progress: function (e) {
       if (e.lengthComputable) {
-      console.log("1")
         var completedPercentage = Math.round((e.loaded * 100) / e.total);
 
         $("#progress").html(
@@ -622,13 +621,11 @@ function loadQuestion(n, section = 1, force_reload = false) {
 
   // Make sure we have an integer
   n = parseInt(n);
-  console.log(n);
+  console.log("loading question (n)", n);
 
   const qid = window.question_order[n];
   console.log("qid", qid);
   const current_question = window.questions[qid];
-
-  console.log("N=", n, section, current_question);
 
   if (n == window.loaded_question && force_reload == false) {
     // Question already loaded
@@ -682,9 +679,11 @@ function loadQuestion(n, section = 1, force_reload = false) {
   }
 
   // disable any further enabled elements
-  cornerstone.getEnabledElements().forEach((el) => {
-    cornerstone.disable(el.element);
-  })
+  let enabled_elements = cornerstone.getEnabledElements();
+  for (var i = enabled_elements.length - 1; i >= 0; i--) {
+    console.log("disable, ", enabled_elements[i]);
+    cornerstone.disable(enabled_elements[i].element);
+  }
 
   cornerstone.imageCache.purgeCache();
 
@@ -700,7 +699,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
     // TODO: figure captions (need to extend base json)
 
     current_question.images.forEach(function createThumbnail(image, id) {
-      console.log("create thumb", image);
+      //console.log("create thumb", image);
       // For thumbnails we only want a single image
       if (Array.isArray(image)) {
         image = image[0]; // Do we want the middle image?
@@ -796,16 +795,19 @@ function loadQuestion(n, section = 1, force_reload = false) {
         } else {
           $("#rapid-text").css("display", "none");
         }
-        window.db.answers.put({
+
+        let answer = {
           aid: aid,
           cid: cid,
           eid: eid,
           qid: qid,
           qidn: "1",
           ans: evt.target.value,
-        });
+        }
+
+        window.db.answers.put(answer);
         saveSession();
-        updateQuestionListPanel();
+        updateQuestionListPanel(answer);
       });
 
       // Save long answers on textchange
@@ -818,22 +820,24 @@ function loadQuestion(n, section = 1, force_reload = false) {
           ).removeClass("question-saved-localdb");
           return;
         }
-        // db.answers.put({aid: [cid, eid, qidn], ans: evt.target.value});
-        window.db.answers.put({
+
+        let answer = {
           aid: aid,
           cid: cid,
           eid: eid,
           qid: qid,
           qidn: "2",
           ans: evt.target.value,
-        });
+        }
+        // db.answers.put({aid: [cid, eid, qidn], ans: evt.target.value});
+        window.db.answers.put(answer);
 
         $(
           "#question-list-item-" + window.question_order.indexOf(qid) + "-2"
         ).addClass("question-saved-localdb");
 
         saveSession();
-        updateQuestionListPanel();
+        updateQuestionListPanel(answer);
       });
 
       // We chain our db requests as we can only check answers once
@@ -899,21 +903,23 @@ function loadQuestion(n, section = 1, force_reload = false) {
           ).removeClass("question-saved-localdb");
           return;
         }
-        // db.answers.put({aid: [cid, eid, qidn], ans: evt.target.value});
-        window.db.answers.put({
+
+        let answer = {
           aid: aid,
           cid: cid,
           eid: eid,
           qid: qid,
           qidn: "1",
           ans: evt.target.value,
-        });
+        }
+        // db.answers.put({aid: [cid, eid, qidn], ans: evt.target.value});
+        window.db.answers.put(answer);
 
         $(
           "#question-list-item-" + window.question_order.indexOf(qid) + "-1"
         ).addClass("question-saved-localdb");
         saveSession();
-        updateQuestionListPanel();
+        updateQuestionListPanel(answer);
       });
 
       window.db.answers
@@ -987,14 +993,16 @@ function loadQuestion(n, section = 1, force_reload = false) {
           return;
         }
         // db.answers.put({aid: [cid, eid, qidn], ans: evt.target.value});
-        window.db.answers.put({
+        const answer = {
           aid: aid,
           cid: cid,
           eid: eid,
           qid: qid,
           qidn: qidn,
           ans: evt.target.value,
-        });
+        }
+
+        window.db.answers.put(answer);
         console.log("SAVE", qid, qidn, evt.target.value);
 
         $(
@@ -1004,7 +1012,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
             qidn
         ).addClass("question-saved-localdb");
         saveSession();
-        updateQuestionListPanel();
+        updateQuestionListPanel(answer);
       });
 
       // Loop through the 5 text areas and retrieve from db
@@ -1047,8 +1055,8 @@ function loadQuestion(n, section = 1, force_reload = false) {
     }
   }
 
-  updateQuestionListPanel();
-  setFocus(section);
+  //rebuildQuestionListPanel();
+  setTimeout(() => { setFocus(section); }, 200);
 }
 
 /**
@@ -1057,7 +1065,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
  */
 function setFocus(section) {
   // Horrible (but it works)
-  setTimeout(function () {
+  //setTimeout(function () {
     // In pratique it selects the end of a textarea but I'm not sure if I can be bothered...
     // Apparently I can...
     const el = $("*[data-answer-section-qidn=" + section + "]");
@@ -1074,51 +1082,78 @@ function setFocus(section) {
     } else {
       el.focus();
     }
-  }, 200);
+  //}, 200);
 }
 
+function updateQuestionListPanel(answer) {
+  $(
+    "#question-list-item-" +
+      window.question_order.indexOf(answer.qid) +
+      "-" +
+      answer.qidn
+  ).addClass("question-saved-localdb");
+
+  if (window.question_type == "rapid" && answer.qidn == "1") {
+    if (answer.ans == "Abnormal") {
+      $(
+        "#question-list-item-" +
+          window.question_order.indexOf(answer.qid) +
+          "-2"
+      ).css("display", "block");
+    } else {
+      $(
+        "#question-list-item-" +
+          window.question_order.indexOf(answer.qid) +
+          "-2"
+      ).css("display", "none");
+    }
+  }
+}
+
+function deleteQuestionListPanelFlags(answer) {
+  $(
+    "#question-list-item-" +
+      window.question_order.indexOf(answer.qid) +
+      "-" +
+      answer.qidn +
+      " span"
+  ).css("visibility", "hidden");
+
+}
+
+function updateQuestionListPanelFlags(answer) {
+  $(
+    "#question-list-item-" +
+      window.question_order.indexOf(answer.qid) +
+      "-" +
+      answer.qidn +
+      " span"
+  ).css("visibility", "visible");
+
+}
 /**
  * Updates the question list panel
  * Test with just a global update (may need to do these individually
  * if it gets slow...)
  */
-function updateQuestionListPanel() {
+function rebuildQuestionListPanel() {
   const aid = window.exam_details.aid;
   const cid = window.exam_details.cid;
   const eid = window.exam_details.eid;
 
   console.log("UP");
-  // Reset all classes
   window.db.answers
     .where({ aid: aid, cid: cid, eid: eid })
     .toArray()
     .then(function (answers) {
+      // Reset all classes (of question-list-item s)
       $(".question-list-panel div")
         .slice(1)
         .attr("class", "question-list-item");
-      answers.forEach(function (answer, n) {
-        $(
-          "#question-list-item-" +
-            window.question_order.indexOf(answer.qid) +
-            "-" +
-            answer.qidn
-        ).addClass("question-saved-localdb");
 
-        if (window.question_type == "rapid" && answer.qidn == "1") {
-          if (answer.ans == "Abnormal") {
-            $(
-              "#question-list-item-" +
-                window.question_order.indexOf(answer.qid) +
-                "-2"
-            ).css("display", "block");
-          } else {
-            $(
-              "#question-list-item-" +
-                window.question_order.indexOf(answer.qid) +
-                "-2"
-            ).css("display", "none");
-          }
-        }
+      // Loop through each saved answer
+      answers.forEach(function (answer, n) {
+        updateQuestionListPanel(answer);
       });
       // $(".long-answer").text(answer.ans);
     })
@@ -1131,13 +1166,7 @@ function updateQuestionListPanel() {
     .toArray()
     .then(function (answers) {
       answers.forEach(function (answer, n) {
-        $(
-          "#question-list-item-" +
-            window.question_order.indexOf(answer.qid) +
-            "-" +
-            answer.qidn +
-            " span"
-        ).css("visibility", "visible");
+        updateQuestionListPanelFlags(answer);
       });
       // $(".long-answer").text(answer.ans);
     })
@@ -1225,6 +1254,8 @@ function createQuestionListPanel() {
   $(".question-list-item").click(function (evt) {
     loadQuestion($(this).attr("data-qid"), $(this).attr("data-qidn"));
   });
+
+  rebuildQuestionListPanel();
 }
 
 $("#btn-local-file-load").click(function (evt) {
@@ -1387,7 +1418,6 @@ function reviewQuestions() {
           if (model_answers[0] != undefined) {
             model_answers = model_answers[0];
           }
-          console.log("test", window.questions[qid], model_answers);
 
           const titles = [
             "Observations",
@@ -1621,7 +1651,7 @@ function reviewQuestions() {
           .finally(() => {
             // This will lead to saveSession being called after each question is marked
             saveSession();
-            updateQuestionListPanel();
+            rebuildQuestionListPanel();
           });
       });
     })
@@ -1666,7 +1696,6 @@ function markAnswer(qid, current_question) {
     if (type == "long") {
       // For long cases we simple disable the texareas and append the
       // model answers
-      console.log(current_question);
       let model_answers = current_question.answers[0];
 
       // TODO: FIX THIS
@@ -1738,7 +1767,7 @@ function markAnswer(qid, current_question) {
         console.log("error-", error);
       });
     addFeedback(current_question);
-    updateQuestionListPanel();
+    rebuildQuestionListPanel();
   }
 }
 
@@ -1821,23 +1850,27 @@ function addFlagEvents() {
 
     el.toggleClass("flag flag-selected");
 
+    const flag_db_data = { aid: aid, cid: cid, eid: eid, qid: qid, qidn: qidn };
+
     if (el.hasClass("flag")) {
       $("#question-list-item-" + nqid + "-" + qidn + " span").css(
         "visibility",
         "hidden"
       );
       window.db.flags.delete([aid, cid, eid, qid, qidn]);
+      deleteQuestionListPanelFlags(flag_db_data);
     } else {
       $("#question-list-item-" + nqid + "-" + qidn + " span").css(
         "visibility",
         "visible"
       );
-      window.db.flags.put({ aid: aid, cid: cid, eid: eid, qid: qid, qidn: qidn });
+      window.db.flags.put(flag_db_data);
+      updateQuestionListPanelFlags(flag_db_data);
     }
-    updateQuestionListPanel();
   });
 }
 
+// Loads the current question flag status and updates display
 function loadFlagsFromDb(qid, n) {
   const aid = window.exam_details.aid;
   const cid = window.exam_details.cid;

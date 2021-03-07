@@ -264,8 +264,6 @@ export function changeControlSelection() {
   const old = sel.oldSelectedIndex;
   sel.oldSelectedIndex = sel.selectedIndex;
 
-  console.log(event);
-
   const dicom_element = document.getElementById("dicom-image");
   switch (sel.options[sel.selectedIndex].value) {
     case "pan": {
@@ -533,7 +531,7 @@ export function openMainImage(current_question, t, source) {
     toolStateManager.restoreToolState(tool_state);
   }
   async function load(images, annotations) {
-    console.log("Load function", images)
+    //console.log("Load function", images)
     const imageIds = [];
     for (let i = 0; i < images.length; i++) {
       const data_url = images[i];
