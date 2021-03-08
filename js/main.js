@@ -15,8 +15,7 @@ window.exam_details = {
   cid: "",
   eid: 5678,
   exam_mode: false,
-
-}
+};
 
 //window.exam_mode = false;
 
@@ -278,7 +277,9 @@ function loadPacketFromAjax(path) {
   })
     .done(function (data) {
       //setUpPacket(data, path.split("/").pop());
-      if (data.hasOwnProperty("cached") && data["cached"]) { console.log("loading cached packet")}
+      if (data.hasOwnProperty("cached") && data["cached"]) {
+        console.log("loading cached packet");
+      }
       setUpPacket(data, path);
       $("#options-panel").hide();
     })
@@ -387,7 +388,7 @@ cornerstoneWebImageLoader.external.cornerstone = cornerstone;
 
 cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
 
-cornerstone.imageCache.setMaximumSizeBytes(22428800)
+cornerstone.imageCache.setMaximumSizeBytes(22428800);
 
 // cornerstoneWADOImageLoader.configure({
 //  beforeSend: function(xhr) {
@@ -452,7 +453,6 @@ function setUpPacket(data, path) {
 
   // If the question_requests is set we need to do a request for each question
   if (data.hasOwnProperty("question_requests") && data["question_requests"]) {
-
     const question_total = Object.keys(data["questions"]).length;
     let question_number = 0;
 
@@ -461,58 +461,46 @@ function setUpPacket(data, path) {
 
     // For loop to generate requests
     (async () => {
-    for (const n in data["questions"]) {
-      const question_url = `${path}/${n}`;
-      question_number++;
+      for (const n in data["questions"]) {
+        const question_url = `${path}/${n}`;
+        question_number++;
 
-      console.log("Creating ", question_url, question_number, question_total);
-      //$("#progress").html(`Downloading [${question_number}/${question_total}]`);
-        let question_json = {}
-      try {
-        question_json = await interact.getQuestion(
-        question_url,
-        question_number,
-        question_total
-      ).fail(( jqXHR, textStatus, errorThrown ) => { 
-        console.log(jqXHR, textStatus, errorThrown);
-        console.log("error loading question");
-        data["questions"][n] = {};
-      });
+        console.log("Creating ", question_url, question_number, question_total);
+        //$("#progress").html(`Downloading [${question_number}/${question_total}]`);
+        let question_json = {};
+        question_json = await interact
+          .getQuestion(question_url, question_number, question_total)
+          .fail((jqXHR, textStatus, errorThrown) => {
+            console.log(jqXHR, textStatus, errorThrown);
+            console.log("error loading question");
+            data["questions"][n] = {};
+          });
 
-      if (question_json.hasOwnProperty("cached") && question_json["cached"]) { console.log("loading cached packet")}
+        if (question_json.hasOwnProperty("cached") && question_json["cached"]) {
+          console.log("loading cached packet");
+        }
 
-      //requests.push(request)
-      //request_numbers.push(n)
-      data["questions"][n] = question_json;
+        if (
+          question_json.hasOwnProperty("images_json") &&
+          question_json["images_json"]
+        ) {
+        }
 
-      } catch (error) {
-        console.log(error);
-        console.log("error loading question ", question_url);
-
-        question_json = await interact.getQuestion(
-        question_url,
-        question_number,
-        question_total
-      )
+        //requests.push(request)
+        //request_numbers.push(n)
         data["questions"][n] = question_json;
-      
-      } finally {
-      
       }
-
-    }
-    // Once all questions have been downloaded we carry on loading
-    loadSession();
-    })()
-
+      // Once all questions have been downloaded we carry on loading
+      loadSession();
+    })();
   } else {
-  // Just carry on loading
+    // Just carry on loading
     loadSession();
   }
 }
 
 function loadSession() {
-  console.log("load session")
+  console.log("load session");
   // Either continue session or create a new one
   window.db.session
     // .where("status")
@@ -803,7 +791,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
           qid: qid,
           qidn: "1",
           ans: evt.target.value,
-        }
+        };
 
         window.db.answers.put(answer);
         saveSession();
@@ -828,7 +816,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
           qid: qid,
           qidn: "2",
           ans: evt.target.value,
-        }
+        };
         // db.answers.put({aid: [cid, eid, qidn], ans: evt.target.value});
         window.db.answers.put(answer);
 
@@ -911,7 +899,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
           qid: qid,
           qidn: "1",
           ans: evt.target.value,
-        }
+        };
         // db.answers.put({aid: [cid, eid, qidn], ans: evt.target.value});
         window.db.answers.put(answer);
 
@@ -1000,7 +988,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
           qid: qid,
           qidn: qidn,
           ans: evt.target.value,
-        }
+        };
 
         window.db.answers.put(answer);
         console.log("SAVE", qid, qidn, evt.target.value);
@@ -1056,7 +1044,9 @@ function loadQuestion(n, section = 1, force_reload = false) {
   }
 
   //rebuildQuestionListPanel();
-  setTimeout(() => { setFocus(section); }, 200);
+  setTimeout(() => {
+    setFocus(section);
+  }, 200);
 }
 
 /**
@@ -1066,22 +1056,22 @@ function loadQuestion(n, section = 1, force_reload = false) {
 function setFocus(section) {
   // Horrible (but it works)
   //setTimeout(function () {
-    // In pratique it selects the end of a textarea but I'm not sure if I can be bothered...
-    // Apparently I can...
-    const el = $("*[data-answer-section-qidn=" + section + "]");
-    // If the target is a textarea we move focus and reapply the value
-    // to move the cursor to the end
-    if (el.length < 1) {
-      return;
-    }
+  // In pratique it selects the end of a textarea but I'm not sure if I can be bothered...
+  // Apparently I can...
+  const el = $("*[data-answer-section-qidn=" + section + "]");
+  // If the target is a textarea we move focus and reapply the value
+  // to move the cursor to the end
+  if (el.length < 1) {
+    return;
+  }
 
-    if (el.get(0).type == "textarea") {
-      const val = el.val();
-      el.focus().val("").val(val);
-      // else we just focus
-    } else {
-      el.focus();
-    }
+  if (el.get(0).type == "textarea") {
+    const val = el.val();
+    el.focus().val("").val(val);
+    // else we just focus
+  } else {
+    el.focus();
+  }
   //}, 200);
 }
 
@@ -1118,7 +1108,6 @@ function deleteQuestionListPanelFlags(answer) {
       answer.qidn +
       " span"
   ).css("visibility", "hidden");
-
 }
 
 function updateQuestionListPanelFlags(answer) {
@@ -1129,7 +1118,6 @@ function updateQuestionListPanelFlags(answer) {
       answer.qidn +
       " span"
   ).css("visibility", "visible");
-
 }
 /**
  * Updates the question list panel
@@ -1982,7 +1970,8 @@ $("#btn-delete-databases").click(function (evt) {
     "This will delete ALL saved answers (including saved correct answers)!"
   );
   if (r == true) {
-    window.db.delete()
+    window.db
+      .delete()
       .then(() => {
         $.notify("Database successfully deleted", "success");
         $.notify("The page will now reload", "warn");
@@ -2097,4 +2086,3 @@ function saveSession() {
 }
 
 window.saveSession = saveSession;
-
