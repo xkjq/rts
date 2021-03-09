@@ -128,6 +128,7 @@ export function getQuestion(url, question_number, question_total) {
         );
       }
     },
+    error: (jqXHR, textStatus, errorThrown) => { console.log("error downlading", jqXHR, textStatus, errorThrown) },
     //success: function (data) {
     //  strReturn = data;
     //},

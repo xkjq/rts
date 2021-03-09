@@ -357,7 +357,7 @@ export function changeControlSelection() {
  * @param {*} event - KeyEvent
  */
 export function keydown_handler(event) {
-  console.log(event);
+  //console.log(event);
   const target_element = event.target.tagName;
 
   // Cancel if no active element

@@ -23,7 +23,8 @@ window.packet_list = [];
 window.exams = [];
 
 window.packet_name = null;
-window.questions = null;
+//window.questions = null;
+let questions = null;
 window.question_order = [];
 window.questions_correct = {};
 window.number_of_questions = null;
@@ -36,7 +37,7 @@ window.score = 0;
 
 window.allow_self_marking = true;
 
-window.timer = null;
+let timer = null;
 
 //window.dfile = null;
 
@@ -54,7 +55,7 @@ retrievePacketList();
 function retrievePacketList() {
   let url = "packets/";
 
-  console.log(window.config.exam_query_url);
+  //console.log(window.config.exam_query_url);
 
   if (window.config.exam_query_url != undefined) {
     url = window.config.exam_query_url;
@@ -81,9 +82,9 @@ function retrievePacketList() {
           loadPacketList(data);
         }
       }).fail(function (jqXHR, textStatus, errorThrown) {
-        console.log(jqXHR);
-        console.log(textStatus);
-        console.log(errorThrown);
+        //console.log(jqXHR);
+        //console.log(textStatus);
+        //console.log(errorThrown);
         console.log("No packet list available");
         showLoginDialog();
       });
@@ -98,7 +99,7 @@ function retrievePacketList() {
  * @param {JSON} data - json containing available exams
  */
 async function loadExamList(data) {
-  let sessions = await window.db.session.toArray().catch(function (error) {
+  let sessions = await db.session.toArray().catch(function (error) {
     console.log("Error loading session", error);
     $("#database-error").text(
       "Error loading the database, schema has probably changed and needs updating. You will probably need to delete the local database."
@@ -179,7 +180,7 @@ async function loadExamList(data) {
  * @param {JSON} data - json containing available packets
  */
 async function loadPacketList(data) {
-  let sessions = await window.db.session.toArray().catch(function (error) {
+  let sessions = await db.session.toArray().catch(function (error) {
     console.log("Error loading session", error);
     $("#database-error").text(
       "Error loading the database, schema has probably changed and needs updating. You will probably need to delete the local database."
@@ -244,7 +245,7 @@ async function loadPacketList(data) {
           $(
             `<div class='save-button' title='Download packet for offline use (or to save bandwidth)'><a href='packets/${packet}' download='${packet}'>💾</a></div>`
           ).click(function (evt) {
-            console.log("packets/" + packet);
+            //console.log("packets/" + packet);
             evt.stopPropagation();
           })
         )
@@ -258,7 +259,7 @@ async function loadPacketList(data) {
  * @param {string} path - relative path to the packet json file
  */
 function loadPacketFromAjax(path) {
-  console.log("loading packet from " + path);
+  //console.log("loading packet from " + path);
   $("#progress").html(`Requesting packet: ${path}`);
 
   $.ajax({
@@ -278,13 +279,13 @@ function loadPacketFromAjax(path) {
     .done(function (data) {
       //setUpPacket(data, path.split("/").pop());
       if (data.hasOwnProperty("cached") && data["cached"]) {
-        console.log("loading cached packet");
+        //console.log("loading cached packet");
       }
       setUpPacket(data, path);
       $("#options-panel").hide();
     })
     .fail(function () {
-      console.log("Unable to load packet at: " + path);
+      //console.log("Unable to load packet at: " + path);
     });
 }
 
@@ -292,19 +293,31 @@ function loadPacketFromAjax(path) {
  * Build the currently loaded quiz
  */
 function setUpQuestions(load_previous) {
-  if (window.questions == undefined) {
+  if (questions == undefined) {
     return;
   }
+
+  Object.keys(questions).forEach(function (e) {
+    // Store question data into dexie
+    let d = {
+      eid: window.exam_details.eid,
+      qid: e,
+      data: questions[e],
+    };
+
+    question_db.question_data.put(d);
+  });
+
   // Set an order for the questions
   if (!load_previous) {
     if (window.question_order.length < 1) {
       window.question_order = [];
-      Object.keys(window.questions).forEach(function (e) {
+      Object.keys(questions).forEach(function (e) {
         window.question_order.push(e);
 
         // Make sure answers are arrays
-        if (!Array.isArray(window.questions[e]["answers"])) {
-          window.questions[e]["answers"] = [window.questions[e]["answers"]];
+        if (!Array.isArray(questions[e]["answers"])) {
+          questions[e]["answers"] = [questions[e]["answers"]];
         }
       });
     }
@@ -317,13 +330,13 @@ function setUpQuestions(load_previous) {
       window.question_order = helper.shuffleArray(window.question_order);
     }
   }
-  window.number_of_questions = Object.keys(window.questions).length;
+  window.number_of_questions = Object.keys(questions).length;
   window.review = false;
 
   // Horrible way to get type of questions
   // We assume they are all of the same type....
   window.question_type =
-    window.questions[Object.keys(window.questions)[0]].type;
+    questions[Object.keys(questions)[0]].type;
 
   if (window.exam_details.exam_mode) {
     $("#options-button, #review-overlay-button").hide();
@@ -331,10 +344,10 @@ function setUpQuestions(load_previous) {
     $("#submit-button").hide();
   }
 
-  loadQuestion(0, 1, true);
-  createQuestionListPanel();
+  questions = null;
 
-  console.log(window.question_type);
+
+  //console.log(window.question_type);
 
   // exam_time can be defined in packets
   if (!load_previous && window.exam_time == null) {
@@ -374,7 +387,12 @@ function setUpQuestions(load_previous) {
   } else {
     $("#start-dialog").modal();
   }
+
+  loadQuestion(0, 1, true);
+  createQuestionListPanel();
 }
+
+cornerstone.imageCache.setMaximumSizeBytes(5128800);
 
 // Set up cornerstone (the dicom viewer)
 cornerstoneBase64ImageLoader.external.cornerstone = cornerstone;
@@ -387,8 +405,6 @@ cornerstoneWebImageLoader.external.cornerstone = cornerstone;
 // });
 
 cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
-
-cornerstone.imageCache.setMaximumSizeBytes(22428800);
 
 // cornerstoneWADOImageLoader.configure({
 //  beforeSend: function(xhr) {
@@ -409,7 +425,12 @@ db.version(1).stores({
     "[packet+aid], packet, aid, status, date, score, max_score, exam_time, time_left, question_order, questions_answered, total_questions",
 });
 
-window.db = db;
+const question_db = new Dexie("question_database");
+question_db.version(1).stores({
+  question_data: "[eid+qid], eid, data",
+});
+
+//db = db;
 
 /**
  * Parse the packet and extract metadata (if it exists)
@@ -438,9 +459,9 @@ function setUpPacket(data, path) {
   }
 
   if (data.hasOwnProperty("questions")) {
-    window.questions = data.questions;
+    questions = data.questions;
   } else {
-    window.questions = data;
+    questions = data;
   }
 
   if (data.hasOwnProperty("exam_order")) {
@@ -465,13 +486,13 @@ function setUpPacket(data, path) {
         const question_url = `${path}/${n}`;
         question_number++;
 
-        console.log("Creating ", question_url, question_number, question_total);
+        //console.log("Creating ", question_url, question_number, question_total);
         //$("#progress").html(`Downloading [${question_number}/${question_total}]`);
         let question_json = {};
         question_json = await interact
           .getQuestion(question_url, question_number, question_total)
           .fail((jqXHR, textStatus, errorThrown) => {
-            console.log(jqXHR, textStatus, errorThrown);
+            //console.log(jqXHR, textStatus, errorThrown);
             console.log("error loading question");
             data["questions"][n] = {};
           });
@@ -500,9 +521,9 @@ function setUpPacket(data, path) {
 }
 
 function loadSession() {
-  console.log("load session");
+  //console.log("load session");
   // Either continue session or create a new one
-  window.db.session
+  db.session
     // .where("status")
     // .equals("active")
     .where("[packet+aid]")
@@ -512,7 +533,7 @@ function loadSession() {
     )
     .toArray()
     .then((sessions) => {
-      console.log("sessions", sessions);
+      //console.log("sessions", sessions);
 
       // let active_sessions = [];
 
@@ -533,7 +554,7 @@ function loadSession() {
         if (window.exam_details.exam_mode) {
           text = "Session will be continued";
         }
-        console.log(sessions.date);
+        //console.log(sessions.date);
 
         for (let i = 0; i < sessions.length; i++) {
           let d = new Date(sessions[i].date);
@@ -588,7 +609,7 @@ function loadSession() {
           // If cancel is pressed or input is blank
           window.exam_details.aid = uuidv4();
           window.date_started = Date.now();
-          console.log("new date", window.date_started);
+          //console.log("new date", window.date_started);
         }
       }
 
@@ -602,18 +623,27 @@ function loadSession() {
  * @param {number} section - Question section to focus
  * @param {boolean} force_reload - Force question to be reloaded if already loaded
  */
-function loadQuestion(n, section = 1, force_reload = false) {
+async function loadQuestion(n, section = 1, force_reload = false) {
+
+  $("#question-loading").show();
   const aid = window.exam_details.aid;
   const cid = window.exam_details.cid;
   const eid = window.exam_details.eid;
 
+
   // Make sure we have an integer
   n = parseInt(n);
-  console.log("loading question (n)", n);
+  //console.log("loading question (n)", n);
 
   const qid = window.question_order[n];
-  console.log("qid", qid);
-  const current_question = window.questions[qid];
+
+  let q = {qid: qid.toString(), eid: eid};
+
+  let return_data = await question_db.question_data.get(q);
+  const question_data = return_data.data;
+  return_data = null;
+
+  //const current_question = window.questions[qid];
 
   if (n == window.loaded_question && force_reload == false) {
     // Question already loaded
@@ -648,32 +678,33 @@ function loadQuestion(n, section = 1, force_reload = false) {
 
   const display_n = n + 1;
 
-  if (current_question.title) {
+  if (question_data.title) {
     $(".question .title").get(0).innerHTML =
       '<span style="font-weight:700;">' +
       display_n +
       "</span> " +
-      current_question.title;
+      question_data.title;
   } else {
     $(".question .title").get(0).innerHTML =
       '<span style="font-weight:700;">' + display_n + "</span>";
   }
 
   // Close any open figures
-  let el = document.getElementById("dicom-image");
-  if (el != undefined) {
-    cornerstone.disable(el);
-    $(".canvas-panel").remove();
-  }
+  //let el = document.getElementById("dicom-image");
+  //if (el != undefined) {
+  //  cornerstone.disable(el);
+  //}
 
   // disable any further enabled elements
   let enabled_elements = cornerstone.getEnabledElements();
   for (var i = enabled_elements.length - 1; i >= 0; i--) {
-    console.log("disable, ", enabled_elements[i]);
+    //console.log("disable, ", enabled_elements[i]);
     cornerstone.disable(enabled_elements[i].element);
   }
+  $(".canvas-panel").remove();
 
   cornerstone.imageCache.purgeCache();
+  cornerstoneWADOImageLoader.default.wadouri.dataSetCacheManager.purge();
 
   // Remove feedback images
   $(".feedback-image").remove();
@@ -681,86 +712,94 @@ function loadQuestion(n, section = 1, force_reload = false) {
   // Set up thumbnails
   const thumbnails = $(".thumbs");
   // Why are we checking this?
-  if (thumbnails) {
-    thumbnails.empty();
+  thumbnails.empty();
 
-    // TODO: figure captions (need to extend base json)
+  // TODO: figure captions (need to extend base json)
+  function createThumbnail(image, id, caption, thumbnails) {
+    //console.log("create thumb", image);
+    // For thumbnails we only want a single image
 
-    current_question.images.forEach(function createThumbnail(image, id) {
-      //console.log("create thumb", image);
-      // For thumbnails we only want a single image
-      if (Array.isArray(image)) {
-        image = image[0]; // Do we want the middle image?
-      }
+    thumbnails.append(
+      `<div class="figure" id="figure-${id}"><div class="figcaption">${caption}</div></div>`
+    );
 
-      let caption = "...";
-      if (current_question.image_titles != undefined) {
-        caption = current_question.image_titles[id];
-      }
+    // const thumbnail = $(".figure .thumbnail").get(id);
+    // cornerstone.enable(thumbnail)
+    // based_img = current_question.images[id];
+    const based_img = image;
 
-      thumbnails.append(
-        `<div class="figure" id="figure-${id}"><div class="figcaption">${caption}</div></div>`
-      );
+    // based (image) data url, just load the image directly
+    if (based_img.startsWith("data:image/")) {
+      const img = $("<img />", {
+        src: based_img,
+        id: "thumb-" + id,
+        class: "thumbnail",
+        title: "Click on the thumbnail to view and manipulate the image.",
+        draggable: "false",
+        style: "height: 100px;",
+      });
 
-      // const thumbnail = $(".figure .thumbnail").get(id);
-      // cornerstone.enable(thumbnail)
-      // based_img = current_question.images[id];
-      const based_img = image;
+      $("#figure-" + id).append(img);
 
-      // based (image) data url, just load the image directly
-      if (based_img.startsWith("data:image/")) {
-        const img = $("<img />", {
-          src: based_img,
-          id: "thumb-" + id,
-          class: "thumbnail",
-          title: "Click on the thumbnail to view and manipulate the image.",
-          draggable: "false",
-          style: "height: 100px;",
+      // otherwise try to load it as a dicom
+    } else {
+      // convert the data url to a file
+      viewer
+        .urltoFile(based_img, "dicom", "application/dicom")
+        .then(function (dfile) {
+          // load the file using cornerstoneWADO file loader
+          const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(
+            dfile
+          );
+          const img = $("<div></div>").get(0);
+          img.id = "thumb-" + id;
+          img.class = "thumbnail";
+          img.title =
+            //"Click on the thumbnail to view and manipulate the image.";
+            img.draggable = "false";
+          img.style = "height: 100px; width: 100px";
+          $("#figure-" + id).append(img);
+          const element = document.getElementById("thumb-" + id);
+          cornerstone.enable(element);
+          //cornerstone.loadImage(imageId).then(function (image) {
+          cornerstone.loadAndCacheImage(imageId).then(function (image) {
+            cornerstone.displayImage(element, image);
+            cornerstone.resize(element);
+          }); // .catch( function(error) {
         });
+    }
+  }
 
-        $("#figure-" + id).append(img);
+  question_data.images.forEach((images, n) => {
+    let image;
+    if (Array.isArray(images)) {
+      image = images[0]; // Do we want the middle image?
+    } else {
+      image = images;
+    }
+    let caption = "...";
+    if (question_data.image_titles != undefined) {
+      caption = question_data.image_titles[n];
+    }
 
-        // otherwise try to load it as a dicom
-      } else {
-        // convert the data url to a file
-        viewer
-          .urltoFile(based_img, "dicom", "application/dicom")
-          .then(function (dfile) {
-            // load the file using cornerstoneWADO file loader
-            const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(
-              dfile
-            );
-            cornerstone.loadAndCacheImage(imageId).then(function (image) {
-              const img = $("<div></div>").get(0);
-              img.id = "thumb-" + id;
-              img.class = "thumbnail";
-              img.title =
-                "Click on the thumbnail to view and manipulate the image.";
-              img.draggable = "false";
-              img.style = "height: 100px; width: 100px";
-              $("#figure-" + id).append(img);
+    createThumbnail(image, n, caption, thumbnails);
+  });
 
-              const element = document.getElementById("thumb-" + id);
-              cornerstone.enable(element);
-              cornerstone.displayImage(element, image);
-              cornerstone.resize(element);
-            }); // .catch( function(error) {
-          });
-      }
+  function handleThumbnailClicks(id, thumbnail) {
+    $(thumbnail).click(function (event) {
+      viewer.openMainImage(question_data, event, this);
     });
   }
 
-  $(".thumbs .figure").each(function handleThumbnailClicks(id, thumbnail) {
-    thumbnail.onclick = function (event) {
-      viewer.openMainImage(current_question, event, this);
-    };
+  $(".thumbs .figure").each((id, thumbnail) => {
+    handleThumbnailClicks(id, thumbnail);
   });
 
   // Answer setup
   const ap = $(".answer-panel");
   ap.empty();
 
-  switch (current_question.type) {
+  switch (question_data.type) {
     case "rapid": {
       ap.append(
         '<div class="answer-item"><div class="answer-label-outer"><p class="answer-label-inner"><span class="answer-label-number">' +
@@ -793,7 +832,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
           ans: evt.target.value,
         };
 
-        window.db.answers.put(answer);
+        db.answers.put(answer);
         saveSession();
         updateQuestionListPanel(answer);
       });
@@ -802,7 +841,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
       $(".long-answer").change(function (evt) {
         // ignore blank text and delete any stored value
         if (evt.target.value.length < 1) {
-          window.db.answers.delete([aid, cid, eid, qid, "2"]);
+          db.answers.delete([aid, cid, eid, qid, "2"]);
           $(
             "#question-list-item-" + window.question_order.indexOf(qid) + "-2"
           ).removeClass("question-saved-localdb");
@@ -818,7 +857,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
           ans: evt.target.value,
         };
         // db.answers.put({aid: [cid, eid, qidn], ans: evt.target.value});
-        window.db.answers.put(answer);
+        db.answers.put(answer);
 
         $(
           "#question-list-item-" + window.question_order.indexOf(qid) + "-2"
@@ -831,7 +870,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
       // We chain our db requests as we can only check answers once
       // they have been loaded (should probably use then or after)
 
-      window.db.answers
+      db.answers
         .get({ aid: aid, cid: cid, eid: eid, qid: qid, qidn: "1" })
         .then(function (answer) {
           if (answer != undefined) {
@@ -851,14 +890,13 @@ function loadQuestion(n, section = 1, force_reload = false) {
           console.log("error-", error);
         })
         .then(
-          window.db.answers
+          db.answers
             .get({ aid: aid, cid: cid, eid: eid, qid: qid, qidn: "2" })
             .then(function (answer) {
               if (answer != undefined) {
-                console.log(answer);
                 $(".long-answer").text(answer.ans);
               }
-              markAnswer(qid, current_question);
+              markAnswer(qid, question_data);
             })
             .catch(function (error) {
               console.log("error-", error);
@@ -876,7 +914,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
         '<div class="answer-item" id="anatomy-text"><div class="answer-label-outer"><p class="answer-label-inner"><span class="answer-label-number">' +
           display_n +
           '.1</span><span style="flex:1">' +
-          current_question.question +
+          question_data.question +
           '</span><button class="flag" data-qid="' +
           n +
           '" data-qidn=1 style="margin-right:0">⚐</button></p></div><textarea class="long-answer" name="Reason" data-answer-section-qidn=1 style="overflow: hidden scroll; overflow-wrap: break-word;"></textarea></div>'
@@ -885,7 +923,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
       $(".long-answer").change(function (evt) {
         // ignore blank text and delete any stored value
         if (evt.target.value.length < 1) {
-          window.db.answers.delete([aid, cid, eid, qid, "1"]);
+          db.answers.delete([aid, cid, eid, qid, "1"]);
           $(
             "#question-list-item-" + window.question_order.indexOf(qid) + "-1"
           ).removeClass("question-saved-localdb");
@@ -901,7 +939,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
           ans: evt.target.value,
         };
         // db.answers.put({aid: [cid, eid, qidn], ans: evt.target.value});
-        window.db.answers.put(answer);
+        db.answers.put(answer);
 
         $(
           "#question-list-item-" + window.question_order.indexOf(qid) + "-1"
@@ -910,13 +948,13 @@ function loadQuestion(n, section = 1, force_reload = false) {
         updateQuestionListPanel(answer);
       });
 
-      window.db.answers
+      db.answers
         .get({ aid: aid, cid: cid, eid: eid, qid: qid, qidn: "1" })
         .then(function (answer) {
           if (answer != undefined) {
             $(".long-answer").text(answer.ans);
           }
-          markAnswer(qid, current_question);
+          markAnswer(qid, question_data);
         })
         .catch(function (error) {
           console.log(error);
@@ -971,7 +1009,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
 
         // ignore blank text and delete any stored value
         if (evt.target.value.length < 1) {
-          window.db.answers.delete([aid, cid, eid, qid, qidn]);
+          db.answers.delete([aid, cid, eid, qid, qidn]);
           $(
             "#question-list-item-" +
               window.question_order.indexOf(qid) +
@@ -990,7 +1028,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
           ans: evt.target.value,
         };
 
-        window.db.answers.put(answer);
+        db.answers.put(answer);
         console.log("SAVE", qid, qidn, evt.target.value);
 
         $(
@@ -1008,7 +1046,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
       //
 
       for (let qidn_count = 1; qidn_count < 6; qidn_count++) {
-        window.db.answers
+        db.answers
           .get({
             aid: aid,
             cid: cid,
@@ -1024,7 +1062,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
             }
             // We only want to mark once...
             if (qidn_count == 5) {
-              markAnswer(qid, current_question);
+              markAnswer(qid, question_data);
             }
           })
           .catch(function (error) {
@@ -1046,6 +1084,7 @@ function loadQuestion(n, section = 1, force_reload = false) {
   //rebuildQuestionListPanel();
   setTimeout(() => {
     setFocus(section);
+    $("#question-loading").hide();
   }, 200);
 }
 
@@ -1129,8 +1168,8 @@ function rebuildQuestionListPanel() {
   const cid = window.exam_details.cid;
   const eid = window.exam_details.eid;
 
-  console.log("UP");
-  window.db.answers
+  //console.log("UP");
+  db.answers
     .where({ aid: aid, cid: cid, eid: eid })
     .toArray()
     .then(function (answers) {
@@ -1149,7 +1188,7 @@ function rebuildQuestionListPanel() {
       console.log("error - ", error);
     });
 
-  window.db.flags
+  db.flags
     .where({ aid: aid, cid: cid, eid: eid })
     .toArray()
     .then(function (answers) {
@@ -1348,8 +1387,8 @@ function loadLocalQuestionSet() {
  */
 function reviewQuestions() {
   // Stop timer (if it's running)
-  if (window.timer != null) {
-    window.timer.stop();
+  if (timer != null) {
+    timer.stop();
   }
 
   const cid = window.exam_details.cid;
@@ -1362,7 +1401,7 @@ function reviewQuestions() {
 
   loadQuestion(0, 0, true);
 
-  window.db.answers
+  db.answers
     .where({ aid: aid, cid: cid, eid: eid })
     .toArray()
     .then(function (answers) {
@@ -1424,7 +1463,7 @@ function reviewQuestions() {
 
           titles.forEach((title, n) => {
             let user_answer = current_answers[`${qid},${n + 1}`];
-            console.log(`${qid},${n}`, user_answer);
+            //console.log(`${qid},${n}`, user_answer);
             if (user_answer == undefined) {
               user_answer = "Not answered";
             }
@@ -1458,7 +1497,7 @@ function reviewQuestions() {
           $("#review-overlay").hide();
         });
 
-        window.db.user_answers
+        db.user_answers
           .get({ qid: qid })
           .then(function (answers) {
             // Merge the question answers with the user saved answers
@@ -1707,7 +1746,7 @@ function markAnswer(qid, current_question) {
     let user_answer = textarea.val();
 
     // Load user saved answers
-    window.db.user_answers
+    db.user_answers
       .get({ qid: qid })
       .then(function (saved_user_answers) {
         // check if given answer matches a user saved answer
@@ -1788,7 +1827,7 @@ function markCorrect(qid, user_answer) {
     return;
   }
 
-  window.db.user_answers
+  db.user_answers
     .get({ qid: qid })
     .then(function (answers) {
       let new_answers = [];
@@ -1797,7 +1836,7 @@ function markCorrect(qid, user_answer) {
       }
 
       new_answers.push(user_answer);
-      window.db.user_answers.put({ qid: qid, ans: new_answers });
+      db.user_answers.put({ qid: qid, ans: new_answers });
     })
     .catch(function (error) {
       console.log("error-", error);
@@ -1845,14 +1884,14 @@ function addFlagEvents() {
         "visibility",
         "hidden"
       );
-      window.db.flags.delete([aid, cid, eid, qid, qidn]);
+      db.flags.delete([aid, cid, eid, qid, qidn]);
       deleteQuestionListPanelFlags(flag_db_data);
     } else {
       $("#question-list-item-" + nqid + "-" + qidn + " span").css(
         "visibility",
         "visible"
       );
-      window.db.flags.put(flag_db_data);
+      db.flags.put(flag_db_data);
       updateQuestionListPanelFlags(flag_db_data);
     }
   });
@@ -1863,7 +1902,7 @@ function loadFlagsFromDb(qid, n) {
   const aid = window.exam_details.aid;
   const cid = window.exam_details.cid;
   const eid = window.exam_details.eid;
-  window.db.flags
+  db.flags
     .get({ aid: aid, cid: cid, eid: eid, qid: qid, qidn: n })
     .then(function (answer) {
       if (answer != undefined) {
@@ -1894,12 +1933,12 @@ $(".start-packet-button").click(function (evt) {
     }
   }
 
-  if (window.timer != null) {
-    window.timer.stop();
+  if (timer != null) {
+    timer.stop();
   }
-  window.timer = null;
+  timer = null;
 
-  let timer = new easytimer.Timer();
+  timer = new easytimer.Timer();
   //window.exam_time = 2;
   timer.start({ countdown: true, startValues: { seconds: window.exam_time } });
   timer.addEventListener("secondsUpdated", function (e) {
@@ -1917,14 +1956,14 @@ $(".start-packet-button").click(function (evt) {
     $("#time-up-dialog").modal();
   });
 
-  window.timer = timer;
+  //window.timer = timer;
 
   // If we are not in an exam we can pause the session
   if (!window.exam_mode) {
     $("#timer").click(() => {
-      window.timer.pause();
+      timer.pause();
 
-      let time_remaining = window.timer.getTimeValues().toString();
+      let time_remaining = timer.getTimeValues().toString();
 
       $("#pause").empty();
       $("#pause").append(
@@ -1970,8 +2009,7 @@ $("#btn-delete-databases").click(function (evt) {
     "This will delete ALL saved answers (including saved correct answers)!"
   );
   if (r == true) {
-    window.db
-      .delete()
+    db.delete()
       .then(() => {
         $.notify("Database successfully deleted", "success");
         $.notify("The page will now reload", "warn");
@@ -1997,7 +2035,7 @@ $("#btn-delete-current").click(function (evt) {
     return;
   }
 
-  window.db.flags
+  db.flags
     .where("qid")
     .anyOf(window.question_order)
     .delete()
@@ -2009,7 +2047,7 @@ $("#btn-delete-current").click(function (evt) {
       $.notify("You may have to delete all answers this time", "info");
     });
 
-  window.db.answers
+  db.answers
     .where("qid")
     .anyOf(window.question_order)
     .delete()
@@ -2035,7 +2073,7 @@ $("#btn-delete-current-saved-answers").click(function (evt) {
     return;
   }
 
-  window.db.user_answers
+  db.user_answers
     .where("qid")
     .anyOf(window.question_order)
     .delete()
@@ -2062,14 +2100,14 @@ function saveSession() {
     status = "complete";
   }
 
-  console.log("save session", window.score);
+  //console.log("save session", window.score);
 
-  let time_values = window.timer.getTimeValues();
+  let time_values = timer.getTimeValues();
   let time_remaining =
     time_values.hours * 60 * 60 +
     time_values.minutes * 60 +
     time_values.seconds;
-  window.db.session.put({
+  db.session.put({
     packet: window.packet_name,
     aid: window.exam_details.aid,
     cid: window.exam_details.cid,
