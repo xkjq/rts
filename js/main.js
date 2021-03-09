@@ -19,23 +19,21 @@ window.exam_details = {
 
 //window.exam_mode = false;
 
-window.packet_list = [];
-window.exams = [];
-
-window.packet_name = null;
+let packet_list = [];
+let packet_name = null;
 //window.questions = null;
 let questions = null;
-window.question_order = [];
-window.questions_correct = {};
+let question_order = [];
+let questions_correct = {};
 window.number_of_questions = null;
-window.question_type = null;
-window.loaded_question = null;
+let question_type = null;
+let loaded_question = null;
 window.review = false;
-window.exam_time = null;
-window.date_started = null;
-window.score = 0;
+let exam_time = null;
+let date_started = null;
+let score = 0;
 
-window.allow_self_marking = true;
+let allow_self_marking = true;
 
 let timer = null;
 
@@ -208,11 +206,11 @@ async function loadPacketList(data) {
   });
 
   if (data != null) {
-    window.packet_list = data.packets;
+    packet_list = data.packets;
   }
 
   $("#packet-list").empty();
-  window.packet_list.forEach(function (packet) {
+  packet_list.forEach(function (packet) {
     // Seperate packet types
     let list;
     if (packet.type != undefined) {
@@ -310,10 +308,10 @@ function setUpQuestions(load_previous) {
 
   // Set an order for the questions
   if (!load_previous) {
-    if (window.question_order.length < 1) {
-      window.question_order = [];
+    if (question_order.length < 1) {
+      question_order = [];
       Object.keys(questions).forEach(function (e) {
-        window.question_order.push(e);
+        question_order.push(e);
 
         // Make sure answers are arrays
         if (!Array.isArray(questions[e]["answers"])) {
@@ -327,7 +325,7 @@ function setUpQuestions(load_previous) {
       randomise_order = window.config.randomise_order;
     }
     if (randomise_order) {
-      window.question_order = helper.shuffleArray(window.question_order);
+      question_order = helper.shuffleArray(question_order);
     }
   }
   window.number_of_questions = Object.keys(questions).length;
@@ -335,7 +333,7 @@ function setUpQuestions(load_previous) {
 
   // Horrible way to get type of questions
   // We assume they are all of the same type....
-  window.question_type =
+  question_type =
     questions[Object.keys(questions)[0]].type;
 
   if (window.exam_details.exam_mode) {
@@ -347,23 +345,23 @@ function setUpQuestions(load_previous) {
   questions = null;
 
 
-  //console.log(window.question_type);
+  //console.log(question_type);
 
   // exam_time can be defined in packets
-  if (!load_previous && window.exam_time == null) {
-    if (window.question_type == "rapid") {
-      window.exam_time = 35 * 60;
-    } else if (window.question_type == "anatomy") {
-      window.exam_time = 90 * 60;
-    } else if (window.question_type == "long") {
-      window.exam_time = 75 * 60;
+  if (!load_previous && exam_time == null) {
+    if (question_type == "rapid") {
+      exam_time = 35 * 60;
+    } else if (question_type == "anatomy") {
+      exam_time = 90 * 60;
+    } else if (question_type == "long") {
+      exam_time = 75 * 60;
     }
   }
 
   $(".exam-time")
-    .val(window.exam_time / 60)
+    .val(exam_time / 60)
     .change(() => {
-      window.exam_time = $(".exam-time").val() * 60;
+      exam_time = $(".exam-time").val() * 60;
     });
 
   if (window.exam_details.exam_mode) {
@@ -438,20 +436,19 @@ question_db.version(1).stores({
  * @param {JSON} data
  */
 function setUpPacket(data, path) {
-  let packet_name = path;
+  packet_name = path;
   // Load the exam name from the json packet (if it exists)
   if (data.hasOwnProperty("exam_name")) {
     packet_name = data.exam_name;
   }
   $(".exam-name").text("Exam: " + packet_name);
-  window.packet_name = packet_name;
 
   if (data.hasOwnProperty("eid")) {
     window.exam_details.eid = data.eid;
   }
 
   if (data.hasOwnProperty("type")) {
-    window.question_type = data.type;
+    question_type = data.type;
   }
 
   if (data.hasOwnProperty("exam_mode")) {
@@ -465,11 +462,11 @@ function setUpPacket(data, path) {
   }
 
   if (data.hasOwnProperty("exam_order")) {
-    window.question_order = data.exam_order;
+    question_order = data.exam_order;
   }
 
   if (data.hasOwnProperty("exam_time")) {
-    window.exam_time = data.exam_time;
+    exam_time = data.exam_time;
   }
 
   // If the question_requests is set we need to do a request for each question
@@ -528,8 +525,8 @@ function loadSession() {
     // .equals("active")
     .where("[packet+aid]")
     .between(
-      [window.packet_name, Dexie.minKey],
-      [window.packet_name, Dexie.maxKey]
+      [packet_name, Dexie.minKey],
+      [packet_name, Dexie.maxKey]
     )
     .toArray()
     .then((sessions) => {
@@ -548,7 +545,7 @@ function loadSession() {
       // Start new session if no session found
       if (sessions.length < 1) {
         window.exam_details.aid = uuidv4();
-        window.date_started = Date.now();
+        date_started = Date.now();
       } else {
         let text = "Select session to continue (leave blank to create new):";
         if (window.exam_details.exam_mode) {
@@ -594,13 +591,13 @@ function loadSession() {
 
           window.exam_details.aid = sessions[parseInt(s)].aid;
           window.exam_details.cid = sessions[parseInt(s)].cid;
-          window.date_started = sessions[parseInt(s)].date;
+          date_started = sessions[parseInt(s)].date;
 
           let time_left = sessions[parseInt(s)].time_left;
 
-          window.exam_time = time_left;
+          exam_time = time_left;
 
-          window.question_order = sessions[parseInt(s)].question_order;
+          question_order = sessions[parseInt(s)].question_order;
 
           if (sessions[parseInt(s)].status == "complete") {
             window.review = true;
@@ -608,8 +605,8 @@ function loadSession() {
         } else {
           // If cancel is pressed or input is blank
           window.exam_details.aid = uuidv4();
-          window.date_started = Date.now();
-          //console.log("new date", window.date_started);
+          date_started = Date.now();
+          //console.log("new date", date_started);
         }
       }
 
@@ -635,7 +632,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
   n = parseInt(n);
   //console.log("loading question (n)", n);
 
-  const qid = window.question_order[n];
+  const qid = question_order[n];
 
   let q = {qid: qid.toString(), eid: eid};
 
@@ -645,13 +642,13 @@ async function loadQuestion(n, section = 1, force_reload = false) {
 
   //const current_question = window.questions[qid];
 
-  if (n == window.loaded_question && force_reload == false) {
+  if (n == loaded_question && force_reload == false) {
     // Question already loaded
     setFocus(section);
     return;
   }
 
-  window.loaded_question = n;
+  loaded_question = n;
 
   // Set up question navigation
   $(".navigation[value='next']").off();
@@ -843,7 +840,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
         if (evt.target.value.length < 1) {
           db.answers.delete([aid, cid, eid, qid, "2"]);
           $(
-            "#question-list-item-" + window.question_order.indexOf(qid) + "-2"
+            "#question-list-item-" + question_order.indexOf(qid) + "-2"
           ).removeClass("question-saved-localdb");
           return;
         }
@@ -860,7 +857,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
         db.answers.put(answer);
 
         $(
-          "#question-list-item-" + window.question_order.indexOf(qid) + "-2"
+          "#question-list-item-" + question_order.indexOf(qid) + "-2"
         ).addClass("question-saved-localdb");
 
         saveSession();
@@ -925,7 +922,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
         if (evt.target.value.length < 1) {
           db.answers.delete([aid, cid, eid, qid, "1"]);
           $(
-            "#question-list-item-" + window.question_order.indexOf(qid) + "-1"
+            "#question-list-item-" + question_order.indexOf(qid) + "-1"
           ).removeClass("question-saved-localdb");
           return;
         }
@@ -942,7 +939,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
         db.answers.put(answer);
 
         $(
-          "#question-list-item-" + window.question_order.indexOf(qid) + "-1"
+          "#question-list-item-" + question_order.indexOf(qid) + "-1"
         ).addClass("question-saved-localdb");
         saveSession();
         updateQuestionListPanel(answer);
@@ -1012,7 +1009,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
           db.answers.delete([aid, cid, eid, qid, qidn]);
           $(
             "#question-list-item-" +
-              window.question_order.indexOf(qid) +
+              question_order.indexOf(qid) +
               "-" +
               qidn
           ).removeClass("question-saved-localdb");
@@ -1033,7 +1030,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
 
         $(
           "#question-list-item-" +
-            window.question_order.indexOf(qid) +
+            question_order.indexOf(qid) +
             "-" +
             qidn
         ).addClass("question-saved-localdb");
@@ -1117,22 +1114,22 @@ function setFocus(section) {
 function updateQuestionListPanel(answer) {
   $(
     "#question-list-item-" +
-      window.question_order.indexOf(answer.qid) +
+      question_order.indexOf(answer.qid) +
       "-" +
       answer.qidn
   ).addClass("question-saved-localdb");
 
-  if (window.question_type == "rapid" && answer.qidn == "1") {
+  if (question_type == "rapid" && answer.qidn == "1") {
     if (answer.ans == "Abnormal") {
       $(
         "#question-list-item-" +
-          window.question_order.indexOf(answer.qid) +
+          question_order.indexOf(answer.qid) +
           "-2"
       ).css("display", "block");
     } else {
       $(
         "#question-list-item-" +
-          window.question_order.indexOf(answer.qid) +
+          question_order.indexOf(answer.qid) +
           "-2"
       ).css("display", "none");
     }
@@ -1142,7 +1139,7 @@ function updateQuestionListPanel(answer) {
 function deleteQuestionListPanelFlags(answer) {
   $(
     "#question-list-item-" +
-      window.question_order.indexOf(answer.qid) +
+      question_order.indexOf(answer.qid) +
       "-" +
       answer.qidn +
       " span"
@@ -1152,7 +1149,7 @@ function deleteQuestionListPanelFlags(answer) {
 function updateQuestionListPanelFlags(answer) {
   $(
     "#question-list-item-" +
-      window.question_order.indexOf(answer.qid) +
+      question_order.indexOf(answer.qid) +
       "-" +
       answer.qidn +
       " span"
@@ -1203,12 +1200,12 @@ function rebuildQuestionListPanel() {
 
   if (window.review == true) {
     $(".question-panel-ans").remove();
-    for (const qid in window.questions_correct) {
-      let q_no = window.question_order.indexOf(qid);
-      //console.log("q", q_no, qid, window.questions_correct[qid]);
+    for (const qid in questions_correct) {
+      let q_no = question_order.indexOf(qid);
+      //console.log("q", q_no, qid, questions_correct[qid]);
       let question_list_elements = $(`.question-list-item[data-qid='${q_no}']`);
-      //console.log(question_list_elements, window.questions_correct[qid]);
-      if (window.questions_correct[qid]) {
+      //console.log(question_list_elements, questions_correct[qid]);
+      if (questions_correct[qid]) {
         $(`.question-list-item[data-qid='${q_no}']`).append(
           "<span class='question-panel-ans question-panel-correct'>✓</span>"
         );
@@ -1258,17 +1255,17 @@ function createQuestionListPanel() {
     return el;
   }
 
-  if (window.question_type == "rapid") {
+  if (question_type == "rapid") {
     // Loop through all questions and append list items
     for (let n = 1; n < window.number_of_questions + 1; n++) {
       appendQuestionListItem(n, "1");
       appendQuestionListItem(n, "2").hide();
     }
-  } else if (window.question_type == "anatomy") {
+  } else if (question_type == "anatomy") {
     for (let n = 1; n < window.number_of_questions + 1; n++) {
       appendQuestionListItem(n, "1");
     }
-  } else if (window.question_type == "long") {
+  } else if (question_type == "long") {
     for (let n = 1; n < window.number_of_questions + 1; n++) {
       appendQuestionListItem(n, "1");
       appendQuestionListItem(n, "2");
@@ -1422,8 +1419,8 @@ function reviewQuestions() {
       let undercall_number = 0;
       let overcall_number = 0;
       let incorrectcall_number = 0;
-      window.question_order.forEach(function (qid, n) {
-        if (window.question_type == "long") {
+      question_order.forEach(function (qid, n) {
+        if (question_type == "long") {
           $("#review-answer-table").append(
             $(
               `<tr class='review-table-heading' title='Click to load question ${
@@ -1563,7 +1560,7 @@ function reviewQuestions() {
               }
             }
 
-            if (window.question_type == "rapid") {
+            if (question_type == "rapid") {
               // First check normal vs abnormal
               if (window.questions[qid]["normal"] == true) {
                 if (section_1_answer == "Normal") {
@@ -1575,7 +1572,7 @@ function reviewQuestions() {
                     question_answers
                   );
                   correct_count++;
-                  window.questions_correct[qid] = true;
+                  questions_correct[qid] = true;
                 } else {
                   if (section_1_answer != "Not Answered") {
                     overcall_number++;
@@ -1587,7 +1584,7 @@ function reviewQuestions() {
                     true,
                     question_answers
                   );
-                  window.questions_correct[qid] = false;
+                  questions_correct[qid] = false;
                 }
               } else {
                 if (answerInArray(question_answers, section_2_answer)) {
@@ -1599,7 +1596,7 @@ function reviewQuestions() {
                     false,
                     question_answers
                   );
-                  window.questions_correct[qid] = true;
+                  questions_correct[qid] = true;
                 } else {
                   setReviewAnswer(
                     el,
@@ -1608,7 +1605,7 @@ function reviewQuestions() {
                     false,
                     question_answers
                   );
-                  window.questions_correct[qid] = false;
+                  questions_correct[qid] = false;
 
                   if (section_1_answer == "Not Answered") {
                   } else if (section_1_answer == "Normal") {
@@ -1627,7 +1624,7 @@ function reviewQuestions() {
                   }
                 }
               }
-            } else if (window.question_type == "anatomy") {
+            } else if (question_type == "anatomy") {
               // Anatomy answers are either correct or incorrect
               if (answerInArray(question_answers, section_1_answer)) {
                 correct_count++;
@@ -1638,7 +1635,7 @@ function reviewQuestions() {
                   false,
                   question_answers
                 );
-                window.questions_correct[qid] = true;
+                questions_correct[qid] = true;
               } else {
                 setReviewAnswer(
                   el,
@@ -1647,20 +1644,20 @@ function reviewQuestions() {
                   false,
                   question_answers
                 );
-                window.questions_correct[qid] = false;
+                questions_correct[qid] = false;
               }
             }
 
-            window.score = correct_count;
+            score = correct_count;
 
             $("#review-score").text(
               "Score: " +
                 correct_count +
                 " out of " +
-                window.question_order.length
+                question_order.length
             );
 
-            if (window.question_type == "rapid") {
+            if (question_type == "rapid") {
               $("#exam-stats").show();
               $("#unanswered-number").html(not_answered);
               $("#normal-number").html(answered_normal);
@@ -1778,7 +1775,7 @@ function markAnswer(qid, current_question) {
           ) {
             // Otherwise there is a chance that it may be correct
             // so we give the option to mark it correct
-            if (window.allow_self_marking) {
+            if (allow_self_marking) {
               $(".answer-panel").append(
                 $("<button id='mark-correct'>Mark Correct</button>").click(
                   function () {
@@ -1842,7 +1839,7 @@ function markCorrect(qid, user_answer) {
       console.log("error-", error);
     });
 
-  if (window.allow_self_marking) {
+  if (allow_self_marking) {
     $("#mark-correct").remove();
   }
 
@@ -1872,7 +1869,7 @@ function addFlagEvents() {
   $("button.flag").click(function (event) {
     const el = $(this);
     const nqid = el.attr("data-qid");
-    const qid = window.question_order[nqid];
+    const qid = question_order[nqid];
     const qidn = el.attr("data-qidn");
 
     el.toggleClass("flag flag-selected");
@@ -1939,8 +1936,8 @@ $(".start-packet-button").click(function (evt) {
   timer = null;
 
   timer = new easytimer.Timer();
-  //window.exam_time = 2;
-  timer.start({ countdown: true, startValues: { seconds: window.exam_time } });
+  //exam_time = 2;
+  timer.start({ countdown: true, startValues: { seconds: exam_time } });
   timer.addEventListener("secondsUpdated", function (e) {
     $("#timer").html("Time left: " + timer.getTimeValues().toString());
   });
@@ -1980,8 +1977,8 @@ $(".start-packet-button").click(function (evt) {
 
   // //const t = 2;
   // let display = document.querySelector("#timer");
-  // let timer = new helper.CountDownTimer(window.exam_time);
-  // let timeObj = helper.CountDownTimer.parse(window.exam_time);
+  // let timer = new helper.CountDownTimer(exam_time);
+  // let timeObj = helper.CountDownTimer.parse(exam_time);
 
   // format(timeObj.minutes, timeObj.seconds);
 
@@ -2030,14 +2027,14 @@ $("#btn-delete-databases").click(function (evt) {
 });
 
 $("#btn-delete-current").click(function (evt) {
-  if (window.question_order.length < 1) {
+  if (question_order.length < 1) {
     $.notify("No packet is currently loaded", "warn");
     return;
   }
 
   db.flags
     .where("qid")
-    .anyOf(window.question_order)
+    .anyOf(question_order)
     .delete()
     .then(function (deleteCount) {
       $.notify("Packet flags deleted", "success");
@@ -2049,7 +2046,7 @@ $("#btn-delete-current").click(function (evt) {
 
   db.answers
     .where("qid")
-    .anyOf(window.question_order)
+    .anyOf(question_order)
     .delete()
     .then(function (deleteCount) {
       $.notify("Packet successfully reset", "success");
@@ -2068,14 +2065,14 @@ $("#btn-delete-current").click(function (evt) {
 });
 
 $("#btn-delete-current-saved-answers").click(function (evt) {
-  if (window.question_order.length < 1) {
+  if (question_order.length < 1) {
     $.notify("No packet is currently loaded", "warn");
     return;
   }
 
   db.user_answers
     .where("qid")
-    .anyOf(window.question_order)
+    .anyOf(question_order)
     .delete()
     .then(function (deleteCount) {
       $.notify("Packet flags deleted", "success");
@@ -2100,7 +2097,7 @@ function saveSession() {
     status = "complete";
   }
 
-  //console.log("save session", window.score);
+  //console.log("save session", score);
 
   let time_values = timer.getTimeValues();
   let time_remaining =
@@ -2108,16 +2105,16 @@ function saveSession() {
     time_values.minutes * 60 +
     time_values.seconds;
   db.session.put({
-    packet: window.packet_name,
+    packet: packet_name,
     aid: window.exam_details.aid,
     cid: window.exam_details.cid,
     status: status,
-    date: window.date_started,
-    score: window.score,
+    date: date_started,
+    score: score,
     max_score: window.number_of_questions,
-    exam_time: window.exam_time,
+    exam_time: exam_time,
     time_left: time_remaining,
-    question_order: window.question_order,
+    question_order: question_order,
     questions_answered: 0, // TODO
     total_questions: window.number_of_questions,
   });
