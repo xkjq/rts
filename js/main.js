@@ -30,12 +30,16 @@ let question_type = null;
 let loaded_question = null;
 window.review = false;
 let exam_time = null;
+let packet_time = null;
 let date_started = null;
 let score = 0;
+let packet_generated = null;
 
 let allow_self_marking = true;
 
 let timer = null;
+
+let use_local_question_cache = false;
 
 //window.dfile = null;
 
@@ -131,6 +135,8 @@ async function loadExamList(data) {
   window.exam_list.forEach(function (exam) {
     let name = exam["name"];
     let url = exam["url"];
+    let eid = exam["eid"];
+    let generated = exam["json_creation_time"];
     let c = "";
     if (exams_started.indexOf(name) > -1) {
       c = " session-started";
@@ -156,7 +162,7 @@ async function loadExamList(data) {
       $(`<div class='packet-button${c}' title='Load packet'></div>`)
         .text(name)
         .click(function () {
-          loadPacketFromAjax(url);
+          loadPacketFromAjax(url, eid, generated);
         })
     );
   });
@@ -256,35 +262,63 @@ async function loadPacketList(data) {
  * Loads the requisite packet into the quiz system
  * @param {string} path - relative path to the packet json file
  */
-function loadPacketFromAjax(path) {
-  //console.log("loading packet from " + path);
-  $("#progress").html(`Requesting packet: ${path}`);
+function loadPacketFromAjax(path, eid, generated) {
+  if (eid != undefined) {
+    // try and load the exam from the local indexedDB
+    question_db.saved_exams
+      .get(eid)
+      .then((exam) => {
+        if (
+          exam == undefined ||
+          Date.parse(exam["generated"]) != Date.parse(generated)
+        ) {
+          ajaxRequestionPacket();
+        } else {
+          console.log(exam);
+          // We have an up to date exam in the database
+          // TODO: check the questions are valid
+          use_local_question_cache = true;
+          setUpPacket(exam, path);
+          $("#options-panel").hide();
+        }
+      })
+      .catch(function (error) {
+        // Will be triggered if eid does not exist in database
+        console.log("Unable to load exam:", eid);
+        console.log("error-", error);
+        console.log("Exam will be downloaded");
+        ajaxRequestionPacket();
+      });
 
-  $.ajax({
-    dataType: "json",
-    url: path,
-    cache: true,
-    progress: function (e) {
-      if (e.lengthComputable) {
-        var completedPercentage = Math.round((e.loaded * 100) / e.total);
+    return;
+  }
 
-        $("#progress").html(
-          `${completedPercentage}%<br/>${helper.formatBytes(e.total)}`
-        );
-      }
-    },
-  })
-    .done(function (data) {
-      //setUpPacket(data, path.split("/").pop());
-      if (data.hasOwnProperty("cached") && data["cached"]) {
-        //console.log("loading cached packet");
-      }
-      setUpPacket(data, path);
-      $("#options-panel").hide();
+  function ajaxRequestionPacket() {
+    //console.log("loading packet from " + path);
+    $("#progress").html(`Requesting packet: ${path}`);
+
+    $.ajax({
+      dataType: "json",
+      url: path,
+      cache: true,
+      progress: function (e) {
+        if (e.lengthComputable) {
+          var completedPercentage = Math.round((e.loaded * 100) / e.total);
+
+          $("#progress").html(
+            `${completedPercentage}%<br/>${helper.formatBytes(e.total)}`
+          );
+        }
+      },
     })
-    .fail(function () {
-      //console.log("Unable to load packet at: " + path);
-    });
+      .done(function (data) {
+        setUpPacket(data, path);
+        $("#options-panel").hide();
+      })
+      .fail(function () {
+        console.log("Unable to load packet at: " + path);
+      });
+  }
 }
 
 /**
@@ -292,49 +326,50 @@ function loadPacketFromAjax(path) {
  */
 function setUpQuestions(load_previous) {
   if (questions == undefined) {
-    return;
-  }
-
-  Object.keys(questions).forEach(function (e) {
-    // Store question data into dexie
-    let d = {
-      eid: window.exam_details.eid,
-      qid: e,
-      data: questions[e],
-    };
-
-    question_db.question_data.put(d);
-  });
-
-  // Set an order for the questions
-  if (!load_previous) {
-    if (question_order.length < 1) {
-      question_order = [];
+    //return;
+  } else {
+    if (!use_local_question_cache) {
       Object.keys(questions).forEach(function (e) {
-        question_order.push(e);
+        // Store question data into dexie
+        let d = {
+          eid: window.exam_details.eid,
+          qid: e,
+          data: questions[e],
+        };
 
-        // Make sure answers are arrays
-        if (!Array.isArray(questions[e]["answers"])) {
-          questions[e]["answers"] = [questions[e]["answers"]];
-        }
+        question_db.question_data.put(d);
       });
     }
 
-    let randomise_order = true;
-    if (window.config.randomise_order != undefined) {
-      randomise_order = window.config.randomise_order;
-    }
-    if (randomise_order) {
-      question_order = helper.shuffleArray(question_order);
+    // Set an order for the questions
+    if (!load_previous) {
+      if (question_order.length < 1) {
+        question_order = [];
+        Object.keys(questions).forEach(function (e) {
+          question_order.push(e);
+
+          // Make sure answers are arrays
+          if (!Array.isArray(questions[e]["answers"])) {
+            questions[e]["answers"] = [questions[e]["answers"]];
+          }
+        });
+      }
+
+      let randomise_order = true;
+      if (window.config.randomise_order != undefined) {
+        randomise_order = window.config.randomise_order;
+      }
+      if (randomise_order) {
+        question_order = helper.shuffleArray(question_order);
+      }
     }
   }
-  window.number_of_questions = Object.keys(questions).length;
+  window.number_of_questions = question_order.length;
   window.review = false;
 
   // Horrible way to get type of questions
   // We assume they are all of the same type....
-  question_type =
-    questions[Object.keys(questions)[0]].type;
+  //question_type = questions[Object.keys(questions)[0]].type;
 
   if (window.exam_details.exam_mode) {
     $("#options-button, #review-overlay-button").hide();
@@ -343,7 +378,6 @@ function setUpQuestions(load_previous) {
   }
 
   questions = null;
-
 
   //console.log(question_type);
 
@@ -425,10 +459,10 @@ db.version(1).stores({
 
 const question_db = new Dexie("question_database");
 question_db.version(1).stores({
-  question_data: "[eid+qid], eid, data",
+  question_data: "[eid+qid], eid",
+  saved_exams: "eid, type, exam_mode, name, order, time, generated",
 });
 
-//db = db;
 
 /**
  * Parse the packet and extract metadata (if it exists)
@@ -447,12 +481,16 @@ function setUpPacket(data, path) {
     window.exam_details.eid = data.eid;
   }
 
-  if (data.hasOwnProperty("type")) {
-    question_type = data.type;
+  if (data.hasOwnProperty("exam_type")) {
+    question_type = data.exam_type;
+  }
+
+  if (data.hasOwnProperty("generated")) {
+    packet_generated = data.generated;
   }
 
   if (data.hasOwnProperty("exam_mode")) {
-    window.exam_details.exam_mode = data.exam_mode;
+    exam_details.exam_mode = data.exam_mode;
   }
 
   if (data.hasOwnProperty("questions")) {
@@ -467,7 +505,19 @@ function setUpPacket(data, path) {
 
   if (data.hasOwnProperty("exam_time")) {
     exam_time = data.exam_time;
+    // packet time is the time specificed by the packet
+    packet_time = data.exam_time;
   }
+
+  if (use_local_question_cache) {
+    // If loading form cache nothing else to do here
+    loadSession();
+    return;
+  }
+
+  // Save the details to the question database
+  var clone_data = Object.assign({}, data, { questions: undefined });
+  question_db.saved_exams.put(clone_data);
 
   // If the question_requests is set we need to do a request for each question
   if (data.hasOwnProperty("question_requests") && data["question_requests"]) {
@@ -506,7 +556,19 @@ function setUpPacket(data, path) {
 
         //requests.push(request)
         //request_numbers.push(n)
-        data["questions"][n] = question_json;
+
+        // Using indexed db means that we can avoid loading all data into memory
+        //data["questions"][n] = question_json;
+
+        // Store question data into dexie
+        let d = {
+          eid: window.exam_details.eid,
+          qid: n,
+          data: question_json,
+        };
+
+        question_db.question_data.put(d);
+        use_local_question_cache = true;
       }
       // Once all questions have been downloaded we carry on loading
       loadSession();
@@ -524,10 +586,7 @@ function loadSession() {
     // .where("status")
     // .equals("active")
     .where("[packet+aid]")
-    .between(
-      [packet_name, Dexie.minKey],
-      [packet_name, Dexie.maxKey]
-    )
+    .between([packet_name, Dexie.minKey], [packet_name, Dexie.maxKey])
     .toArray()
     .then((sessions) => {
       //console.log("sessions", sessions);
@@ -621,12 +680,10 @@ function loadSession() {
  * @param {boolean} force_reload - Force question to be reloaded if already loaded
  */
 async function loadQuestion(n, section = 1, force_reload = false) {
-
   $("#question-loading").show();
   const aid = window.exam_details.aid;
   const cid = window.exam_details.cid;
   const eid = window.exam_details.eid;
-
 
   // Make sure we have an integer
   n = parseInt(n);
@@ -634,7 +691,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
 
   const qid = question_order[n];
 
-  let q = {qid: qid.toString(), eid: eid};
+  let q = { qid: qid.toString(), eid: eid };
 
   let return_data = await question_db.question_data.get(q);
   const question_data = return_data.data;
@@ -645,6 +702,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
   if (n == loaded_question && force_reload == false) {
     // Question already loaded
     setFocus(section);
+    $("#question-loading").hide();
     return;
   }
 
@@ -856,9 +914,9 @@ async function loadQuestion(n, section = 1, force_reload = false) {
         // db.answers.put({aid: [cid, eid, qidn], ans: evt.target.value});
         db.answers.put(answer);
 
-        $(
-          "#question-list-item-" + question_order.indexOf(qid) + "-2"
-        ).addClass("question-saved-localdb");
+        $("#question-list-item-" + question_order.indexOf(qid) + "-2").addClass(
+          "question-saved-localdb"
+        );
 
         saveSession();
         updateQuestionListPanel(answer);
@@ -938,9 +996,9 @@ async function loadQuestion(n, section = 1, force_reload = false) {
         // db.answers.put({aid: [cid, eid, qidn], ans: evt.target.value});
         db.answers.put(answer);
 
-        $(
-          "#question-list-item-" + question_order.indexOf(qid) + "-1"
-        ).addClass("question-saved-localdb");
+        $("#question-list-item-" + question_order.indexOf(qid) + "-1").addClass(
+          "question-saved-localdb"
+        );
         saveSession();
         updateQuestionListPanel(answer);
       });
@@ -1008,10 +1066,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
         if (evt.target.value.length < 1) {
           db.answers.delete([aid, cid, eid, qid, qidn]);
           $(
-            "#question-list-item-" +
-              question_order.indexOf(qid) +
-              "-" +
-              qidn
+            "#question-list-item-" + question_order.indexOf(qid) + "-" + qidn
           ).removeClass("question-saved-localdb");
           return;
         }
@@ -1029,10 +1084,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
         console.log("SAVE", qid, qidn, evt.target.value);
 
         $(
-          "#question-list-item-" +
-            question_order.indexOf(qid) +
-            "-" +
-            qidn
+          "#question-list-item-" + question_order.indexOf(qid) + "-" + qidn
         ).addClass("question-saved-localdb");
         saveSession();
         updateQuestionListPanel(answer);
@@ -1081,8 +1133,8 @@ async function loadQuestion(n, section = 1, force_reload = false) {
   //rebuildQuestionListPanel();
   setTimeout(() => {
     setFocus(section);
-    $("#question-loading").hide();
   }, 200);
+  $("#question-loading").hide();
 }
 
 /**
@@ -1121,17 +1173,15 @@ function updateQuestionListPanel(answer) {
 
   if (question_type == "rapid" && answer.qidn == "1") {
     if (answer.ans == "Abnormal") {
-      $(
-        "#question-list-item-" +
-          question_order.indexOf(answer.qid) +
-          "-2"
-      ).css("display", "block");
+      $("#question-list-item-" + question_order.indexOf(answer.qid) + "-2").css(
+        "display",
+        "block"
+      );
     } else {
-      $(
-        "#question-list-item-" +
-          question_order.indexOf(answer.qid) +
-          "-2"
-      ).css("display", "none");
+      $("#question-list-item-" + question_order.indexOf(answer.qid) + "-2").css(
+        "display",
+        "none"
+      );
     }
   }
 }
@@ -1651,10 +1701,7 @@ function reviewQuestions() {
             score = correct_count;
 
             $("#review-score").text(
-              "Score: " +
-                correct_count +
-                " out of " +
-                question_order.length
+              "Score: " + correct_count + " out of " + question_order.length
             );
 
             if (question_type == "rapid") {
