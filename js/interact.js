@@ -1,3 +1,4 @@
+import {exam_query_url} from "./config.js";
 import * as helper from "./helpers.js";
 /**
  * Submits answers
@@ -12,6 +13,7 @@ export function submitAnswers(exam_details, db, config) {
       postAnswers(json, config, exam_details);
     })
     .catch((e) => {
+      console.log(e)
       alert("No answers to submit");
     });
 }
@@ -21,6 +23,12 @@ export function submitAnswers(exam_details, db, config) {
  * @return {JSON} - answers
  */
 export function getJsonAnswers(exam_details, db) {
+  console.log(exam_details)
+  console.log({
+      aid: exam_details.aid,
+      cid: exam_details.cid,
+      eid: exam_details.eid,
+    })
   return db.answers
     .where({
       aid: exam_details.aid,
@@ -42,14 +50,13 @@ export function postAnswers(ans, config, exam_details) {
       console.log("returned data", data);
       if (data.success) {
         $("#submit-error-overlay").remove();
-        if (data.question_count == window.number_of_questions) {
+        if (data.question_count == exam_details.number_of_questions) {
           let ret = confirm(
             `${data.question_count} answers sucessfully submitted. Click OK to finish the exam.`
           );
 
           if (ret) {
-            window.review = true;
-            window.saveSession();
+            $( document ).trigger( "saveSessionEvent", [ true ] );
             if (config.exam_results_url != "") {
               let url = config.exam_results_url;
 

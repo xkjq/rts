@@ -15,6 +15,7 @@ let exam_details = {
   cid: "",
   eid: 5678,
   exam_mode: false,
+  number_of_questions: null,
 };
 
 //window.exam_mode = false;
@@ -25,10 +26,9 @@ let packet_name = null;
 let questions = null;
 let question_order = [];
 let questions_correct = {};
-window.number_of_questions = null;
 let question_type = null;
 let loaded_question = null;
-window.review = false;
+let review_mode = false;
 let exam_time = null;
 let packet_time = null;
 let date_started = null;
@@ -403,8 +403,8 @@ function setUpQuestions(load_previous) {
       }
     }
   }
-  window.number_of_questions = question_order.length;
-  window.review = false;
+  exam_details.number_of_questions = question_order.length;
+  review_mode = false;
 
   // Horrible way to get type of questions
   // We assume they are all of the same type....
@@ -658,7 +658,7 @@ function loadSession() {
           question_order = sessions[parseInt(s)].question_order;
 
           if (sessions[parseInt(s)].status == "complete") {
-            window.review = true;
+            review_mode = true;
           }
         } else {
           // If cancel is pressed or input is blank
@@ -720,7 +720,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
       });
   }
 
-  if (n == window.number_of_questions - 1) {
+  if (n == exam_details.number_of_questions - 1) {
     $(".navigation[value='next']").attr("disabled", "disabled");
   } else {
     $(".navigation[value='next']")
@@ -1247,7 +1247,7 @@ function rebuildQuestionListPanel() {
       console.log("error - ", error);
     });
 
-  if (window.review == true) {
+  if (review_mode == true) {
     $(".question-panel-ans").remove();
     for (const qid in questions_correct) {
       let q_no = question_order.indexOf(qid);
@@ -1306,16 +1306,16 @@ function createQuestionListPanel() {
 
   if (question_type == "rapid") {
     // Loop through all questions and append list items
-    for (let n = 1; n < window.number_of_questions + 1; n++) {
+    for (let n = 1; n < exam_details.number_of_questions + 1; n++) {
       appendQuestionListItem(n, "1");
       appendQuestionListItem(n, "2").hide();
     }
   } else if (question_type == "anatomy") {
-    for (let n = 1; n < window.number_of_questions + 1; n++) {
+    for (let n = 1; n < exam_details.number_of_questions + 1; n++) {
       appendQuestionListItem(n, "1");
     }
   } else if (question_type == "long") {
-    for (let n = 1; n < window.number_of_questions + 1; n++) {
+    for (let n = 1; n < exam_details.number_of_questions + 1; n++) {
       appendQuestionListItem(n, "1");
       appendQuestionListItem(n, "2");
       appendQuestionListItem(n, "3");
@@ -1336,7 +1336,7 @@ $("#btn-local-file-load").click(function (evt) {
 });
 
 $(".submit-button").click(function (evt) {
-  interact.submitAnswers(window, db, config, exam_details);
+  interact.submitAnswers(exam_details, db, config);
 });
 
 $("#review-button").click(function (evt) {
@@ -1349,7 +1349,7 @@ $("#options-button").click(function (evt) {
 });
 
 $("#review-overlay-button").click(function (evt) {
-  if (window.review == true) {
+  if (review_mode == true) {
     reviewQuestions();
   } else {
     $("#finish-dialog").modal();
@@ -1365,7 +1365,7 @@ $("#fullscreen-overlay-button").click(function (evt) {
 });
 
 $("#finish-exam, #time-up-review-button").click(function (evt) {
-  window.review = true;
+  review_mode = true;
   reviewQuestions();
   $.modal.close();
 });
@@ -1739,7 +1739,7 @@ function markAnswer(qid, current_question) {
   const type = current_question.type;
 
   let option = null;
-  if (window.review == true) {
+  if (review_mode == true) {
     // Disable all possible answer elements
     $("#rapid-option").attr("disabled", "true");
     $(".long-answer").attr("readonly", "true");
@@ -2137,9 +2137,14 @@ $(document).ajaxStop(function () {
   $("#loading").hide();
 });
 
-function saveSession() {
+function saveSession(start_review) {
+
+  if (start_review == true) {
+    review_mode = true;
+  }
+
   let status = "active";
-  if (window.review == true) {
+  if (review_mode == true) {
     status = "complete";
   }
 
@@ -2157,13 +2162,15 @@ function saveSession() {
     status: status,
     date: date_started,
     score: score,
-    max_score: window.number_of_questions,
+    max_score: exam_details.number_of_questions,
     exam_time: exam_time,
     time_left: time_remaining,
     question_order: question_order,
     questions_answered: 0, // TODO
-    total_questions: window.number_of_questions,
+    total_questions: exam_details.number_of_questions,
   });
 }
 
-window.saveSession = saveSession;
+//window.saveSession = saveSession;
+
+$(document).on("saveSessionEvent", {}, (evt, review) => { saveSession(review) })
