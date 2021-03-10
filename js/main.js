@@ -10,7 +10,7 @@ import * as config from "./config.js";
 //window.cid = "";
 //window.eid = 5678;
 
-window.exam_details = {
+let exam_details = {
   aid: null,
   cid: "",
   eid: 5678,
@@ -43,7 +43,7 @@ let use_local_question_cache = false;
 
 //window.dfile = null;
 
-window.config = config;
+//config = config;
 
 cornerstone.imageCache.setMaximumSizeBytes(5128800);
 
@@ -84,7 +84,6 @@ question_db.version(1).stores({
   saved_exams: "eid, type, exam_mode, name, order, time, generated",
 });
 
-
 retrievePacketList();
 
 /**
@@ -97,10 +96,10 @@ retrievePacketList();
 function retrievePacketList() {
   let url = "packets/";
 
-  //console.log(window.config.exam_query_url);
+  //console.log(config.exam_query_url);
 
-  if (window.config.exam_query_url != undefined) {
-    url = window.config.exam_query_url;
+  if (config.exam_query_url != undefined) {
+    url = config.exam_query_url;
   }
 
   $.ajax({
@@ -372,7 +371,7 @@ function setUpQuestions(load_previous) {
       Object.keys(questions).forEach(function (e) {
         // Store question data into dexie
         let d = {
-          eid: window.exam_details.eid,
+          eid: exam_details.eid,
           qid: e,
           data: questions[e],
         };
@@ -396,8 +395,8 @@ function setUpQuestions(load_previous) {
       }
 
       let randomise_order = true;
-      if (window.config.randomise_order != undefined) {
-        randomise_order = window.config.randomise_order;
+      if (config.randomise_order != undefined) {
+        randomise_order = config.randomise_order;
       }
       if (randomise_order) {
         question_order = helper.shuffleArray(question_order);
@@ -411,7 +410,7 @@ function setUpQuestions(load_previous) {
   // We assume they are all of the same type....
   //question_type = questions[Object.keys(questions)[0]].type;
 
-  if (window.exam_details.exam_mode) {
+  if (exam_details.exam_mode) {
     $("#options-button, #review-overlay-button").hide();
   } else {
     $("#submit-button").hide();
@@ -438,12 +437,12 @@ function setUpQuestions(load_previous) {
       exam_time = $(".exam-time").val() * 60;
     });
 
-  if (window.exam_details.exam_mode) {
+  if (exam_details.exam_mode) {
     // NOTE: changing the CID when restoring a session will not affect the time left
     $("#candidate-number2")
-      .val(window.exam_details.cid)
+      .val(exam_details.cid)
       .change(() => {
-        window.exam_details.cid = parseInt($("#candidate-number2").val());
+        exam_details.cid = parseInt($("#candidate-number2").val());
       });
 
     $("#start-dialog").addClass("no-close");
@@ -464,8 +463,6 @@ function setUpQuestions(load_previous) {
   createQuestionListPanel();
 }
 
-
-
 /**
  * Parse the packet and extract metadata (if it exists)
  * Will then call setUpQuestions() to load the packet
@@ -480,7 +477,7 @@ function setUpPacket(data, path) {
   $(".exam-name").text("Exam: " + packet_name);
 
   if (data.hasOwnProperty("eid")) {
-    window.exam_details.eid = data.eid;
+    exam_details.eid = data.eid;
   }
 
   if (data.hasOwnProperty("exam_type")) {
@@ -564,7 +561,7 @@ function setUpPacket(data, path) {
 
         // Store question data into dexie
         let d = {
-          eid: window.exam_details.eid,
+          eid: exam_details.eid,
           qid: n,
           data: question_json,
         };
@@ -605,11 +602,11 @@ function loadSession() {
 
       // Start new session if no session found
       if (sessions.length < 1) {
-        window.exam_details.aid = uuidv4();
+        exam_details.aid = uuidv4();
         date_started = Date.now();
       } else {
         let text = "Select session to continue (leave blank to create new):";
-        if (window.exam_details.exam_mode) {
+        if (exam_details.exam_mode) {
           text = "Session will be continued";
         }
         //console.log(sessions.date);
@@ -640,7 +637,7 @@ function loadSession() {
 
         // If in exam mode we don't want to allow multiple sessions
         let s;
-        if (window.exam_details.exam_mode) {
+        if (exam_details.exam_mode) {
           s = "0";
           alert(text);
         } else {
@@ -650,8 +647,8 @@ function loadSession() {
         if (s != null && s != "") {
           load_previous = true;
 
-          window.exam_details.aid = sessions[parseInt(s)].aid;
-          window.exam_details.cid = sessions[parseInt(s)].cid;
+          exam_details.aid = sessions[parseInt(s)].aid;
+          exam_details.cid = sessions[parseInt(s)].cid;
           date_started = sessions[parseInt(s)].date;
 
           let time_left = sessions[parseInt(s)].time_left;
@@ -665,7 +662,7 @@ function loadSession() {
           }
         } else {
           // If cancel is pressed or input is blank
-          window.exam_details.aid = uuidv4();
+          exam_details.aid = uuidv4();
           date_started = Date.now();
           //console.log("new date", date_started);
         }
@@ -683,9 +680,9 @@ function loadSession() {
  */
 async function loadQuestion(n, section = 1, force_reload = false) {
   $("#question-loading").show();
-  const aid = window.exam_details.aid;
-  const cid = window.exam_details.cid;
-  const eid = window.exam_details.eid;
+  const aid = exam_details.aid;
+  const cid = exam_details.cid;
+  const eid = exam_details.eid;
 
   // Make sure we have an integer
   n = parseInt(n);
@@ -1213,9 +1210,9 @@ function updateQuestionListPanelFlags(answer) {
  * if it gets slow...)
  */
 function rebuildQuestionListPanel() {
-  const aid = window.exam_details.aid;
-  const cid = window.exam_details.cid;
-  const eid = window.exam_details.eid;
+  const aid = exam_details.aid;
+  const cid = exam_details.cid;
+  const eid = exam_details.eid;
 
   //console.log("UP");
   db.answers
@@ -1339,7 +1336,7 @@ $("#btn-local-file-load").click(function (evt) {
 });
 
 $(".submit-button").click(function (evt) {
-  interact.submitAnswers(window, db);
+  interact.submitAnswers(window, db, config, exam_details);
 });
 
 $("#review-button").click(function (evt) {
@@ -1440,8 +1437,8 @@ function reviewQuestions() {
     timer.stop();
   }
 
-  const cid = window.exam_details.cid;
-  const eid = window.exam_details.eid;
+  const cid = exam_details.cid;
+  const eid = exam_details.eid;
   $("#review-overlay").show();
   $("#review-answer-list").empty();
   $("#review-answer-table").empty();
@@ -1910,9 +1907,9 @@ function answerInArray(arr, ans) {
 }
 
 function addFlagEvents() {
-  const aid = window.exam_details.aid;
-  const cid = window.exam_details.cid;
-  const eid = window.exam_details.eid;
+  const aid = exam_details.aid;
+  const cid = exam_details.cid;
+  const eid = exam_details.eid;
 
   // Bind flag change events
   $("button.flag").click(function (event) {
@@ -1945,9 +1942,9 @@ function addFlagEvents() {
 
 // Loads the current question flag status and updates display
 function loadFlagsFromDb(qid, n) {
-  const aid = window.exam_details.aid;
-  const cid = window.exam_details.cid;
-  const eid = window.exam_details.eid;
+  const aid = exam_details.aid;
+  const cid = exam_details.cid;
+  const eid = exam_details.eid;
   db.flags
     .get({ aid: aid, cid: cid, eid: eid, qid: qid, qidn: n })
     .then(function (answer) {
@@ -1967,12 +1964,12 @@ function showLoginDialog() {
 }
 
 $("#start-exam-button").click(function (evt) {
-  window.exam_details.cid = parseInt($("#candidate-number").val());
+  exam_details.cid = parseInt($("#candidate-number").val());
   $.modal.close();
 });
 
 $(".start-packet-button").click(function (evt) {
-  if (window.exam_details.exam_mode) {
+  if (exam_details.exam_mode) {
     if (!Number.isInteger(parseInt($("#candidate-number2").val()))) {
       alert("Please enter a valid candidate number.");
       return;
@@ -1991,7 +1988,7 @@ $(".start-packet-button").click(function (evt) {
     $("#timer").html("Time left: " + timer.getTimeValues().toString());
   });
   timer.addEventListener("targetAchieved", function (e) {
-    if (window.exam_details.exam_mode == true) {
+    if (exam_details.exam_mode == true) {
       $(
         "#dialog-submit-button, #time-up-review-button, #time-up-continue-button"
       ).toggle();
@@ -2155,8 +2152,8 @@ function saveSession() {
     time_values.seconds;
   db.session.put({
     packet: packet_name,
-    aid: window.exam_details.aid,
-    cid: window.exam_details.cid,
+    aid: exam_details.aid,
+    cid: exam_details.cid,
     status: status,
     date: date_started,
     score: score,

@@ -2,16 +2,18 @@ import * as helper from "./helpers.js";
 /**
  * Submits answers
  */
-export function submitAnswers(exam_details, db) {
-  console.log(
-    getJsonAnswers(exam_details, db).then((a) => {
+export function submitAnswers(exam_details, db, config) {
+  getJsonAnswers(exam_details, db)
+    .then((a) => {
       let json = {
         eid: exam_details.eid,
         answers: JSON.stringify(a),
       };
-      postAnswers(json);
+      postAnswers(json, config, exam_details);
     })
-  );
+    .catch((e) => {
+      alert("No answers to submit");
+    });
 }
 
 /**
@@ -19,24 +21,23 @@ export function submitAnswers(exam_details, db) {
  * @return {JSON} - answers
  */
 export function getJsonAnswers(exam_details, db) {
-  const cid = exam_details.cid;
-  const eid = exam_details.eid;
-  return db.answers.where({ aid: aid, cid: cid, eid: eid }).toArray();
-  // .then(function(ans) {
-  // console.log(ans);
-  // submitAnswers(ans);
-  // });
+  return db.answers
+    .where({
+      aid: exam_details.aid,
+      cid: exam_details.cid,
+      eid: exam_details.eid,
+    })
+    .toArray();
 }
 
 /**
  * Posts answers to url
  * @param {*} ans - json representation of answers
  */
-export function postAnswers(ans) {
+export function postAnswers(ans, config, exam_details) {
   $("#progress").html("Submitting answers...");
-  // ans = {"test" : 1}
-  console.log(ans);
-  $.post(window.config.exam_submit_url, ans, null, "json")
+
+  $.post(config.exam_submit_url, ans, null, "json")
     .done((data) => {
       console.log("returned data", data);
       if (data.success) {
@@ -52,8 +53,8 @@ export function postAnswers(ans) {
             if (config.exam_results_url != "") {
               let url = config.exam_results_url;
 
-              if (window.exam_details.cid != "") {
-                url = url + window.exam_details.cid;
+              if (exam_details.cid != "") {
+                url = url + exam_details.cid;
               }
               $("#options-link")
                 .empty()
@@ -117,7 +118,8 @@ export function getQuestion(url, question_number, question_total) {
     url: url,
     progress: function (e) {
       $("#progress").html(
-        `Downloading question [${question_number}/${question_total}]<br/>This file is compressed (no size available)`)
+        `Downloading question [${question_number}/${question_total}]<br/>This file is compressed (no size available)`
+      );
       if (e.lengthComputable) {
         var completedPercentage = Math.round((e.loaded * 100) / e.total);
 
@@ -128,11 +130,12 @@ export function getQuestion(url, question_number, question_total) {
         );
       }
     },
-    error: (jqXHR, textStatus, errorThrown) => { console.log("error downlading", jqXHR, textStatus, errorThrown) },
+    error: (jqXHR, textStatus, errorThrown) => {
+      console.log("error downlading", jqXHR, textStatus, errorThrown);
+    },
     //success: function (data) {
     //  strReturn = data;
     //},
     //async: false,
   });
-
 }
