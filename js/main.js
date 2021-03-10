@@ -45,6 +45,46 @@ let use_local_question_cache = false;
 
 window.config = config;
 
+cornerstone.imageCache.setMaximumSizeBytes(5128800);
+
+// Set up cornerstone (the dicom viewer)
+cornerstoneBase64ImageLoader.external.cornerstone = cornerstone;
+cornerstoneWebImageLoader.external.cornerstone = cornerstone;
+// cornerstoneWebImageLoader.configure({
+//  beforeSend: function(xhr) {
+//    // Add custom headers here (e.g. auth tokens)
+//    //xhr.setRequestHeader('x-auth-token', 'my auth token');
+//  }
+// });
+
+cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
+
+// cornerstoneWADOImageLoader.configure({
+//  beforeSend: function(xhr) {
+//    // Add custom headers here (e.g. auth tokens)
+//    //xhr.setRequestHeader('APIKEY', 'my auth token');
+//  }
+// });
+
+cornerstoneTools.init();
+
+// Set up database
+const db = new Dexie("answers_database");
+db.version(1).stores({
+  answers: "[aid+cid+eid+qid+qidn], [aid+cid+eid], qid, ans",
+  flags: "[aid+cid+eid+qid+qidn], [aid+cid+eid], qid",
+  user_answers: "qid, ans",
+  session:
+    "[packet+aid], packet, aid, status, date, score, max_score, exam_time, time_left, question_order, questions_answered, total_questions",
+});
+
+const question_db = new Dexie("question_database");
+question_db.version(1).stores({
+  question_data: "[eid+qid], eid",
+  saved_exams: "eid, type, exam_mode, name, order, time, generated",
+});
+
+
 retrievePacketList();
 
 /**
@@ -424,44 +464,6 @@ function setUpQuestions(load_previous) {
   createQuestionListPanel();
 }
 
-cornerstone.imageCache.setMaximumSizeBytes(5128800);
-
-// Set up cornerstone (the dicom viewer)
-cornerstoneBase64ImageLoader.external.cornerstone = cornerstone;
-cornerstoneWebImageLoader.external.cornerstone = cornerstone;
-// cornerstoneWebImageLoader.configure({
-//  beforeSend: function(xhr) {
-//    // Add custom headers here (e.g. auth tokens)
-//    //xhr.setRequestHeader('x-auth-token', 'my auth token');
-//  }
-// });
-
-cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
-
-// cornerstoneWADOImageLoader.configure({
-//  beforeSend: function(xhr) {
-//    // Add custom headers here (e.g. auth tokens)
-//    //xhr.setRequestHeader('APIKEY', 'my auth token');
-//  }
-// });
-
-cornerstoneTools.init();
-
-// Set up database
-const db = new Dexie("answers_database");
-db.version(1).stores({
-  answers: "[aid+cid+eid+qid+qidn], [aid+cid+eid], qid, ans",
-  flags: "[aid+cid+eid+qid+qidn], [aid+cid+eid], qid",
-  user_answers: "qid, ans",
-  session:
-    "[packet+aid], packet, aid, status, date, score, max_score, exam_time, time_left, question_order, questions_answered, total_questions",
-});
-
-const question_db = new Dexie("question_database");
-question_db.version(1).stores({
-  question_data: "[eid+qid], eid",
-  saved_exams: "eid, type, exam_mode, name, order, time, generated",
-});
 
 
 /**
