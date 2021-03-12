@@ -831,6 +831,23 @@ select option:disabled {
     transition: all 0.2s;
 }
 
+.packet-button.cached:after{
+  content: "cached";
+  width: 12px;
+  height: 12px;
+  color: gray;
+  border-radius: 50%;
+  position:relative;
+  transform: translate(15px, 5.5px) rotate(270deg);
+  display: inline-block;
+  right: 0;
+  font-size: 8px;
+}
+
+.packet-button.out-of-date{
+ color: darkslategray
+}
+
 .save-button {
     display:inline-block;
     margin-left: 10px;
@@ -1062,3 +1079,20 @@ display: block
     opacity: 0;
   }
 }
+
+#submit-error-overlay {
+    opacity: 0.9;
+    position: absolute;
+    top: 0;
+    left: 0;
+    background-color: black;
+    width: 100%;
+    user-select: text;
+    -moz-user-select: text;
+    -webkit-user-select: text;
+    z-index: 5000;
+}
+
+.cache-out-of-date {
+    color: red;
+    }

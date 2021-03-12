@@ -336,6 +336,7 @@ export function changeControlSelection() {
         disableFullscreen(dicom_element);
       }
       if (dicom_element != undefined) {
+        // See https://github.com/cornerstonejs/cornerstoneTools/issues/1337
         cornerstone.removeElementData(dicom_element);
         cornerstone.disable(dicom_element);
         $(".canvas-panel").remove();

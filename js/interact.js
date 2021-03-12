@@ -76,18 +76,18 @@ export function postAnswers(ans, config, exam_details) {
           alert(`${data.question_count} answers sucessfully submitted.`);
         }
       } else {
-        submissionError(data, ans);
+        submissionError(data, ans, exam_details);
       }
     })
     .fail((e) => {
       // Will occur with server error such as 500
       console.log("error", e);
-      submissionError(e, ans);
+      submissionError(e, ans, exam_details);
     });
   // $.post( "http://localhost:8000/submit_answers", JSON.stringify(ans));
 }
 
-function submissionError(data, ans) {
+function submissionError(data, answer_json, exam_details) {
   // error will not be defined with server errors
   if (data.error != undefined) {
     alert(`Error submitting answers: ${data.error}`);
@@ -96,26 +96,48 @@ function submissionError(data, ans) {
   }
   var docHeight = $(document).height();
 
-  $("body").append(
-    `<div id='submit-error-overlay'><span style='color: white'><p>An error has occured when submit your answers. A copy of your answers are displayed below, you may wish to save a copy. Please try submitting again or refresh this page to continue.</p>${JSON.stringify(
-      ans
-    )}</span></div>`
-  );
+  let answers = JSON.parse(answer_json.answers)
 
-  $("#nav-submit-button").prependTo("#submit-error-overlay");
+  let answer_map = {}
 
-  $("#submit-error-overlay").height(docHeight).css({
-    opacity: 0.9,
-    position: "absolute",
-    top: 0,
-    left: 0,
-    "background-color": "black",
-    width: "100%",
-    "user-select": "text",
-    "-moz-user-select": "text",
-    "-webkit-user-select": "text",
-    "z-index": 5000,
+  answers.forEach((ans, n) => { 
+    if (!answer_map.hasOwnProperty(ans.qid)) {
+      answer_map[ans.qid] = [];
+    }
+
+    answer_map[ans.qid].push(ans);
+  
   });
+
+  let html = $("<ul></ul>");
+
+  exam_details.question_order.forEach((i, j) => {
+    console.log(i, answer_map)
+    if (i in answer_map) {
+    console.log("YES", i, answer_map)
+      let ans_array = answer_map[i];
+      ans_array.forEach((x, y) => {
+      $(html).append(`<li><b>Question ${j+1}.${y}:</b> ${x.ans}</li>`);
+      });
+    }
+  
+  })
+
+  console.log(exam_details.question_order);
+  console.log(answer_map);
+  console.log(html);
+
+  if ($("#submit-error-overlay").length < 1) {
+    $("body").append(
+      `<div id='submit-error-overlay'><span style='color: white'><p>An error has occured when submit your answers. A copy of your answers are displayed below, you may wish to save a copy. Please try submitting again or refresh this page to continue.</p><p>${html.get(0).innerHTML}</p><p>${JSON.stringify(
+        answer_json
+      )}</p></span></div>`
+    );
+
+    $("#nav-submit-button").prependTo("#submit-error-overlay");
+
+    $("#submit-error-overlay").height(docHeight);
+  }
 }
 
 export function getQuestion(url, question_number, question_total) {

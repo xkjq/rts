@@ -5,26 +5,18 @@ import * as interact from "./interact.js";
 import * as config from "./config.js";
 // const { v4: uuidv4 } = require('uuid');
 
-// cid = null;
-//window.aid = null;
-//window.cid = "";
-//window.eid = 5678;
-
 let exam_details = {
   aid: null,
   cid: "",
   eid: 5678,
   exam_mode: false,
   number_of_questions: null,
+  question_order: [],
 };
-
-//window.exam_mode = false;
 
 let packet_list = [];
 let packet_name = null;
-//window.questions = null;
 let questions = null;
-let question_order = [];
 let questions_correct = {};
 let question_type = null;
 let loaded_question = null;
@@ -40,10 +32,6 @@ let allow_self_marking = true;
 let timer = null;
 
 let use_local_question_cache = false;
-
-//window.dfile = null;
-
-//config = config;
 
 cornerstone.imageCache.setMaximumSizeBytes(5128800);
 
@@ -80,11 +68,13 @@ db.version(1).stores({
 
 const question_db = new Dexie("question_database");
 question_db.version(1).stores({
-  question_data: "[eid+qid], eid",
-  saved_exams: "eid, type, exam_mode, name, order, time, generated",
+  question_data: "&[qid+type], qid, type",
+  saved_exams: "&eid, type, exam_mode, name, order, time, generated",
 });
 
 retrievePacketList();
+
+refreshDatabaseSettings();
 
 /**
  * Retrieves a list of available packets via JSON ajax requests
@@ -123,9 +113,6 @@ function retrievePacketList() {
           loadPacketList(data);
         }
       }).fail(function (jqXHR, textStatus, errorThrown) {
-        //console.log(jqXHR);
-        //console.log(textStatus);
-        //console.log(errorThrown);
         console.log("No packet list available");
         showLoginDialog();
       });
@@ -154,9 +141,7 @@ async function loadExamList(data) {
     $("#database-error").append(delete_button);
     $("#database-error").show();
   });
-  // db.session
-  //   .where("packet")
-  //   .equals()
+
   let exams_started = [];
   let exams_completed = [];
   sessions.forEach((s) => {
@@ -167,15 +152,26 @@ async function loadExamList(data) {
     }
   });
 
+  let exam_list = [];
   if (data != null) {
-    window.exam_list = data.exams;
+    exam_list = data.exams;
   }
+
+  let exam_generated_map = {};
   $("#packet-list").empty();
-  window.exam_list.forEach(function (exam) {
+  exam_list.forEach(function (exam) {
     let name = exam["name"];
     let url = exam["url"];
     let eid = exam["eid"];
     let generated = exam["json_creation_time"];
+
+    let question_timestamp_hash = {};
+
+    if (exam.hasOwnProperty("multi_question_json")) {
+      question_timestamp_hash = exam["multi_question_json"];
+    }
+    exam_generated_map[eid] = [generated, question_timestamp_hash];
+
     let c = "";
     if (exams_started.indexOf(name) > -1) {
       c = " session-started";
@@ -198,7 +194,9 @@ async function loadExamList(data) {
     }
 
     list.append(
-      $(`<div class='packet-button${c}' title='Load packet'></div>`)
+      $(
+        `<div class='packet-button${c}' data-eid='${eid}' title='Load packet'></div>`
+      )
         .text(name)
         .click(function () {
           loadPacketFromAjax(url, eid, generated);
@@ -214,6 +212,81 @@ async function loadExamList(data) {
         `<a href="${url}" target="_blank"><div class="packet-button">Results and answers</div></a>`
       );
   }
+
+  // Check the database for exams that have been saved
+  question_db.saved_exams.toArray().then((saved_exams) => {
+    saved_exams.forEach((saved_exam, n) => {
+      $("#cache-details ul").append(
+        `<li class="cache-item" data-eid=${saved_exam.eid}>Exam: ${saved_exam.exam_name} [${saved_exam.eid}]: ${saved_exam.generated}`
+      );
+      //Compared saved exams to those available
+      if (exam_generated_map.hasOwnProperty(saved_exam.eid)) {
+        // If the timestamps differ delete and force a refresh
+        const exam_timestamp = exam_generated_map[saved_exam.eid][0];
+        const question_timestamp_hash = exam_generated_map[saved_exam.eid][1];
+        if (Date.parse(saved_exam.generated) != Date.parse(exam_timestamp)) {
+          question_db.saved_exams.where("eid").equals(saved_exam.eid).delete();
+
+          $(`li.cache-item[data-eid="${saved_exam.eid}"]`).addClass(
+            "cache-out-of-date"
+          );
+        } else {
+          $(`.packet-button[data-eid="${saved_exam.eid}"]`).addClass("cached");
+        }
+
+        for (let q in question_timestamp_hash) {
+          let new_timestamp = question_timestamp_hash[q];
+          q = q.toString();
+          $("#cache-details ul").append(
+            `<li class="cache-item" data-qid=${q}>Question (${saved_exam.exam_type}): ${q}`
+          );
+          // If a single question is out of date we invalidate the lot...
+          const q_object = { qid: q, type: saved_exam.exam_type };
+          question_db.question_data
+            .get(q_object)
+            .then((d) => {
+              // d is undefined if the question is not saved
+              // we should really just requeue the required question for dowload...
+              if (
+                d == undefined ||
+                Date.parse(d.data.generated) != Date.parse(new_timestamp)
+              ) {
+                $(`li.cache-item[data-eid="${saved_exam.eid}"]`).addClass(
+                  "cache-out-of-date"
+                );
+                $(`li.cache-item[data-qid="${q}"]`).addClass(
+                  "cache-out-of-date"
+                );
+                $(`.packet-button[data-eid="${saved_exam.eid}"]`).addClass(
+                  "out-of-date"
+                );
+
+                //question_db.saved_exams.where("eid").equals(saved_exam.eid).delete();
+              question_db.question_data.where(["qid", "type"]).equals([q, saved_exam.exam_type]).delete();
+              }
+              d = null;
+            })
+            .catch((e) => {
+              // If the question isn't found in the cache...
+              $(`li.cache-item[data-eid="${saved_exam.eid}"]`).addClass(
+                "cache-out-of-date"
+              );
+              $(`li.cache-item[data-qid="${q}"]`)
+                .addClass("cache-out-of-date")
+                .append("[Not found]");
+              $(`.packet-button[data-eid="${saved_exam.eid}"]`).addClass(
+                "out-of-date"
+              );
+
+              //question_db.saved_exams.where("eid").equals(saved_exam.eid).delete();
+              question_db.question_data.where(["qid", "type"]).equals([q, saved_exam.exam_type]).delete();
+
+            });
+        }
+      }
+    });
+  });
+
   $("#options-panel").show();
 }
 
@@ -311,9 +384,8 @@ function loadPacketFromAjax(path, eid, generated) {
           exam == undefined ||
           Date.parse(exam["generated"]) != Date.parse(generated)
         ) {
-          ajaxRequestionPacket();
+          ajaxRequestionPacket(true);
         } else {
-          console.log(exam);
           // We have an up to date exam in the database
           // TODO: check the questions are valid
           use_local_question_cache = true;
@@ -332,14 +404,19 @@ function loadPacketFromAjax(path, eid, generated) {
     return;
   }
 
-  function ajaxRequestionPacket() {
+  function ajaxRequestionPacket(force_refresh) {
     //console.log("loading packet from " + path);
     $("#progress").html(`Requesting packet: ${path}`);
+
+    let browser_cache = true;
+    if (force_refresh) {
+      browser_cache = false;
+    }
 
     $.ajax({
       dataType: "json",
       url: path,
-      cache: true,
+      cache: browser_cache,
       progress: function (e) {
         if (e.lengthComputable) {
           var completedPercentage = Math.round((e.loaded * 100) / e.total);
@@ -358,109 +435,6 @@ function loadPacketFromAjax(path, eid, generated) {
         console.log("Unable to load packet at: " + path);
       });
   }
-}
-
-/**
- * Build the currently loaded quiz
- */
-function setUpQuestions(load_previous) {
-  if (questions == undefined) {
-    //return;
-  } else {
-    if (!use_local_question_cache) {
-      Object.keys(questions).forEach(function (e) {
-        // Store question data into dexie
-        let d = {
-          eid: exam_details.eid,
-          qid: e,
-          data: questions[e],
-        };
-
-        question_db.question_data.put(d);
-      });
-    }
-
-    // Set an order for the questions
-    if (!load_previous) {
-      if (question_order.length < 1) {
-        question_order = [];
-        Object.keys(questions).forEach(function (e) {
-          question_order.push(e);
-
-          // Make sure answers are arrays
-          if (!Array.isArray(questions[e]["answers"])) {
-            questions[e]["answers"] = [questions[e]["answers"]];
-          }
-        });
-      }
-
-      let randomise_order = true;
-      if (config.randomise_order != undefined) {
-        randomise_order = config.randomise_order;
-      }
-      if (randomise_order) {
-        question_order = helper.shuffleArray(question_order);
-      }
-    }
-  }
-  exam_details.number_of_questions = question_order.length;
-  review_mode = false;
-
-  // Horrible way to get type of questions
-  // We assume they are all of the same type....
-  //question_type = questions[Object.keys(questions)[0]].type;
-
-  if (exam_details.exam_mode) {
-    $("#options-button, #review-overlay-button").hide();
-  } else {
-    $("#submit-button").hide();
-  }
-
-  questions = null;
-
-  //console.log(question_type);
-
-  // exam_time can be defined in packets
-  if (!load_previous && exam_time == null) {
-    if (question_type == "rapid") {
-      exam_time = 35 * 60;
-    } else if (question_type == "anatomy") {
-      exam_time = 90 * 60;
-    } else if (question_type == "long") {
-      exam_time = 75 * 60;
-    }
-  }
-
-  $(".exam-time")
-    .val(exam_time / 60)
-    .change(() => {
-      exam_time = $(".exam-time").val() * 60;
-    });
-
-  if (exam_details.exam_mode) {
-    // NOTE: changing the CID when restoring a session will not affect the time left
-    $("#candidate-number2")
-      .val(exam_details.cid)
-      .change(() => {
-        exam_details.cid = parseInt($("#candidate-number2").val());
-      });
-
-    $("#start-dialog").addClass("no-close");
-    $("#start-dialog .exam-time").prop("disabled", "true");
-    $("#exam-candidate-number").show();
-    $(".packet-database-options").hide();
-    $("#start-dialog").modal({
-      closeExisting: false, // Close existing modals. Set this to false if you need to stack multiple modal instances.
-      escapeClose: false, // Allows the user to close the modal by pressing `ESC`
-      clickClose: false, // Allows the user to close the modal by clicking the overlay
-      showClose: false,
-    });
-  } else {
-    $("#start-dialog").modal();
-  }
-
-  loadQuestion(0, 1, true);
-  createQuestionListPanel();
 }
 
 /**
@@ -499,7 +473,30 @@ function setUpPacket(data, path) {
   }
 
   if (data.hasOwnProperty("exam_order")) {
-    question_order = data.exam_order;
+    exam_details.question_order = data.exam_order;
+  } else {
+        exam_details.question_order = [];
+        Object.keys(questions).forEach(function (e) {
+          exam_details.question_order.push(e);
+
+          // Make sure answers are arrays
+          if (!Array.isArray(questions[e]["answers"])) {
+            questions[e]["answers"] = [questions[e]["answers"]];
+          }
+        });
+
+      let randomise_order = true;
+      if (config.randomise_order != undefined) {
+        randomise_order = config.randomise_order;
+      }
+      if (randomise_order) {
+        exam_details.question_order = helper.shuffleArray(
+          exam_details.question_order
+        );
+      }
+      // We add this here so the question order is maintained
+      // when loading from cache
+      data["exam_order"] = exam_details.question_order
   }
 
   if (data.hasOwnProperty("exam_time")) {
@@ -508,19 +505,33 @@ function setUpPacket(data, path) {
     packet_time = data.exam_time;
   }
 
-  if (use_local_question_cache) {
-    // If loading form cache nothing else to do here
-    loadSession();
-    return;
+  //if (use_local_question_cache && force_question_refresh.length < 1) {
+  //  // If loading form cache nothing else to do here
+  //  loadSession();
+  //  return;
+  //}
+
+  if (!use_local_question_cache) {
+    // Save the details to the question database
+    var clone_data = Object.assign({}, data, { questions: "cached" });
+    //clone_data["cached_questions"] = Object.keys(data["questions"]);
+    question_db.saved_exams.put(clone_data);
   }
 
-  // Save the details to the question database
-  var clone_data = Object.assign({}, data, { questions: undefined });
-  question_db.saved_exams.put(clone_data);
-
-  // If the question_requests is set we need to do a request for each question
-  if (data.hasOwnProperty("question_requests") && data["question_requests"]) {
-    const question_total = Object.keys(data["questions"]).length;
+  // If question_requests is set we need to do a request for each question
+  if (data.hasOwnProperty("question_requests") && (Object.keys(data["question_requests"]).length > 0)) {
+    // Will happen if loading from cache
+    //if (data["questions"] == "cached") {
+    //  let a = {};
+    //  data["cached_questions"].forEach((q, n) => {
+    //    let s = JSON.stringify()
+    //    if (force_question_refresh.includes(s)) {
+    //    a[q] = 1;
+    //    }
+    //  });
+    //  data["questions"] = a;
+    //}
+    let question_total = Object.keys(data["question_requests"]).length;
     let question_number = 0;
 
     var requests = [];
@@ -528,9 +539,17 @@ function setUpPacket(data, path) {
 
     // For loop to generate requests
     (async () => {
-      for (const n in data["questions"]) {
-        const question_url = `${path}/${n}`;
+      for (const n in data["question_requests"]) {
         question_number++;
+
+        let obj = {qid: n, type: question_type};
+        let question_in_db = await question_db.question_data.get(obj);
+
+        // If the question is in the db we can load
+        // invalid questions should have already been removed
+        if (question_in_db != undefined) {continue}
+
+        const question_url = `${path}/${n}`;
 
         //console.log("Creating ", question_url, question_number, question_total);
         //$("#progress").html(`Downloading [${question_number}/${question_total}]`);
@@ -539,8 +558,8 @@ function setUpPacket(data, path) {
           .getQuestion(question_url, question_number, question_total)
           .fail((jqXHR, textStatus, errorThrown) => {
             //console.log(jqXHR, textStatus, errorThrown);
-            console.log("error loading question");
-            data["questions"][n] = {};
+            console.log(`error loading question: ${n}`);
+            //data["questions"][n] = {};
           });
 
         if (question_json.hasOwnProperty("cached") && question_json["cached"]) {
@@ -561,17 +580,21 @@ function setUpPacket(data, path) {
 
         // Store question data into dexie
         let d = {
-          eid: exam_details.eid,
+          //eid: exam_details.eid,
           qid: n,
           data: question_json,
+          type: question_json.type,
         };
 
         question_db.question_data.put(d);
-        use_local_question_cache = true;
       }
       // Once all questions have been downloaded we carry on loading
+      use_local_question_cache = true;
       loadSession();
-    })();
+    })().catch((error) => {
+      alert("Error downloading, try refreshing");
+      console.log(error);
+    });
   } else {
     // Just carry on loading
     loadSession();
@@ -579,7 +602,7 @@ function setUpPacket(data, path) {
 }
 
 function loadSession() {
-  //console.log("load session");
+  console.log("load session", exam_details, db.session);
   // Either continue session or create a new one
   db.session
     // .where("status")
@@ -655,7 +678,7 @@ function loadSession() {
 
           exam_time = time_left;
 
-          question_order = sessions[parseInt(s)].question_order;
+          exam_details.question_order = sessions[parseInt(s)].question_order;
 
           if (sessions[parseInt(s)].status == "complete") {
             review_mode = true;
@@ -670,6 +693,90 @@ function loadSession() {
 
       setUpQuestions(load_previous);
     });
+}
+
+/**
+ * Build the currently loaded quiz
+ */
+function setUpQuestions(load_previous) {
+  if (questions == undefined) {
+    //return;
+  } else {
+    if (!use_local_question_cache) {
+      Object.keys(questions).forEach(function (e) {
+        // Store question data into dexie
+        let d = {
+          //eid: exam_details.eid,
+          qid: e,
+          type: questions[e].type,
+          data: questions[e],
+          //timestamp: questions[e]["generated"],
+        };
+
+        question_db.question_data.put(d);
+      });
+    }
+
+    // Set an order for the questions
+    if (!load_previous) {
+    }
+  }
+  exam_details.number_of_questions = exam_details.question_order.length;
+  review_mode = false;
+
+  // Horrible way to get type of questions
+  // We assume they are all of the same type....
+  //question_type = questions[Object.keys(questions)[0]].type;
+
+  if (exam_details.exam_mode) {
+    $("#options-button, #review-overlay-button").hide();
+  } else {
+    $("#submit-button").hide();
+  }
+
+  questions = null;
+
+  // exam_time can be defined in packets
+  if (!load_previous && exam_time == null) {
+    if (question_type == "rapid") {
+      exam_time = 35 * 60;
+    } else if (question_type == "anatomy") {
+      exam_time = 90 * 60;
+    } else if (question_type == "long") {
+      exam_time = 75 * 60;
+    }
+  }
+
+  $(".exam-time")
+    .val(exam_time / 60)
+    .change(() => {
+      exam_time = $(".exam-time").val() * 60;
+    });
+
+  if (exam_details.exam_mode) {
+    // NOTE: changing the CID when restoring a session will not affect the time left
+    $("#candidate-number2")
+      .val(exam_details.cid)
+      .change(() => {
+        exam_details.cid = parseInt($("#candidate-number2").val());
+      });
+
+    $("#start-dialog").addClass("no-close");
+    $("#start-dialog .exam-time").prop("disabled", "true");
+    $("#exam-candidate-number").show();
+    $(".packet-database-options").hide();
+    $("#start-dialog").modal({
+      closeExisting: false, // Close existing modals. Set this to false if you need to stack multiple modal instances.
+      escapeClose: false, // Allows the user to close the modal by pressing `ESC`
+      clickClose: false, // Allows the user to close the modal by clicking the overlay
+      showClose: false,
+    });
+  } else {
+    $("#start-dialog").modal();
+  }
+
+  loadQuestion(0, 1, true);
+  createQuestionListPanel();
 }
 
 /**
@@ -688,22 +795,21 @@ async function loadQuestion(n, section = 1, force_reload = false) {
   n = parseInt(n);
   //console.log("loading question (n)", n);
 
-  const qid = question_order[n];
-
-  let q = { qid: qid.toString(), eid: eid };
-
-  let return_data = await question_db.question_data.get(q);
-  const question_data = return_data.data;
-  return_data = null;
-
-  //const current_question = window.questions[qid];
-
   if (n == loaded_question && force_reload == false) {
     // Question already loaded
     setFocus(section);
     $("#question-loading").hide();
     return;
   }
+
+  const qid = exam_details.question_order[n];
+
+  let q = { qid: qid.toString(), type: question_type };
+
+  let return_data = await question_db.question_data.get(q);
+  const question_data = return_data.data;
+  return_data = null;
+
 
   loaded_question = n;
 
@@ -897,7 +1003,9 @@ async function loadQuestion(n, section = 1, force_reload = false) {
         if (evt.target.value.length < 1) {
           db.answers.delete([aid, cid, eid, qid, "2"]);
           $(
-            "#question-list-item-" + question_order.indexOf(qid) + "-2"
+            "#question-list-item-" +
+              exam_details.question_order.indexOf(qid) +
+              "-2"
           ).removeClass("question-saved-localdb");
           return;
         }
@@ -913,9 +1021,11 @@ async function loadQuestion(n, section = 1, force_reload = false) {
         // db.answers.put({aid: [cid, eid, qidn], ans: evt.target.value});
         db.answers.put(answer);
 
-        $("#question-list-item-" + question_order.indexOf(qid) + "-2").addClass(
-          "question-saved-localdb"
-        );
+        $(
+          "#question-list-item-" +
+            exam_details.question_order.indexOf(qid) +
+            "-2"
+        ).addClass("question-saved-localdb");
 
         saveSession();
         updateQuestionListPanel(answer);
@@ -979,7 +1089,9 @@ async function loadQuestion(n, section = 1, force_reload = false) {
         if (evt.target.value.length < 1) {
           db.answers.delete([aid, cid, eid, qid, "1"]);
           $(
-            "#question-list-item-" + question_order.indexOf(qid) + "-1"
+            "#question-list-item-" +
+              exam_details.question_order.indexOf(qid) +
+              "-1"
           ).removeClass("question-saved-localdb");
           return;
         }
@@ -995,9 +1107,11 @@ async function loadQuestion(n, section = 1, force_reload = false) {
         // db.answers.put({aid: [cid, eid, qidn], ans: evt.target.value});
         db.answers.put(answer);
 
-        $("#question-list-item-" + question_order.indexOf(qid) + "-1").addClass(
-          "question-saved-localdb"
-        );
+        $(
+          "#question-list-item-" +
+            exam_details.question_order.indexOf(qid) +
+            "-1"
+        ).addClass("question-saved-localdb");
         saveSession();
         updateQuestionListPanel(answer);
       });
@@ -1065,7 +1179,10 @@ async function loadQuestion(n, section = 1, force_reload = false) {
         if (evt.target.value.length < 1) {
           db.answers.delete([aid, cid, eid, qid, qidn]);
           $(
-            "#question-list-item-" + question_order.indexOf(qid) + "-" + qidn
+            "#question-list-item-" +
+              exam_details.question_order.indexOf(qid) +
+              "-" +
+              qidn
           ).removeClass("question-saved-localdb");
           return;
         }
@@ -1080,10 +1197,12 @@ async function loadQuestion(n, section = 1, force_reload = false) {
         };
 
         db.answers.put(answer);
-        console.log("SAVE", qid, qidn, evt.target.value);
 
         $(
-          "#question-list-item-" + question_order.indexOf(qid) + "-" + qidn
+          "#question-list-item-" +
+            exam_details.question_order.indexOf(qid) +
+            "-" +
+            qidn
         ).addClass("question-saved-localdb");
         saveSession();
         updateQuestionListPanel(answer);
@@ -1094,14 +1213,15 @@ async function loadQuestion(n, section = 1, force_reload = false) {
       //
 
       for (let qidn_count = 1; qidn_count < 6; qidn_count++) {
-        db.answers
-          .get({
+        let obj = {
             aid: aid,
             cid: cid,
             eid: eid,
             qid: qid,
             qidn: qidn_count.toString(),
-          })
+          }
+        db.answers
+          .get(obj)
           .then(function (answer) {
             if (answer != undefined) {
               $(".long-answer")
@@ -1165,22 +1285,24 @@ function setFocus(section) {
 function updateQuestionListPanel(answer) {
   $(
     "#question-list-item-" +
-      question_order.indexOf(answer.qid) +
+      exam_details.question_order.indexOf(answer.qid) +
       "-" +
       answer.qidn
   ).addClass("question-saved-localdb");
 
   if (question_type == "rapid" && answer.qidn == "1") {
     if (answer.ans == "Abnormal") {
-      $("#question-list-item-" + question_order.indexOf(answer.qid) + "-2").css(
-        "display",
-        "block"
-      );
+      $(
+        "#question-list-item-" +
+          exam_details.question_order.indexOf(answer.qid) +
+          "-2"
+      ).css("display", "block");
     } else {
-      $("#question-list-item-" + question_order.indexOf(answer.qid) + "-2").css(
-        "display",
-        "none"
-      );
+      $(
+        "#question-list-item-" +
+          exam_details.question_order.indexOf(answer.qid) +
+          "-2"
+      ).css("display", "none");
     }
   }
 }
@@ -1188,7 +1310,7 @@ function updateQuestionListPanel(answer) {
 function deleteQuestionListPanelFlags(answer) {
   $(
     "#question-list-item-" +
-      question_order.indexOf(answer.qid) +
+      exam_details.question_order.indexOf(answer.qid) +
       "-" +
       answer.qidn +
       " span"
@@ -1198,7 +1320,7 @@ function deleteQuestionListPanelFlags(answer) {
 function updateQuestionListPanelFlags(answer) {
   $(
     "#question-list-item-" +
-      question_order.indexOf(answer.qid) +
+      exam_details.question_order.indexOf(answer.qid) +
       "-" +
       answer.qidn +
       " span"
@@ -1214,7 +1336,6 @@ function rebuildQuestionListPanel() {
   const cid = exam_details.cid;
   const eid = exam_details.eid;
 
-  //console.log("UP");
   db.answers
     .where({ aid: aid, cid: cid, eid: eid })
     .toArray()
@@ -1250,7 +1371,7 @@ function rebuildQuestionListPanel() {
   if (review_mode == true) {
     $(".question-panel-ans").remove();
     for (const qid in questions_correct) {
-      let q_no = question_order.indexOf(qid);
+      let q_no = exam_details.question_order.indexOf(qid);
       //console.log("q", q_no, qid, questions_correct[qid]);
       let question_list_elements = $(`.question-list-item[data-qid='${q_no}']`);
       //console.log(question_list_elements, questions_correct[qid]);
@@ -1468,7 +1589,7 @@ function reviewQuestions() {
       let undercall_number = 0;
       let overcall_number = 0;
       let incorrectcall_number = 0;
-      question_order.forEach(function (qid, n) {
+      exam_details.question_order.forEach(function (qid, n) {
         if (question_type == "long") {
           $("#review-answer-table").append(
             $(
@@ -1700,7 +1821,10 @@ function reviewQuestions() {
             score = correct_count;
 
             $("#review-score").text(
-              "Score: " + correct_count + " out of " + question_order.length
+              "Score: " +
+                correct_count +
+                " out of " +
+                exam_details.question_order.length
             );
 
             if (question_type == "rapid") {
@@ -1915,7 +2039,7 @@ function addFlagEvents() {
   $("button.flag").click(function (event) {
     const el = $(this);
     const nqid = el.attr("data-qid");
-    const qid = question_order[nqid];
+    const qid = exam_details.question_order[nqid];
     const qidn = el.attr("data-qidn");
 
     el.toggleClass("flag flag-selected");
@@ -2047,7 +2171,7 @@ $(".start-packet-button").click(function (evt) {
   $.modal.close();
 });
 
-$("#btn-delete-databases").click(function (evt) {
+$("#btn-delete-answer-databases").click(function (evt) {
   var r = confirm(
     "This will delete ALL saved answers (including saved correct answers)!"
   );
@@ -2071,16 +2195,40 @@ $("#btn-delete-databases").click(function (evt) {
   } else {
   }
 });
+$("#btn-delete-cached-questions").click(function (evt) {
+  var r = confirm(
+    "Delete cached questions?"
+  );
+  if (r == true) {
+    question_db.delete()
+      .then(() => {
+        $.notify("Database successfully deleted", "success");
+        $.notify("The page will now reload", "warn");
+        setTimeout(() => {
+          location.reload();
+        }, 2000);
+        console.log("Database successfully deleted");
+      })
+      .catch((err) => {
+        $.notify("Error deleting databases", "error");
+        console.error("Could not delete database");
+      })
+      .finally(() => {
+        // Do what should be done next...
+      });
+  } else {
+  }
+});
 
 $("#btn-delete-current").click(function (evt) {
-  if (question_order.length < 1) {
+  if (exam_details.question_order.length < 1) {
     $.notify("No packet is currently loaded", "warn");
     return;
   }
 
   db.flags
     .where("qid")
-    .anyOf(question_order)
+    .anyOf(exam_details.question_order)
     .delete()
     .then(function (deleteCount) {
       $.notify("Packet flags deleted", "success");
@@ -2092,7 +2240,7 @@ $("#btn-delete-current").click(function (evt) {
 
   db.answers
     .where("qid")
-    .anyOf(question_order)
+    .anyOf(exam_details.question_order)
     .delete()
     .then(function (deleteCount) {
       $.notify("Packet successfully reset", "success");
@@ -2111,14 +2259,14 @@ $("#btn-delete-current").click(function (evt) {
 });
 
 $("#btn-delete-current-saved-answers").click(function (evt) {
-  if (question_order.length < 1) {
+  if (exam_details.question_order.length < 1) {
     $.notify("No packet is currently loaded", "warn");
     return;
   }
 
   db.user_answers
     .where("qid")
-    .anyOf(question_order)
+    .anyOf(exam_details.question_order)
     .delete()
     .then(function (deleteCount) {
       $.notify("Packet flags deleted", "success");
@@ -2138,7 +2286,6 @@ $(document).ajaxStop(function () {
 });
 
 function saveSession(start_review) {
-
   if (start_review == true) {
     review_mode = true;
   }
@@ -2165,12 +2312,24 @@ function saveSession(start_review) {
     max_score: exam_details.number_of_questions,
     exam_time: exam_time,
     time_left: time_remaining,
-    question_order: question_order,
+    question_order: exam_details.question_order,
     questions_answered: 0, // TODO
     total_questions: exam_details.number_of_questions,
   });
 }
 
 //window.saveSession = saveSession;
+function refreshDatabaseSettings() {
+  navigator.storage.estimate().then((value) => {
+    $("#storage-details").empty();
+    $("#storage-details").append(
+      `Local space used: ${helper.humanFileSize(
+        value.usage
+      )}, available: ${helper.humanFileSize(value.quota)}`
+    );
+  });
+}
 
-$(document).on("saveSessionEvent", {}, (evt, review) => { saveSession(review) })
+$(document).on("saveSessionEvent", {}, (evt, review) => {
+  saveSession(review);
+});
