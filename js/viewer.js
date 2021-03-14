@@ -545,7 +545,8 @@ export function openMainImage(current_question, t, source) {
         loadAnnotation(imageId, annotation);
 
         imageIds.push(imageId);
-      } else if (data_url.startsWith("data:application/dicom")) {
+      //} else if (data_url.startsWith("data:application/dicom")) {
+      } else if (data_url.startsWith("data:")) {
         // stack = stack.split(";")[1];
 
         const dfile = await urltoFile(data_url, "dicom", "application/dicom");

@@ -84,12 +84,16 @@ refreshDatabaseSettings();
  * if exam_query_url is defined in config.js this will be used in preference
  */
 function retrievePacketList() {
-  let url = "packets/";
+  let url = "packets/packets.json";
 
   //console.log(config.exam_query_url);
 
+  try {
   if (config.exam_query_url != undefined) {
     url = config.exam_query_url;
+  }
+  } catch (e) {
+ // 
   }
 
   $.ajax({
@@ -106,7 +110,7 @@ function retrievePacketList() {
   })
     .done(function () {})
     .fail(function () {
-      $.getJSON("packets/packets.json", function (data) {
+      $.getJSON("packets", function (data) {
         if (data.hasOwnProperty("exams")) {
           loadExamList(data);
         } else {
@@ -159,6 +163,7 @@ async function loadExamList(data) {
 
   let exam_generated_map = {};
   $("#packet-list").empty();
+  //exam_list.sort((a, b) => (a.name > b.name) ? 1 : -1).forEach(function (exam) {
   exam_list.forEach(function (exam) {
     let name = exam["name"];
     let url = exam["url"];
@@ -287,6 +292,17 @@ async function loadExamList(data) {
     });
   });
 
+  // Sort different lists
+  $('.packet-list.rapid div').sort(function(a,b) {
+      return a.dataset.eid > b.dataset.eid ? 1 : (a.dataset.eid < b.dataset.eid ? -1 : 0);;
+  }).appendTo('.packet-list.rapid');
+  $('.packet-list.anatomy div').sort(function(a,b) {
+      return a.dataset.eid > b.dataset.eid ? 1 : (a.dataset.eid < b.dataset.eid ? -1 : 0);;
+  }).appendTo('.packet-list.anatomy');
+  $('.packet-list.long div').sort(function(a,b) {
+      return a.dataset.eid > b.dataset.eid ? 1 : (a.dataset.eid < b.dataset.eid ? -1 : 0);;
+  }).appendTo('.packet-list.long');
+
   $("#options-panel").show();
 }
 
@@ -295,6 +311,7 @@ async function loadExamList(data) {
  *
  * @param {JSON} data - json containing available packets
  */
+// TODO: remove (data formats should be switched to the exam format)
 async function loadPacketList(data) {
   let sessions = await db.session.toArray().catch(function (error) {
     console.log("Error loading session", error);
@@ -355,7 +372,7 @@ async function loadPacketList(data) {
       $(`<div class='packet-button${c}' title='Load packet'></div>`)
         .text(packet)
         .click(function () {
-          loadPacketFromAjax("packets/" + packet);
+          loadPacketFromAjax("packets/" + packet, packet);
         })
         .append(
           $(
@@ -731,7 +748,7 @@ function setUpQuestions(load_previous) {
   if (exam_details.exam_mode) {
     $("#options-button, #review-overlay-button").hide();
   } else {
-    $("#submit-button").hide();
+    $(".submit-button").hide();
   }
 
   questions = null;
@@ -1558,6 +1575,7 @@ function reviewQuestions() {
     timer.stop();
   }
 
+  const aid = exam_details.aid;
   const cid = exam_details.cid;
   const eid = exam_details.eid;
   $("#review-overlay").show();
@@ -1589,11 +1607,14 @@ function reviewQuestions() {
       let undercall_number = 0;
       let overcall_number = 0;
       let incorrectcall_number = 0;
-      exam_details.question_order.forEach(function (qid, n) {
+      exam_details.question_order.forEach(async function (qid, n) {
+        const q_object = { qid: qid, type: question_type };
+        let question = await question_db.question_data.get(q_object)
+        question = question.data;
         if (question_type == "long") {
           $("#review-answer-table").append(
             $(
-              `<tr class='review-table-heading' title='Click to load question ${
+              `<tr class='review-table-heading' data-qid=${n + 1} title='Click to load question ${
                 n + 1
               }'><td colspan=2>Question ${n + 1}</td></tr>`
             ).click(() => {
@@ -1603,10 +1624,11 @@ function reviewQuestions() {
           );
           // $("#review-answer-table").append(`<tr id='review-answer-${qid}'><td class='review-user-answer-cell'></td><td class='review-model-answer-cell'></td></tr>`);
           $("#review-answer-table").append(
-            `<tr class='answer-sub'><td>Your answers</td><td>Model answers</td></tr>`
+            `<tr class='answer-sub' data-qid=${n + 1}><td>Your answers</td><td>Model answers</td></tr>`
           );
 
-          let model_answers = window.questions[qid].answers;
+
+          let model_answers = question.answers;
 
           // TODO: FIX
           if (model_answers[0] != undefined) {
@@ -1628,8 +1650,8 @@ function reviewQuestions() {
           //   `#review-answer-${qid} td .review-model-answer-cell`
           // );
 
-          titles.forEach((title, n) => {
-            let user_answer = current_answers[`${qid},${n + 1}`];
+          titles.forEach((title, x) => {
+            let user_answer = current_answers[`${qid},${ + 1}`];
             //console.log(`${qid},${n}`, user_answer);
             if (user_answer == undefined) {
               user_answer = "Not answered";
@@ -1637,23 +1659,27 @@ function reviewQuestions() {
             let user_ans =
               "<h4 class='review-list-header'>" + title + "</h4>" + user_answer;
             let model_ans =
-              `<h4 class="review-list-header" name=${n + 1}>` +
+              `<h4 class="review-list-header" name=${ + 1}>` +
               title +
               "</h4>" +
               model_answers[title.toLowerCase()];
 
             $("#review-answer-table").append(
-              `<tr class=''><td>${user_ans}</td><td>${model_ans}</td></tr>`
+              `<tr class='' data-qid=${n + 1}><td>${user_ans}</td><td>${model_ans}</td></tr>`
             );
           });
 
+          // TOOD fix
+          $('#review-answer-table tr').sort(function(a,b) {
+              return a.dataset.qid > b.dataset.qid ? 1 : (a.dataset.qid < b.dataset.qid ? -1 : 0);;
+          }).appendTo('#review-answer-table');
           return;
         }
 
         $("#review-answer-list").append(
           "<li id='review-answer-" +
             qid +
-            "'><a href='#' data-qid=" +
+            "' data-qid="+n.toString().padStart(2, "0")+"'><a href='#' data-qid=" +
             n +
             ">Question " +
             (n + 1) +
@@ -1668,7 +1694,7 @@ function reviewQuestions() {
           .get({ qid: qid })
           .then(function (answers) {
             // Merge the question answers with the user saved answers
-            let question_answers = window.questions[qid]["answers"];
+            let question_answers = question["answers"];
             if (answers != undefined) {
               question_answers = question_answers.concat(answers.ans);
             }
@@ -1732,7 +1758,7 @@ function reviewQuestions() {
 
             if (question_type == "rapid") {
               // First check normal vs abnormal
-              if (window.questions[qid]["normal"] == true) {
+              if (question["normal"] == true) {
                 if (section_1_answer == "Normal") {
                   setReviewAnswer(
                     el,
@@ -1846,6 +1872,10 @@ function reviewQuestions() {
             // This will lead to saveSession being called after each question is marked
             saveSession();
             rebuildQuestionListPanel();
+
+        $('#review-answer-list li').sort(function(a,b) {
+            return a.dataset.qid > b.dataset.qid ? 1 : (a.dataset.qid < b.dataset.qid ? -1 : 0);;
+        }).appendTo('#review-answer-list');
           });
       });
     })

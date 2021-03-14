@@ -1,4 +1,3 @@
-import {exam_query_url} from "./config.js";
 import * as helper from "./helpers.js";
 /**
  * Submits answers
