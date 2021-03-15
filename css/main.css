@@ -804,8 +804,8 @@ select option:disabled {
 }
 
 #local-fileloader {
-    position: absolute;
-    bottom: 10px;
+    position: sticky;
+    bottom: -20px;
 }
 
 #packets {

@@ -220,6 +220,11 @@ async function loadExamList(data) {
 
   // Check the database for exams that have been saved
   question_db.saved_exams.toArray().then((saved_exams) => {
+    if (saved_exams.length < 1) {
+      $("#cache-details ul").append("<span>No cached exams / questions</span>");
+    } else {
+      $("#cache-details ul").append("<span>Cached exams / questions:</span>");
+    }
     saved_exams.forEach((saved_exam, n) => {
       $("#cache-details ul").append(
         `<li class="cache-item" data-eid=${saved_exam.eid}>Exam: ${saved_exam.exam_name} [${saved_exam.eid}]: ${saved_exam.generated}`
@@ -2352,11 +2357,17 @@ function saveSession(start_review) {
 function refreshDatabaseSettings() {
   navigator.storage.estimate().then((value) => {
     $("#storage-details").empty();
-    $("#storage-details").append(
-      `Local space used: ${helper.humanFileSize(
-        value.usage
-      )}, available: ${helper.humanFileSize(value.quota)}`
-    );
+    if (value != undefined) {
+      $("#storage-details").append(
+        `Local space used: ${helper.humanFileSize(
+          value.usage
+        )}, available: ${helper.humanFileSize(value.quota)}`
+      );
+    } else {
+      $("#storage-details").append(
+        `Local storage information not available (are you connecting over http rather than https?).`
+      );
+    }
   });
 }
 
