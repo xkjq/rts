@@ -89,11 +89,11 @@ function retrievePacketList() {
   //console.log(config.exam_query_url);
 
   try {
-  if (config.exam_query_url != undefined) {
-    url = config.exam_query_url;
-  }
+    if (config.exam_query_url != undefined) {
+      url = config.exam_query_url;
+    }
   } catch (e) {
- // 
+    //
   }
 
   $.ajax({
@@ -272,7 +272,10 @@ async function loadExamList(data) {
                 );
 
                 //question_db.saved_exams.where("eid").equals(saved_exam.eid).delete();
-              question_db.question_data.where(["qid", "type"]).equals([q, saved_exam.exam_type]).delete();
+                question_db.question_data
+                  .where(["qid", "type"])
+                  .equals([q, saved_exam.exam_type])
+                  .delete();
               }
               d = null;
             })
@@ -289,8 +292,10 @@ async function loadExamList(data) {
               );
 
               //question_db.saved_exams.where("eid").equals(saved_exam.eid).delete();
-              question_db.question_data.where(["qid", "type"]).equals([q, saved_exam.exam_type]).delete();
-
+              question_db.question_data
+                .where(["qid", "type"])
+                .equals([q, saved_exam.exam_type])
+                .delete();
             });
         }
       }
@@ -298,15 +303,33 @@ async function loadExamList(data) {
   });
 
   // Sort different lists
-  $('.packet-list.rapid div').sort(function(a,b) {
-      return a.dataset.eid > b.dataset.eid ? 1 : (a.dataset.eid < b.dataset.eid ? -1 : 0);;
-  }).appendTo('.packet-list.rapid');
-  $('.packet-list.anatomy div').sort(function(a,b) {
-      return a.dataset.eid > b.dataset.eid ? 1 : (a.dataset.eid < b.dataset.eid ? -1 : 0);;
-  }).appendTo('.packet-list.anatomy');
-  $('.packet-list.long div').sort(function(a,b) {
-      return a.dataset.eid > b.dataset.eid ? 1 : (a.dataset.eid < b.dataset.eid ? -1 : 0);;
-  }).appendTo('.packet-list.long');
+  $(".packet-list.rapid div")
+    .sort(function (a, b) {
+      return a.dataset.eid > b.dataset.eid
+        ? 1
+        : a.dataset.eid < b.dataset.eid
+        ? -1
+        : 0;
+    })
+    .appendTo(".packet-list.rapid");
+  $(".packet-list.anatomy div")
+    .sort(function (a, b) {
+      return a.dataset.eid > b.dataset.eid
+        ? 1
+        : a.dataset.eid < b.dataset.eid
+        ? -1
+        : 0;
+    })
+    .appendTo(".packet-list.anatomy");
+  $(".packet-list.long div")
+    .sort(function (a, b) {
+      return a.dataset.eid > b.dataset.eid
+        ? 1
+        : a.dataset.eid < b.dataset.eid
+        ? -1
+        : 0;
+    })
+    .appendTo(".packet-list.long");
 
   $("#options-panel").show();
 }
@@ -497,28 +520,28 @@ function setUpPacket(data, path) {
   if (data.hasOwnProperty("exam_order")) {
     exam_details.question_order = data.exam_order;
   } else {
-        exam_details.question_order = [];
-        Object.keys(questions).forEach(function (e) {
-          exam_details.question_order.push(e);
+    exam_details.question_order = [];
+    Object.keys(questions).forEach(function (e) {
+      exam_details.question_order.push(e);
 
-          // Make sure answers are arrays
-          if (!Array.isArray(questions[e]["answers"])) {
-            questions[e]["answers"] = [questions[e]["answers"]];
-          }
-        });
+      // Make sure answers are arrays
+      if (!Array.isArray(questions[e]["answers"])) {
+        questions[e]["answers"] = [questions[e]["answers"]];
+      }
+    });
 
-      let randomise_order = true;
-      if (config.randomise_order != undefined) {
-        randomise_order = config.randomise_order;
-      }
-      if (randomise_order) {
-        exam_details.question_order = helper.shuffleArray(
-          exam_details.question_order
-        );
-      }
-      // We add this here so the question order is maintained
-      // when loading from cache
-      data["exam_order"] = exam_details.question_order
+    let randomise_order = true;
+    if (config.randomise_order != undefined) {
+      randomise_order = config.randomise_order;
+    }
+    if (randomise_order) {
+      exam_details.question_order = helper.shuffleArray(
+        exam_details.question_order
+      );
+    }
+    // We add this here so the question order is maintained
+    // when loading from cache
+    data["exam_order"] = exam_details.question_order;
   }
 
   if (data.hasOwnProperty("exam_time")) {
@@ -541,7 +564,10 @@ function setUpPacket(data, path) {
   }
 
   // If question_requests is set we need to do a request for each question
-  if (data.hasOwnProperty("question_requests") && (Object.keys(data["question_requests"]).length > 0)) {
+  if (
+    data.hasOwnProperty("question_requests") &&
+    Object.keys(data["question_requests"]).length > 0
+  ) {
     // Will happen if loading from cache
     //if (data["questions"] == "cached") {
     //  let a = {};
@@ -564,12 +590,14 @@ function setUpPacket(data, path) {
       for (const n in data["question_requests"]) {
         question_number++;
 
-        let obj = {qid: n, type: question_type};
+        let obj = { qid: n, type: question_type };
         let question_in_db = await question_db.question_data.get(obj);
 
         // If the question is in the db we can load
         // invalid questions should have already been removed
-        if (question_in_db != undefined) {continue}
+        if (question_in_db != undefined) {
+          continue;
+        }
 
         const question_url = `${path}/${n}`;
 
@@ -831,7 +859,6 @@ async function loadQuestion(n, section = 1, force_reload = false) {
   let return_data = await question_db.question_data.get(q);
   const question_data = return_data.data;
   return_data = null;
-
 
   loaded_question = n;
 
@@ -1236,12 +1263,12 @@ async function loadQuestion(n, section = 1, force_reload = false) {
 
       for (let qidn_count = 1; qidn_count < 6; qidn_count++) {
         let obj = {
-            aid: aid,
-            cid: cid,
-            eid: eid,
-            qid: qid,
-            qidn: qidn_count.toString(),
-          }
+          aid: aid,
+          cid: cid,
+          eid: eid,
+          qid: qid,
+          qidn: qidn_count.toString(),
+        };
         db.answers
           .get(obj)
           .then(function (answer) {
@@ -1614,12 +1641,14 @@ function reviewQuestions() {
       let incorrectcall_number = 0;
       exam_details.question_order.forEach(async function (qid, n) {
         const q_object = { qid: qid, type: question_type };
-        let question = await question_db.question_data.get(q_object)
+        let question = await question_db.question_data.get(q_object);
         question = question.data;
         if (question_type == "long") {
           $("#review-answer-table").append(
             $(
-              `<tr class='review-table-heading' data-qid=${n + 1} title='Click to load question ${
+              `<tr class='review-table-heading' data-qid=${
+                n + 1
+              } title='Click to load question ${
                 n + 1
               }'><td colspan=2>Question ${n + 1}</td></tr>`
             ).click(() => {
@@ -1629,9 +1658,10 @@ function reviewQuestions() {
           );
           // $("#review-answer-table").append(`<tr id='review-answer-${qid}'><td class='review-user-answer-cell'></td><td class='review-model-answer-cell'></td></tr>`);
           $("#review-answer-table").append(
-            `<tr class='answer-sub' data-qid=${n + 1}><td>Your answers</td><td>Model answers</td></tr>`
+            `<tr class='answer-sub' data-qid=${
+              n + 1
+            }><td>Your answers</td><td>Model answers</td></tr>`
           );
-
 
           let model_answers = question.answers;
 
@@ -1656,7 +1686,7 @@ function reviewQuestions() {
           // );
 
           titles.forEach((title, x) => {
-            let user_answer = current_answers[`${qid},${ + 1}`];
+            let user_answer = current_answers[`${qid},${+1}`];
             //console.log(`${qid},${n}`, user_answer);
             if (user_answer == undefined) {
               user_answer = "Not answered";
@@ -1664,27 +1694,37 @@ function reviewQuestions() {
             let user_ans =
               "<h4 class='review-list-header'>" + title + "</h4>" + user_answer;
             let model_ans =
-              `<h4 class="review-list-header" name=${ + 1}>` +
+              `<h4 class="review-list-header" name=${+1}>` +
               title +
               "</h4>" +
               model_answers[title.toLowerCase()];
 
             $("#review-answer-table").append(
-              `<tr class='' data-qid=${n + 1}><td>${user_ans}</td><td>${model_ans}</td></tr>`
+              `<tr class='' data-qid=${
+                n + 1
+              }><td>${user_ans}</td><td>${model_ans}</td></tr>`
             );
           });
 
           // TOOD fix
-          $('#review-answer-table tr').sort(function(a,b) {
-              return a.dataset.qid > b.dataset.qid ? 1 : (a.dataset.qid < b.dataset.qid ? -1 : 0);;
-          }).appendTo('#review-answer-table');
+          $("#review-answer-table tr")
+            .sort(function (a, b) {
+              return a.dataset.qid > b.dataset.qid
+                ? 1
+                : a.dataset.qid < b.dataset.qid
+                ? -1
+                : 0;
+            })
+            .appendTo("#review-answer-table");
           return;
         }
 
         $("#review-answer-list").append(
           "<li id='review-answer-" +
             qid +
-            "' data-qid="+n.toString().padStart(2, "0")+"'><a href='#' data-qid=" +
+            "' data-qid=" +
+            n.toString().padStart(2, "0") +
+            "'><a href='#' data-qid=" +
             n +
             ">Question " +
             (n + 1) +
@@ -1878,9 +1918,15 @@ function reviewQuestions() {
             saveSession();
             rebuildQuestionListPanel();
 
-        $('#review-answer-list li').sort(function(a,b) {
-            return a.dataset.qid > b.dataset.qid ? 1 : (a.dataset.qid < b.dataset.qid ? -1 : 0);;
-        }).appendTo('#review-answer-list');
+            $("#review-answer-list li")
+              .sort(function (a, b) {
+                return a.dataset.qid > b.dataset.qid
+                  ? 1
+                  : a.dataset.qid < b.dataset.qid
+                  ? -1
+                  : 0;
+              })
+              .appendTo("#review-answer-list");
           });
       });
     })
@@ -2231,11 +2277,10 @@ $("#btn-delete-answer-databases").click(function (evt) {
   }
 });
 $("#btn-delete-cached-questions").click(function (evt) {
-  var r = confirm(
-    "Delete cached questions?"
-  );
+  var r = confirm("Delete cached questions?");
   if (r == true) {
-    question_db.delete()
+    question_db
+      .delete()
       .then(() => {
         $.notify("Database successfully deleted", "success");
         $.notify("The page will now reload", "warn");
@@ -2355,20 +2400,20 @@ function saveSession(start_review) {
 
 //window.saveSession = saveSession;
 function refreshDatabaseSettings() {
-  navigator.storage.estimate().then((value) => {
-    $("#storage-details").empty();
-    if (value != undefined) {
+  if (navigator.storage != undefined) {
+    navigator.storage.estimate().then((value) => {
+      $("#storage-details").empty();
       $("#storage-details").append(
         `Local space used: ${helper.humanFileSize(
           value.usage
         )}, available: ${helper.humanFileSize(value.quota)}`
       );
-    } else {
-      $("#storage-details").append(
-        `Local storage information not available (are you connecting over http rather than https?).`
-      );
-    }
-  });
+    });
+  } else {
+    $("#storage-details").append(
+      `Local storage information not available (are you connecting over http rather than https?).`
+    );
+  }
 }
 
 $(document).on("saveSessionEvent", {}, (evt, review) => {
