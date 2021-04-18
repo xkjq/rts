@@ -234,6 +234,7 @@ async function loadExamList(data) {
         // If the timestamps differ delete and force a refresh
         const exam_timestamp = exam_generated_map[saved_exam.eid][0];
         const question_timestamp_hash = exam_generated_map[saved_exam.eid][1];
+        console.log("comp timestamps", exam_timestamp, question_timestamp_hash)
         if (Date.parse(saved_exam.generated) != Date.parse(exam_timestamp)) {
           question_db.saved_exams.where("eid").equals(saved_exam.eid).delete();
 
@@ -457,8 +458,6 @@ function loadPacketFromAjax(path, eid, generated) {
     if (force_refresh) {
       browser_cache = false;
     }
-
-    console.log("use cache", browser_cache);
 
     $.ajax({
       dataType: "json",
