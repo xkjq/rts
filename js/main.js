@@ -246,7 +246,7 @@ async function loadExamList(data) {
 
         for (let q in question_timestamp_hash) {
           let new_timestamp = question_timestamp_hash[q];
-          q = q.toString();
+          //q = q.toString();
           $("#cache-details ul").append(
             `<li class="cache-item" data-qid=${q}>Question (${saved_exam.exam_type}): ${q}`
           );
@@ -854,7 +854,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
 
   const qid = exam_details.question_order[n];
 
-  let q = { qid: qid.toString(), type: question_type };
+  let q = { qid: qid, type: question_type };
 
   let return_data = await question_db.question_data.get(q);
   const question_data = return_data.data;
