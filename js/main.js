@@ -858,9 +858,13 @@ async function loadQuestion(n, section = 1, force_reload = false) {
     return;
   }
 
+
+  console.log(exam_details, n)
   const qid = exam_details.question_order[n];
 
   let q = { qid: qid, type: question_type };
+  console.log(q)
+  console.log(question_db.question_data)
 
   let return_data = await question_db.question_data.get(q);
   const question_data = return_data.data;
