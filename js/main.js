@@ -957,7 +957,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
       $("#figure-" + id).append(img);
 
       // otherwise try to load it as a dicom (if it starts with data)
-    } elif(based_img.startsWith("data:")) {
+    } else if(based_img.startsWith("data:")) {
       // convert the data url to a file
       viewer
         .urltoFile(based_img, "dicom", "application/dicom")
