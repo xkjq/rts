@@ -578,7 +578,7 @@ export function openMainImage(current_question, t, source) {
         //    tempFunction(image);
         // });
       } else {
-        let url;
+        let url = data_url;
         //if (data_url.startsWith("http")) {
         //  url = data_url;
         //} else {
