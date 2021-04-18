@@ -592,9 +592,9 @@ function setUpPacket(data, path) {
 
     // For loop to generate requests
     (async () => {
-      for (const n in data["question_requests"]) {
+      for (let n in data["question_requests"]) {
         question_number++;
-        //n = parseInt(n);
+        n = parseInt(n);
 
         let obj = { qid: n, type: question_type };
         let question_in_db = await question_db.question_data.get(obj);
