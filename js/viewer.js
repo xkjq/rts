@@ -32,16 +32,18 @@ export function loadMainImage(image, stack) {
 
   cornerstoneTools.addToolForElement(element, ArrowAnnotateTool, {
     configuration: {
-        getTextCallback: () => {},
-        changeTextCallback: () => {},
-        allowEmptyLabel: true,
-        renderDashed: false,
-        drawHandles: false,
-        drawHandlesOnHover: true,
+      getTextCallback: () => {},
+      changeTextCallback: () => {},
+      allowEmptyLabel: true,
+      renderDashed: false,
+      drawHandles: false,
+      drawHandlesOnHover: true,
     },
   });
 
-  cornerstoneTools.setToolActiveForElement(element, "Pan", { mouseButtonMask: 1 });
+  cornerstoneTools.setToolActiveForElement(element, "Pan", {
+    mouseButtonMask: 1,
+  });
   cornerstoneTools.setToolEnabledForElement(element, "ArrowAnnotate");
 
   //cornerstoneTools.keyboardInput.enable(element);
@@ -80,7 +82,6 @@ export function loadMainImage(image, stack) {
     .addEventListener("change", function () {
       changeControlSelection();
     });
-
 
   // Register Key Event Listener
   document.addEventListener("keydown", keydown_handler);
@@ -267,25 +268,35 @@ export function changeControlSelection() {
   const dicom_element = document.getElementById("dicom-image");
   switch (sel.options[sel.selectedIndex].value) {
     case "pan": {
-      cornerstoneTools.setToolActiveForElement(dicom_element, "Pan", { mouseButtonMask: 1 });
+      cornerstoneTools.setToolActiveForElement(dicom_element, "Pan", {
+        mouseButtonMask: 1,
+      });
       break;
     }
     case "zoom": {
-      cornerstoneTools.setToolActiveForElement(dicom_element, "Zoom", { mouseButtonMask: 1 });
+      cornerstoneTools.setToolActiveForElement(dicom_element, "Zoom", {
+        mouseButtonMask: 1,
+      });
       break;
     }
     case "rotate": {
-      cornerstoneTools.setToolActiveForElement(dicom_element, "Rotate", { mouseButtonMask: 1 });
+      cornerstoneTools.setToolActiveForElement(dicom_element, "Rotate", {
+        mouseButtonMask: 1,
+      });
       break;
     }
     case "scroll": {
-      cornerstoneTools.setToolActiveForElement(dicom_element, "StackScroll", { mouseButtonMask: 1 });
+      cornerstoneTools.setToolActiveForElement(dicom_element, "StackScroll", {
+        mouseButtonMask: 1,
+      });
       // _this.left.onstart = _this.scroll_start;
       // _this.selected_control = t.selectedIndex;
       break;
     }
     case "window": {
-      cornerstoneTools.setToolActiveForElement(dicom_element, "Wwwc", { mouseButtonMask: 1 });
+      cornerstoneTools.setToolActiveForElement(dicom_element, "Wwwc", {
+        mouseButtonMask: 1,
+      });
       break;
     }
     case "abdomen": {
@@ -363,7 +374,9 @@ export function keydown_handler(event) {
 
   // Cancel if no active element
   let dicom_element = document.getElementById("dicom-image");
-  if (dicom_element == undefined) { return }
+  if (dicom_element == undefined) {
+    return;
+  }
 
   // Catch all keypresses unless user is typing
   if (target_element == "INPUT" || target_element == "TEXTAREA") {
@@ -520,9 +533,12 @@ export function openMainImage(current_question, t, source) {
    * @param {*} images - list of images
    */
   function loadAnnotation(imageId, annotation) {
-    const toolStateManager = cornerstoneTools.globalImageIdSpecificToolStateManager;
+    const toolStateManager =
+      cornerstoneTools.globalImageIdSpecificToolStateManager;
 
-    if (annotation == undefined || annotation.length < 1) { return }
+    if (annotation == undefined || annotation.length < 1) {
+      return;
+    }
 
     let tool_state_no_id = JSON.parse(annotation);
 
@@ -545,7 +561,7 @@ export function openMainImage(current_question, t, source) {
         loadAnnotation(imageId, annotation);
 
         imageIds.push(imageId);
-      //} else if (data_url.startsWith("data:application/dicom")) {
+        //} else if (data_url.startsWith("data:application/dicom")) {
       } else if (data_url.startsWith("data:")) {
         // stack = stack.split(";")[1];
 
@@ -561,6 +577,27 @@ export function openMainImage(current_question, t, source) {
         // cornerstone.loadImage(imageId).then(function(image) {
         //    tempFunction(image);
         // });
+      } else {
+        let url;
+        if (data_url.startsWith("http")) {
+          url = data_url;
+        } else {
+          url = window.location.href.replace(/\/\#\/?$/, "") + "/" + data_url;
+        }
+
+        if (url.endsWith("dcm")) {
+          url = "wadouri:" + url;
+        }
+
+        // if there is no extension treat it as a dicom
+        if (/(?:\/|^)[^.\/]+$/.test(url)) {
+          url = "wadouri:" + url;
+        }
+        console.log(url)
+
+        loadAnnotation(url, annotation);
+
+        imageIds.push(url);
       }
     }
     const stack = {
@@ -608,14 +645,13 @@ export function openMainImage(current_question, t, source) {
     let images = current_question.images[figure_to_load.split("-")[1]];
     // images = current_question.images
 
-
     // Make sure we have an array
     if (!Array.isArray(images)) {
       images = [images];
     }
 
     let annotations = [];
-    if (current_question.annotations) { 
+    if (current_question.annotations) {
       annotations = current_question.annotations[figure_to_load.split("-")[1]];
       if (!Array.isArray(annotations)) {
         annotations = [annotations];
