@@ -244,7 +244,7 @@ async function loadExamList(data) {
 
           $(`li.cache-item[data-eid="${saved_exam.eid}"]`).addClass(
             "cache-out-of-date"
-          ).appendChild(`(latest: ${exam_timestamp}`);
+          ).append(`(latest: ${exam_timestamp}`);
         } else {
           $(`.packet-button[data-eid="${saved_exam.eid}"]`).addClass("cached");
         }
