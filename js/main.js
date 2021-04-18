@@ -758,7 +758,7 @@ function setUpQuestions(load_previous) {
         // Store question data into dexie
         let d = {
           //eid: exam_details.eid,
-          qid: e,
+          qid: parseInt(e),
           type: questions[e].type,
           data: questions[e],
           //timestamp: questions[e]["generated"],
