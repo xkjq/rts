@@ -235,6 +235,7 @@ async function loadExamList(data) {
         const exam_timestamp = exam_generated_map[saved_exam.eid][0];
         const question_timestamp_hash = exam_generated_map[saved_exam.eid][1];
         console.log("comp timestamps", exam_timestamp, question_timestamp_hash)
+        console.log(exam_generated_map)
         if (Date.parse(saved_exam.generated) != Date.parse(exam_timestamp)) {
           question_db.saved_exams.where("eid").equals(saved_exam.eid).delete();
 
