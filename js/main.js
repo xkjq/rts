@@ -244,7 +244,7 @@ async function loadExamList(data) {
 
           $(`li.cache-item[data-eid="${saved_exam.eid}"]`).addClass(
             "cache-out-of-date"
-          ).append(`(latest: ${exam_timestamp}`);
+          ).append(` [out of date (latest: ${exam_timestamp})]`);
         } else {
           $(`.packet-button[data-eid="${saved_exam.eid}"]`).addClass("cached");
         }
@@ -956,8 +956,8 @@ async function loadQuestion(n, section = 1, force_reload = false) {
 
       $("#figure-" + id).append(img);
 
-      // otherwise try to load it as a dicom
-    } else {
+      // otherwise try to load it as a dicom (if it starts with data)
+    } elif(based_img.startsWith("data:")) {
       // convert the data url to a file
       viewer
         .urltoFile(based_img, "dicom", "application/dicom")
@@ -982,6 +982,17 @@ async function loadQuestion(n, section = 1, force_reload = false) {
             cornerstone.resize(element);
           }); // .catch( function(error) {
         });
+    } else {
+      const img = $("<img />", {
+        src: based_img,
+        id: "thumb-" + id,
+        class: "thumbnail",
+        title: "Click on the thumbnail to view and manipulate the image.",
+        draggable: "false",
+        style: "height: 100px;",
+      });
+
+      $("#figure-" + id).append(img);
     }
   }
 
