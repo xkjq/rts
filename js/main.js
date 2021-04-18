@@ -458,6 +458,8 @@ function loadPacketFromAjax(path, eid, generated) {
       browser_cache = false;
     }
 
+    console.log("use cache", browser_cache);
+
     $.ajax({
       dataType: "json",
       url: path,
