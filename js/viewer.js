@@ -579,11 +579,11 @@ export function openMainImage(current_question, t, source) {
         // });
       } else {
         let url;
-        if (data_url.startsWith("http")) {
-          url = data_url;
-        } else {
-          url = window.location.href.replace(/\/\#\/?$/, "") + "/" + data_url;
-        }
+        //if (data_url.startsWith("http")) {
+        //  url = data_url;
+        //} else {
+        //  url = window.location.href.replace(/\/\#\/?$/, "") + "/" + data_url;
+        //}
 
         if (url.endsWith("dcm")) {
           url = "wadouri:" + url;
