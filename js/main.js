@@ -61,7 +61,7 @@ const db = new Dexie("answers_database");
 db.version(1).stores({
   answers: "[aid+cid+eid+qid+qidn], [aid+cid+eid], qid, ans",
   flags: "[aid+cid+eid+qid+qidn], [aid+cid+eid], qid",
-  user_answers: "qid, ans",
+  user_answers: "[qid+type+ans], [qid+type]",
   session:
     "[packet+aid], packet, aid, status, date, score, max_score, exam_time, time_left, question_order, questions_answered, total_questions",
 });
@@ -432,12 +432,14 @@ function loadPacketFromAjax(path, eid, generated) {
       .then((exam) => {
         if (
           exam == undefined ||
-          Date.parse(exam["generated"]) != Date.parse(generated)
+          (Date.parse(exam["generated"].split("+")[0]) != Date.parse(generated.split("+")[0]))
         ) {
+        console.log("AjaxRequestPacket:", eid);
           ajaxRequestionPacket(true);
         } else {
           // We have an up to date exam in the database
           // TODO: check the questions are valid
+          console.log("LoadLocalPacket:", eid);
           use_local_question_cache = true;
           setUpPacket(exam, path);
           $("#options-panel").hide();
@@ -1130,7 +1132,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
               if (answer != undefined) {
                 $(".long-answer").text(answer.ans);
               }
-              markAnswer(qid, question_data);
+              markAnswer(qid, question_data, n);
             })
             .catch(function (error) {
               console.log("error-", error);
@@ -1192,7 +1194,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
           if (answer != undefined) {
             $(".long-answer").text(answer.ans);
           }
-          markAnswer(qid, question_data);
+          markAnswer(qid, question_data, n);
         })
         .catch(function (error) {
           console.log(error);
@@ -1300,7 +1302,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
             }
             // We only want to mark once...
             if (qidn_count == 5) {
-              markAnswer(qid, question_data);
+              markAnswer(qid, question_data, n);
             }
           })
           .catch(function (error) {
@@ -1757,12 +1759,14 @@ function reviewQuestions() {
         });
 
         db.user_answers
-          .get({ qid: qid })
+          .where({ type: question_type, qid: qid }).toArray()
           .then(function (answers) {
             // Merge the question answers with the user saved answers
             let question_answers = question["answers"];
             if (answers != undefined) {
-              question_answers = question_answers.concat(answers.ans);
+              for (let i = 0; i < answers.length; i++) {
+                question_answers = question_answers.concat(answers[i].ans);
+              }
             }
 
             let section_1_answer = current_answers[[qid, "1"]];
@@ -1880,7 +1884,7 @@ function reviewQuestions() {
                     el.append(
                       "<span class='mark-correct'>[Mark correct]</span>"
                     ).click(() => {
-                      markCorrect(qid, section_2_answer);
+                      markCorrect(qid, section_2_answer, question_type);
                       reviewQuestions();
                     });
                   }
@@ -1961,8 +1965,9 @@ function reviewQuestions() {
  * @param {*} qid -
  * @param {*} current_question -
  */
-function markAnswer(qid, current_question) {
+function markAnswer(qid, current_question, n) {
   const type = current_question.type;
+  console.log("Mark", current_question)
 
   let option = null;
   if (review_mode == true) {
@@ -2016,14 +2021,22 @@ function markAnswer(qid, current_question) {
 
     // Load user saved answers
     db.user_answers
-      .get({ qid: qid })
+      .where({ type: type, qid: qid }).toArray()
       .then(function (saved_user_answers) {
         // check if given answer matches a user saved answer
         if (saved_user_answers != undefined) {
-          saved_user_answers.ans.forEach(function (saved_answer, n) {
+          console.log(saved_user_answers)
+          saved_user_answers.forEach(function (saved_answer_object, n) {
+            let saved_answer = saved_answer_object.ans;
+            console.log("ua", user_answer, saved_answer)
             ul.append("<li>" + saved_answer + "</li>");
             if (compareString(saved_answer, user_answer)) {
               textarea.removeClass("incorrect").addClass("correct");
+            }
+            if (saved_answer_object.submitted == undefined || saved_answer_object.submitted != true) {
+              ul.append($("<button>Submit Answer</button>").click((e) => {
+                  interact.postSavedAnswer(type, qid, saved_answer, e, saved_answer_object, db);
+              }));
             }
           });
         }
@@ -2051,7 +2064,8 @@ function markAnswer(qid, current_question) {
               $(".answer-panel").append(
                 $("<button id='mark-correct'>Mark Correct</button>").click(
                   function () {
-                    markCorrect(qid, user_answer);
+                    markCorrect(qid, user_answer, type);
+                    loadQuestion(n, 0, true);
                   }
                 )
               );
@@ -2062,12 +2076,13 @@ function markAnswer(qid, current_question) {
       .catch(function (error) {
         console.log("error-", error);
       });
-    addFeedback(current_question);
+    addFeedback(current_question, qid);
     rebuildQuestionListPanel();
   }
 }
 
-function addFeedback(current_question) {
+function addFeedback(current_question, qid) {
+console.log(current_question)
   if (
     current_question.hasOwnProperty("feedback") &&
     current_question.feedback.length > 0
@@ -2089,27 +2104,36 @@ function addFeedback(current_question) {
       $(".question").append($(`<img class="feedback-image" src="${img}" />`));
     });
   }
+
+  // Add link to submit question feedback
+
+    $(".answer-panel").append(
+      $(
+        `<div class='feedback-link'><a href=${config.question_feedback_url}${current_question.type}/${qid} target=”_blank”>Submit question feedback</a></div>`
+      )
+    );
 }
 
-function markCorrect(qid, user_answer) {
+function markCorrect(qid, user_answer, type) {
   if (user_answer == "") {
     return;
   }
 
-  db.user_answers
-    .get({ qid: qid })
-    .then(function (answers) {
-      let new_answers = [];
-      if (answers != undefined) {
-        new_answers = answers.ans;
-      }
+    db.user_answers.put({ type: type, qid: qid, ans: user_answer, submitted: false });
+  //db.user_answers
+  //  .get({ type: type, qid: qid })
+  //  .then(function (answers) {
+  //    let new_answers = [];
+  //    if (answers != undefined) {
+  //      new_answers = answers.ans;
+  //    }
 
-      new_answers.push(user_answer);
-      db.user_answers.put({ qid: qid, ans: new_answers });
-    })
-    .catch(function (error) {
-      console.log("error-", error);
-    });
+  //    new_answers.push(user_answer);
+  //    db.user_answers.put({ type: type, qid: qid, ans: new_answers });
+  //  })
+  //  .catch(function (error) {
+  //    console.log("error-", error);
+  //  });
 
   if (allow_self_marking) {
     $("#mark-correct").remove();
@@ -2365,12 +2389,13 @@ $("#btn-delete-current-saved-answers").click(function (evt) {
     return;
   }
 
+// TODO: fix, needs type
   db.user_answers
     .where("qid")
     .anyOf(exam_details.question_order)
     .delete()
     .then(function (deleteCount) {
-      $.notify("Packet flags deleted", "success");
+      $.notify("Packet answers deleted", "success");
     })
     .catch((err) => {
       $.notify("Error deleting saved answers", "error");

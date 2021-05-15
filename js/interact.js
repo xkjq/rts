@@ -1,4 +1,5 @@
 import * as helper from "./helpers.js";
+import * as config from "./config.js";
 /**
  * Submits answers
  */
@@ -166,4 +167,25 @@ export function getQuestion(url, question_number, question_total) {
     //},
     //async: false,
   });
+}
+
+export function postSavedAnswer(type, qid, answer, e, db_object, db) {
+console.log("post", type, qid, answer, e)
+return $.ajax({
+    type: "POST",
+    url: config.question_answer_submit_url,
+    data: JSON.stringify({ qid: `${type}/${qid}`, answer: answer, status: 2 }),
+    contentType: "application/json; charset=utf-8",
+    dataType: "json",
+    success: function(data){
+      db_object.submitted = true;
+      db.user_answers.put(db_object);
+      e.target.remove()
+      console.log(data);
+
+    },
+    error: function(errMsg) {
+        alert(errMsg);
+    }
+});
 }
