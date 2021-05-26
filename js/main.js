@@ -256,7 +256,7 @@ async function loadExamList(data) {
             `<li class="cache-item" data-qid=${q}>Question (${saved_exam.exam_type}): ${q}`
           );
           // If a single question is out of date we invalidate the lot...
-          const q_object = { qid: toString(q), type: saved_exam.exam_type };
+          const q_object = { qid: String(q), type: saved_exam.exam_type };
           question_db.question_data
             .get(q_object)
             .then((d) => {
@@ -279,7 +279,7 @@ async function loadExamList(data) {
                 //question_db.saved_exams.where("eid").equals(saved_exam.eid).delete();
                 question_db.question_data
                   .where(["qid", "type"])
-                  .equals([toString(q), saved_exam.exam_type])
+                  .equals([String(q), saved_exam.exam_type])
                   .delete();
               }
               d = null;
@@ -299,7 +299,7 @@ async function loadExamList(data) {
               //question_db.saved_exams.where("eid").equals(saved_exam.eid).delete();
               question_db.question_data
                 .where(["qid", "type"])
-                .equals([toString(q), saved_exam.exam_type])
+                .equals([String(q), saved_exam.exam_type])
                 .delete();
             });
         }
@@ -597,7 +597,7 @@ function setUpPacket(data, path) {
     (async () => {
       for (let n in data["question_requests"]) {
         question_number++;
-        n = toString(n);
+        n = String(n);
 
         let obj = { qid: n, type: question_type };
         let question_in_db = await question_db.question_data.get(obj);
@@ -766,7 +766,7 @@ function setUpQuestions(load_previous) {
         // Store question data into dexie
         let d = {
           //eid: exam_details.eid,
-          qid: toString(e),
+          qid: String(e),
           type: questions[e].type,
           data: questions[e],
           //timestamp: questions[e]["generated"],
@@ -851,7 +851,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
   const eid = exam_details.eid;
 
   // Make sure we have an string
-  n = toString(n);
+  n = String(n);
   //console.log("loading question (n)", n);
 
   if (n == loaded_question && force_reload == false) {
@@ -866,7 +866,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
   const qid = exam_details.question_order[n];
 
   console.log("qid", qid)
-  let q = { qid: toString(qid), type: question_type };
+  let q = { qid: String(qid), type: question_type };
   console.log(q)
   console.log(question_db.question_data)
 
@@ -1665,7 +1665,7 @@ function reviewQuestions() {
       let overcall_number = 0;
       let incorrectcall_number = 0;
       exam_details.question_order.forEach(async function (qid, n) {
-        const q_object = { qid: toString(qid), type: question_type };
+        const q_object = { qid: String(qid), type: question_type };
         let question = await question_db.question_data.get(q_object);
         question = question.data;
         if (question_type == "long") {
