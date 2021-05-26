@@ -865,6 +865,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
   console.log(exam_details, n)
   const qid = exam_details.question_order[n];
 
+  console.log("qid", qid)
   let q = { qid: toString(qid), type: question_type };
   console.log(q)
   console.log(question_db.question_data)
