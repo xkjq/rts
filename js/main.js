@@ -850,8 +850,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
   const cid = exam_details.cid;
   const eid = exam_details.eid;
 
-  // Make sure we have an string
-  n = String(n);
+  n = parseInt(n);
   //console.log("loading question (n)", n);
 
   if (n == loaded_question && force_reload == false) {
