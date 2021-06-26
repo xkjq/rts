@@ -62,17 +62,29 @@
                 </div>
             </div>
             <div id="options-panel" class="fullscreen-overlay">
-                <a href="#" id="overlay-close" class="close"></a>
-                <div id="database-buttons">
-                    <input type='button' id='btn-delete-answer-databases' value='Delete all saved answers'>
-                    <input type='button' id='btn-delete-cached-questions' value='Delete all cached questions'>
-                </div>
+                <h1>RTS</h1>
+                <!-- <a href="#" id="overlay-close" class="close"></a> -->
                 <div id="packets">
-                    <p>Available Packets:</p>
+                    <p>Available Packets (click to load):</p>
                     <span id="packet-list">
                     </span>
                 </div>
                 <div id="options-link">
+                </div>
+                <div id="storage-details">
+                </div>
+                <div id="cache-details">
+                <details>
+                <summary></summary>
+                <ul>
+                </ul>
+                </details>
+                </div>
+                <details>
+                <summary>Options</summary>
+                <div id="database-buttons">
+                    <input type='button' id='btn-delete-answer-databases' value='Delete local answers'>
+                    <input type='button' id='btn-delete-cached-questions' value='Delete cached questions'>
                 </div>
                 <div id="local-fileloader">
                     <form id="jsonFile" name="jsonFile" enctype="multipart/form-data" method="post">
@@ -84,15 +96,7 @@
                         </fieldset>
                     </form>
                 </div>
-                <div id="storage-details">
-                </div>
-                <div id="cache-details">
-                <details>
-                <summary></summary>
-                <ul>
-                </ul>
                 </details>
-                </div>
             </div>
             <div id="review-overlay" class="fullscreen-overlay">
                 <a href="#" id="review-overlay-close" class="close"></a>

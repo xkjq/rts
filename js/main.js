@@ -2268,10 +2268,8 @@ $(".start-packet-button").click(function (evt) {
     $("#time-up-dialog").modal();
   });
 
-  //window.timer = timer;
-
   // If we are not in an exam we can pause the session
-  if (!window.exam_mode) {
+  if (!exam_details.exam_mode) {
     $("#timer").click(() => {
       timer.pause();
 
@@ -2463,7 +2461,6 @@ function saveSession(start_review) {
   });
 }
 
-//window.saveSession = saveSession;
 function refreshDatabaseSettings() {
   if (navigator.storage != undefined) {
     navigator.storage.estimate().then((value) => {
