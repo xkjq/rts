@@ -256,7 +256,7 @@ async function loadExamList(data) {
             `<li class="cache-item" data-qid=${q}>Question (${saved_exam.exam_type}): ${q}`
           );
           // If a single question is out of date we invalidate the lot...
-          const q_object = { qid: parseInt(q), type: saved_exam.exam_type };
+          const q_object = { qid: String(q), type: saved_exam.exam_type };
           question_db.question_data
             .get(q_object)
             .then((d) => {
@@ -279,7 +279,7 @@ async function loadExamList(data) {
                 //question_db.saved_exams.where("eid").equals(saved_exam.eid).delete();
                 question_db.question_data
                   .where(["qid", "type"])
-                  .equals([q, saved_exam.exam_type])
+                  .equals([String(q), saved_exam.exam_type])
                   .delete();
               }
               d = null;
@@ -301,7 +301,7 @@ async function loadExamList(data) {
               //question_db.saved_exams.where("eid").equals(saved_exam.eid).delete();
               question_db.question_data
                 .where(["qid", "type"])
-                .equals([q, saved_exam.exam_type])
+                .equals([String(q), saved_exam.exam_type])
                 .delete();
             });
         }
@@ -566,6 +566,7 @@ function setUpPacket(data, path) {
   if (!use_local_question_cache) {
     // Save the details to the question database
     var clone_data = Object.assign({}, data, { questions: "cached" });
+    console.log(clone_data)
     //clone_data["cached_questions"] = Object.keys(data["questions"]);
     question_db.saved_exams.put(clone_data);
   }
@@ -596,7 +597,7 @@ function setUpPacket(data, path) {
     (async () => {
       for (let n in data["question_requests"]) {
         question_number++;
-        n = parseInt(n);
+        n = String(n);
 
         let obj = { qid: n, type: question_type };
         let question_in_db = await question_db.question_data.get(obj);
@@ -765,7 +766,7 @@ function setUpQuestions(load_previous) {
         // Store question data into dexie
         let d = {
           //eid: exam_details.eid,
-          qid: parseInt(e),
+          qid: String(e),
           type: questions[e].type,
           data: questions[e],
           //timestamp: questions[e]["generated"],
@@ -849,7 +850,6 @@ async function loadQuestion(n, section = 1, force_reload = false) {
   const cid = exam_details.cid;
   const eid = exam_details.eid;
 
-  // Make sure we have an integer
   n = parseInt(n);
   //console.log("loading question (n)", n);
 
@@ -863,9 +863,10 @@ async function loadQuestion(n, section = 1, force_reload = false) {
   console.log(exam_details, n);
   const qid = exam_details.question_order[n];
 
-  let q = { qid: qid, type: question_type };
-  console.log(q);
-  console.log(question_db.question_data);
+  console.log("qid", qid)
+  let q = { qid: String(qid), type: question_type };
+  console.log(q)
+  console.log(question_db.question_data)
 
   let return_data = await question_db.question_data.get(q);
   const question_data = return_data.data;
@@ -1662,7 +1663,7 @@ function reviewQuestions() {
       let overcall_number = 0;
       let incorrectcall_number = 0;
       exam_details.question_order.forEach(async function (qid, n) {
-        const q_object = { qid: qid, type: question_type };
+        const q_object = { qid: String(qid), type: question_type };
         let question = await question_db.question_data.get(q_object);
         question = question.data;
         if (question_type == "long") {
