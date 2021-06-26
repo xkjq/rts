@@ -1968,7 +1968,7 @@ function reviewQuestions() {
  */
 function markAnswer(qid, current_question, n) {
   const type = current_question.type;
-  console.log("Mark", current_question);
+  //console.log("Mark", current_question);
 
   let option = null;
   if (review_mode == true) {
@@ -2027,10 +2027,10 @@ function markAnswer(qid, current_question, n) {
       .then(function (saved_user_answers) {
         // check if given answer matches a user saved answer
         if (saved_user_answers != undefined) {
-          console.log(saved_user_answers);
+          //console.log(saved_user_answers);
           saved_user_answers.forEach(function (saved_answer_object, n) {
             let saved_answer = saved_answer_object.ans;
-            console.log("ua", user_answer, saved_answer);
+            //console.log("ua", user_answer, saved_answer);
             ul.append("<li>" + saved_answer + "</li>");
             if (compareString(saved_answer, user_answer)) {
               textarea.removeClass("incorrect").addClass("correct");
@@ -2096,7 +2096,7 @@ function markAnswer(qid, current_question, n) {
 }
 
 function addFeedback(current_question, qid) {
-  console.log(current_question);
+  //console.log(current_question);
   if (
     current_question.hasOwnProperty("feedback") &&
     current_question.feedback.length > 0

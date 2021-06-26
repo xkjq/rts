@@ -593,7 +593,7 @@ export function openMainImage(current_question, t, source) {
         if (/(?:\/|^)[^.\/]+$/.test(url)) {
           url = "wadouri:" + url;
         }
-        console.log(url)
+        //console.log(url)
 
         loadAnnotation(url, annotation);
 
