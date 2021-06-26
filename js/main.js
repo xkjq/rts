@@ -963,7 +963,8 @@ async function loadQuestion(n, section = 1, force_reload = false) {
       $("#figure-" + id).append(img);
 
       // otherwise try to load it as a dicom (if it starts with data)
-    } else if (based_img.startsWith("data:")) {
+      // or ends with dcm
+    } else if (based_img.startsWith("data:") || based_img.endsWith(".dcm") || /(?:\/|^)[^.\/]+$/.test(based_img)) {
       // convert the data url to a file
       viewer
         .urltoFile(based_img, "dicom", "application/dicom")
@@ -975,9 +976,8 @@ async function loadQuestion(n, section = 1, force_reload = false) {
           const img = $("<div></div>").get(0);
           img.id = "thumb-" + id;
           img.class = "thumbnail";
-          img.title =
-            //"Click on the thumbnail to view and manipulate the image.";
-            img.draggable = "false";
+          img.title = "Click on the thumbnail to view and manipulate the image.";
+          img.draggable = "false";
           img.style = "height: 100px; width: 100px";
           $("#figure-" + id).append(img);
           const element = document.getElementById("thumb-" + id);
