@@ -221,9 +221,9 @@ async function loadExamList(data) {
   // Check the database for exams that have been saved
   question_db.saved_exams.toArray().then((saved_exams) => {
     if (saved_exams.length < 1) {
-      $("#cache-details ul").append("<span>No cached exams / questions</span>");
+      $("#cache-details summary").append("<span>No cached exams / questions</span>");
     } else {
-      $("#cache-details ul").append("<span>Cached exams / questions:</span>");
+      $("#cache-details summary").append("<span>Cached exams / questions:</span>");
     }
     saved_exams.forEach((saved_exam, n) => {
       $("#cache-details ul").append(
