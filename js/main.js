@@ -236,15 +236,15 @@ async function loadExamList(data) {
         const question_timestamp_hash = exam_generated_map[saved_exam.eid][1];
 
         if (
-          Date.parse(saved_exam.generated) !=
           // Probably better doing this serveside
-          Date.parse(exam_timestamp.split("+")[0])
+          compareDates(saved_exam.generated, exam_timestamp)
         ) {
           question_db.saved_exams.where("eid").equals(saved_exam.eid).delete();
 
-          $(`li.cache-item[data-eid="${saved_exam.eid}"]`).addClass(
-            "cache-out-of-date"
-          ).append(` [out of date (latest: ${exam_timestamp})]`);
+          console.log("HOL");
+          $(`li.cache-item[data-eid="${saved_exam.eid}"]`)
+            .addClass("cache-out-of-date")
+            .append(` [out of date (latest: ${exam_timestamp})]`);
         } else {
           $(`.packet-button[data-eid="${saved_exam.eid}"]`).addClass("cached");
         }
@@ -256,7 +256,7 @@ async function loadExamList(data) {
             `<li class="cache-item" data-qid=${q}>Question (${saved_exam.exam_type}): ${q}`
           );
           // If a single question is out of date we invalidate the lot...
-          const q_object = { qid: q, type: saved_exam.exam_type };
+          const q_object = { qid: parseInt(q), type: saved_exam.exam_type };
           question_db.question_data
             .get(q_object)
             .then((d) => {
@@ -264,7 +264,7 @@ async function loadExamList(data) {
               // we should really just requeue the required question for dowload...
               if (
                 d == undefined ||
-                Date.parse(d.data.generated) != Date.parse(new_timestamp)
+                compareDates(d.data.generated, new_timestamp)
               ) {
                 $(`li.cache-item[data-eid="${saved_exam.eid}"]`).addClass(
                   "cache-out-of-date"
@@ -285,6 +285,8 @@ async function loadExamList(data) {
               d = null;
             })
             .catch((e) => {
+              console.log(e);
+              console.log("1234", saved_exam.eid);
               // If the question isn't found in the cache...
               $(`li.cache-item[data-eid="${saved_exam.eid}"]`).addClass(
                 "cache-out-of-date"
@@ -430,11 +432,9 @@ function loadPacketFromAjax(path, eid, generated) {
     question_db.saved_exams
       .get(eid)
       .then((exam) => {
-        if (
-          exam == undefined ||
-          (Date.parse(exam["generated"].split("+")[0]) != Date.parse(generated.split("+")[0]))
-        ) {
-        console.log("AjaxRequestPacket:", eid);
+        if (exam == undefined || compareDates(exam["generated"], generated)) 
+        {
+          console.log("AjaxRequestPacket:", eid);
           ajaxRequestionPacket(true);
         } else {
           // We have an up to date exam in the database
@@ -860,13 +860,12 @@ async function loadQuestion(n, section = 1, force_reload = false) {
     return;
   }
 
-
-  console.log(exam_details, n)
+  console.log(exam_details, n);
   const qid = exam_details.question_order[n];
 
   let q = { qid: qid, type: question_type };
-  console.log(q)
-  console.log(question_db.question_data)
+  console.log(q);
+  console.log(question_db.question_data);
 
   let return_data = await question_db.question_data.get(q);
   const question_data = return_data.data;
@@ -963,7 +962,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
       $("#figure-" + id).append(img);
 
       // otherwise try to load it as a dicom (if it starts with data)
-    } else if(based_img.startsWith("data:")) {
+    } else if (based_img.startsWith("data:")) {
       // convert the data url to a file
       viewer
         .urltoFile(based_img, "dicom", "application/dicom")
@@ -1759,7 +1758,8 @@ function reviewQuestions() {
         });
 
         db.user_answers
-          .where({ type: question_type, qid: qid }).toArray()
+          .where({ type: question_type, qid: qid })
+          .toArray()
           .then(function (answers) {
             // Merge the question answers with the user saved answers
             let question_answers = question["answers"];
@@ -1967,7 +1967,7 @@ function reviewQuestions() {
  */
 function markAnswer(qid, current_question, n) {
   const type = current_question.type;
-  console.log("Mark", current_question)
+  console.log("Mark", current_question);
 
   let option = null;
   if (review_mode == true) {
@@ -2021,22 +2021,35 @@ function markAnswer(qid, current_question, n) {
 
     // Load user saved answers
     db.user_answers
-      .where({ type: type, qid: qid }).toArray()
+      .where({ type: type, qid: qid })
+      .toArray()
       .then(function (saved_user_answers) {
         // check if given answer matches a user saved answer
         if (saved_user_answers != undefined) {
-          console.log(saved_user_answers)
+          console.log(saved_user_answers);
           saved_user_answers.forEach(function (saved_answer_object, n) {
             let saved_answer = saved_answer_object.ans;
-            console.log("ua", user_answer, saved_answer)
+            console.log("ua", user_answer, saved_answer);
             ul.append("<li>" + saved_answer + "</li>");
             if (compareString(saved_answer, user_answer)) {
               textarea.removeClass("incorrect").addClass("correct");
             }
-            if (saved_answer_object.submitted == undefined || saved_answer_object.submitted != true) {
-              ul.append($("<button>Submit Answer</button>").click((e) => {
-                  interact.postSavedAnswer(type, qid, saved_answer, e, saved_answer_object, db);
-              }));
+            if (
+              saved_answer_object.submitted == undefined ||
+              saved_answer_object.submitted != true
+            ) {
+              ul.append(
+                $("<button>Submit Answer</button>").click((e) => {
+                  interact.postSavedAnswer(
+                    type,
+                    qid,
+                    saved_answer,
+                    e,
+                    saved_answer_object,
+                    db
+                  );
+                })
+              );
             }
           });
         }
@@ -2082,7 +2095,7 @@ function markAnswer(qid, current_question, n) {
 }
 
 function addFeedback(current_question, qid) {
-console.log(current_question)
+  console.log(current_question);
   if (
     current_question.hasOwnProperty("feedback") &&
     current_question.feedback.length > 0
@@ -2107,11 +2120,11 @@ console.log(current_question)
 
   // Add link to submit question feedback
 
-    $(".answer-panel").append(
-      $(
-        `<div class='feedback-link'><a href=${config.question_feedback_url}${current_question.type}/${qid} target=”_blank”>Submit question feedback</a></div>`
-      )
-    );
+  $(".answer-panel").append(
+    $(
+      `<div class='feedback-link'><a href=${config.question_feedback_url}${current_question.type}/${qid} target=”_blank”>Submit question feedback</a></div>`
+    )
+  );
 }
 
 function markCorrect(qid, user_answer, type) {
@@ -2119,7 +2132,12 @@ function markCorrect(qid, user_answer, type) {
     return;
   }
 
-    db.user_answers.put({ type: type, qid: qid, ans: user_answer, submitted: false });
+  db.user_answers.put({
+    type: type,
+    qid: qid,
+    ans: user_answer,
+    submitted: false,
+  });
   //db.user_answers
   //  .get({ type: type, qid: qid })
   //  .then(function (answers) {
@@ -2389,7 +2407,7 @@ $("#btn-delete-current-saved-answers").click(function (evt) {
     return;
   }
 
-// TODO: fix, needs type
+  // TODO: fix, needs type
   db.user_answers
     .where("qid")
     .anyOf(exam_details.question_order)
@@ -2465,3 +2483,8 @@ function refreshDatabaseSettings() {
 $(document).on("saveSessionEvent", {}, (evt, review) => {
   saveSession(review);
 });
+
+// Helper to compare dates
+function compareDates(d1, d2) {
+  return Date.parse(d1.split("+")[0]) != Date.parse(d2.split("+")[0]);
+}
