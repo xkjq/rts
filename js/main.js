@@ -237,7 +237,7 @@ async function loadExamList(data) {
 
         if (
           // Probably better doing this serveside
-          compareDates(saved_exam.generated, exam_timestamp)
+          compareDates(saved_exam.generated, exam_timestamp);
         ) {
           question_db.saved_exams.where("eid").equals(saved_exam.eid).delete();
 
@@ -2484,5 +2484,7 @@ $(document).on("saveSessionEvent", {}, (evt, review) => {
 
 // Helper to compare dates
 function compareDates(d1, d2) {
+  console.log("compare", d1, d2)
+  console.log("compare striped", Date.parse(d1.split("+")[0]), Date.parse(d2.split("+")[0])
   return Date.parse(d1.split("+")[0]) != Date.parse(d2.split("+")[0]);
 }
