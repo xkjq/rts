@@ -237,7 +237,7 @@ async function loadExamList(data) {
 
         if (
           // Probably better doing this serveside
-          compareDates(saved_exam.generated, exam_timestamp);
+          compareDates(saved_exam.generated, exam_timestamp)
         ) {
           question_db.saved_exams.where("eid").equals(saved_exam.eid).delete();
 
