@@ -2484,7 +2484,7 @@ $(document).on("saveSessionEvent", {}, (evt, review) => {
 
 // Helper to compare dates
 function compareDates(d1, d2) {
-  console.log("compare", d1, d2)
-  console.log("compare striped", Date.parse(d1.split("+")[0]), Date.parse(d2.split("+")[0])
+  console.log("compare", d1, d2));
+  console.log("compare striped", Date.parse(d1.split("+")[0]), Date.parse(d2.split("+")[0]));
   return Date.parse(d1.split("+")[0]) != Date.parse(d2.split("+")[0]);
 }
