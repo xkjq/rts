@@ -25,7 +25,7 @@ let exam_time = null;
 let packet_time = null;
 let date_started = null;
 let score = 0;
-let packet_generated = null;
+let packet_json_id = null;
 
 let allow_self_marking = true;
 
@@ -69,7 +69,7 @@ db.version(1).stores({
 const question_db = new Dexie("question_database");
 question_db.version(1).stores({
   question_data: "&[qid+type], qid, type",
-  saved_exams: "&eid, type, exam_mode, name, order, time, generated",
+  saved_exams: "&eid, type, exam_mode, name, order, time, exam_json_id",
 });
 
 retrievePacketList();
@@ -168,14 +168,14 @@ async function loadExamList(data) {
     let name = exam["name"];
     let url = exam["url"];
     let eid = exam["eid"];
-    let generated = exam["json_creation_time"];
+    let exam_json_id = exam["exam_json_id"];
 
-    let question_timestamp_hash = {};
+    let question_json_id_hash = {};
 
     if (exam.hasOwnProperty("multi_question_json")) {
-      question_timestamp_hash = exam["multi_question_json"];
+      question_json_id_hash = exam["multi_question_json"];
     }
-    exam_generated_map[eid] = [generated, question_timestamp_hash];
+    exam_generated_map[eid] = [exam_json_id, question_json_id_hash];
 
     let c = "";
     if (exams_started.indexOf(name) > -1) {
@@ -204,7 +204,7 @@ async function loadExamList(data) {
       )
         .text(name)
         .click(function () {
-          loadPacketFromAjax(url, eid, generated);
+          loadPacketFromAjax(url, eid, exam_json_id);
         })
     );
   });
@@ -227,30 +227,27 @@ async function loadExamList(data) {
     }
     saved_exams.forEach((saved_exam, n) => {
       $("#cache-details ul").append(
-        `<li class="cache-item" data-eid=${saved_exam.eid}>Exam: ${saved_exam.exam_name} [${saved_exam.eid}]: ${saved_exam.generated}`
+        `<li class="cache-item" data-eid=${saved_exam.eid}>Exam: ${saved_exam.exam_name} [${saved_exam.eid}]: ${saved_exam.exam_json_id}`
       );
       //Compared saved exams to those available
       if (exam_generated_map.hasOwnProperty(saved_exam.eid)) {
-        // If the timestamps differ delete and force a refresh
-        const exam_timestamp = exam_generated_map[saved_exam.eid][0];
-        const question_timestamp_hash = exam_generated_map[saved_exam.eid][1];
+        // If the json_id s differ delete and force a refresh
+        const exam_json_id = exam_generated_map[saved_exam.eid][0];
+        const question_json_id_hash = exam_generated_map[saved_exam.eid][1];
 
-        if (
-          // Probably better doing this serveside
-          compareDates(saved_exam.generated, exam_timestamp)
-        ) {
+        if (saved_exam.exam_json_id != exam_json_id) {
           question_db.saved_exams.where("eid").equals(saved_exam.eid).delete();
 
           console.log("HOL");
           $(`li.cache-item[data-eid="${saved_exam.eid}"]`)
             .addClass("cache-out-of-date")
-            .append(` [out of date (latest: ${exam_timestamp})]`);
+            .append(` [out of date (latest: ${exam_json_id})]`);
         } else {
           $(`.packet-button[data-eid="${saved_exam.eid}"]`).addClass("cached");
         }
 
-        for (let q in question_timestamp_hash) {
-          let new_timestamp = question_timestamp_hash[q];
+        for (let q in question_json_id_hash) {
+          let new_json_id = question_json_id_hash[q];
           //q = q.toString();
           $("#cache-details ul").append(
             `<li class="cache-item" data-qid=${q}>Question (${saved_exam.exam_type}): ${q}`
@@ -262,10 +259,7 @@ async function loadExamList(data) {
             .then((d) => {
               // d is undefined if the question is not saved
               // we should really just requeue the required question for dowload...
-              if (
-                d == undefined ||
-                compareDates(d.data.generated, new_timestamp)
-              ) {
+              if (d == undefined || d.data.exam_json_id != new_json_id) {
                 $(`li.cache-item[data-eid="${saved_exam.eid}"]`).addClass(
                   "cache-out-of-date"
                 );
@@ -426,13 +420,13 @@ async function loadPacketList(data) {
  * Loads the requisite packet into the quiz system
  * @param {string} path - relative path to the packet json file
  */
-function loadPacketFromAjax(path, eid, generated) {
+function loadPacketFromAjax(path, eid, exam_json_id) {
   if (eid != undefined) {
     // try and load the exam from the local indexedDB
     question_db.saved_exams
       .get(eid)
       .then((exam) => {
-        if (exam == undefined || compareDates(exam["generated"], generated)) 
+        if (exam == undefined || (exam["exam_json_id"] != exam_json_id)) 
         {
           console.log("AjaxRequestPacket:", eid);
           ajaxRequestionPacket(true);
@@ -510,8 +504,8 @@ function setUpPacket(data, path) {
     question_type = data.exam_type;
   }
 
-  if (data.hasOwnProperty("generated")) {
-    packet_generated = data.generated;
+  if (data.hasOwnProperty("exam_json_id")) {
+    packet_json_id = data.exam_json_id;
   }
 
   if (data.hasOwnProperty("exam_mode")) {
@@ -769,7 +763,7 @@ function setUpQuestions(load_previous) {
           qid: String(e),
           type: questions[e].type,
           data: questions[e],
-          //timestamp: questions[e]["generated"],
+          //timestamp: questions[e]["exam_json_id"],
         };
 
         question_db.question_data.put(d);
@@ -2485,6 +2479,7 @@ $(document).on("saveSessionEvent", {}, (evt, review) => {
 // Helper to compare dates
 function compareDates(d1, d2) {
   console.log("compare", d1, d2);
+  console.log("compare striped", Date.parse(d1.split("+")[0]), Date.parse(d2.split("+")[0]));
   console.log("compare striped", Date.parse(d1.split("+")[0]), Date.parse(d2.split("+")[0]));
   return Date.parse(d1.split("+")[0]) != Date.parse(d2.split("+")[0]);
 }
