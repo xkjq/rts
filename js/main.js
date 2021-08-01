@@ -253,16 +253,18 @@ async function loadExamList(data) {
         console.log("Check question ids")
         for (let q in question_json_id_hash) {
           let new_question_json_id = question_json_id_hash[q];
-          console.log("new question json id")
+          console.log("new question json id", new_question_json_id)
           //q = q.toString();
           $("#cache-details ul").append(
             `<li class="cache-item" data-qid=${q}>Question (${saved_exam.exam_type}): ${q}`
           );
           // If a single question is out of date we invalidate the lot...
           const q_object = { qid: String(q), type: saved_exam.exam_type };
+          console.log(q_object);
           question_db.question_data
             .get(q_object)
             .then((d) => {
+              console.log("saved question data", d)
               // d is undefined if the question is not saved
               // we should really just requeue the required question for dowload...
               if (d == undefined || d.data.question_json_id != new_question_json_id) {
