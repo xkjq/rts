@@ -225,7 +225,9 @@ async function loadExamList(data) {
     } else {
       $("#cache-details summary").append("<span>Cached exams / questions:</span>");
     }
+    console.log("Loop through saved exams");
     saved_exams.forEach((saved_exam, n) => {
+      console.log("Check", saved_exam);
       $("#cache-details ul").append(
         `<li class="cache-item" data-eid=${saved_exam.eid}>Exam: ${saved_exam.exam_name} [${saved_exam.eid}]: ${saved_exam.exam_json_id}`
       );
@@ -236,6 +238,7 @@ async function loadExamList(data) {
         const question_json_id_hash = exam_generated_map[saved_exam.eid][1];
 
         if (saved_exam.exam_json_id != exam_json_id) {
+          console.log("id mismath", saved_exam.exam_json_id, exam_json_id);
           question_db.saved_exams.where("eid").equals(saved_exam.eid).delete();
 
           console.log("HOL");
@@ -243,11 +246,14 @@ async function loadExamList(data) {
             .addClass("cache-out-of-date")
             .append(` [out of date (latest: ${exam_json_id})]`);
         } else {
+          console.log("id match", saved_exam.exam_json_id, exam_json_id);
           $(`.packet-button[data-eid="${saved_exam.eid}"]`).addClass("cached");
         }
 
+        console.log("Check question ids")
         for (let q in question_json_id_hash) {
-          let new_json_id = question_json_id_hash[q];
+          let new_question_json_id = question_json_id_hash[q];
+          console.log("new question json id")
           //q = q.toString();
           $("#cache-details ul").append(
             `<li class="cache-item" data-qid=${q}>Question (${saved_exam.exam_type}): ${q}`
@@ -259,7 +265,7 @@ async function loadExamList(data) {
             .then((d) => {
               // d is undefined if the question is not saved
               // we should really just requeue the required question for dowload...
-              if (d == undefined || d.data.exam_json_id != new_json_id) {
+              if (d == undefined || d.data.question_json_id != new_question_json_id) {
                 $(`li.cache-item[data-eid="${saved_exam.eid}"]`).addClass(
                   "cache-out-of-date"
                 );
@@ -279,6 +285,7 @@ async function loadExamList(data) {
               d = null;
             })
             .catch((e) => {
+              console.log("Error loading qusetion data", q_object);
               console.log(e);
               console.log("1234", saved_exam.eid);
               // If the question isn't found in the cache...
