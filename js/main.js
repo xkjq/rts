@@ -191,7 +191,7 @@ async function loadExamList(data) {
       c = " session-completed";
     }
 
-    if (!exam.active) {
+    if (!exam.exam_active) {
       c = c + " inactive";
     }
 

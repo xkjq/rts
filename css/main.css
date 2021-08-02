@@ -1101,7 +1101,8 @@ display: block
     color: darkslateblue;
 }
 
-.inactive {
+.inactive::after {
+    content:  "inactive";
   transform: rotate(12deg);
 	color: #555;
 	font-size: 3rem;
