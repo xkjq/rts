@@ -148,7 +148,7 @@ async function loadExamList(data) {
 
   //Display user info if it exists
   if (data.hasOwnProperty("user") && data.user) {
-    $("#user").append(data.user);
+    $("#user").append(`User: ${data.user}`);
   }
 
 
@@ -189,6 +189,10 @@ async function loadExamList(data) {
     }
     if (exams_completed.indexOf(name) > -1) {
       c = " session-completed";
+    }
+
+    if (!exam.active) {
+      c = c + " inactive";
     }
 
     let list;
