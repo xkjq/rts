@@ -1103,7 +1103,7 @@ display: block
 
 .inactive::after {
     content:  "inactive";
-  transform: translateX(-100%) rotate(12deg);
+    transform: rotate(19deg);
 	color: red;
 	font-size: 1rem;
 	font-weight: 900;
