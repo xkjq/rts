@@ -1105,13 +1105,13 @@ display: block
     content:  "inactive";
   transform: translateX(-100%) rotate(12deg);
 	color: red;
-	font-size: 2rem;
+	font-size: 1rem;
 	font-weight: 900;
 	border: 0.25rem solid red;
 	display: inline-block;
-	padding: 0.25rem 1rem;
+	/* padding: 0.25rem 1rem; */
 	text-transform: uppercase;
 	border-radius: 1rem;
 	font-family: 'Courier';
-  mix-blend-mode: multiply;
+  /* mix-blend-mode: multiply; */
 }
