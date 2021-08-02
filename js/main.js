@@ -146,6 +146,12 @@ async function loadExamList(data) {
     $("#database-error").show();
   });
 
+  //Display user info if it exists
+  if (data.hasOwnProperty("user") && data.user) {
+    $("#user").append(data.user);
+  }
+
+
   let exams_started = [];
   let exams_completed = [];
   sessions.forEach((s) => {
