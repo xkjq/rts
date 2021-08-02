@@ -831,7 +831,7 @@ select option:disabled {
     transition: all 0.2s;
 }
 
-.packet-button.cached:after{
+.packet-button.cached:before{
   content: "cached";
   width: 12px;
   height: 12px;
