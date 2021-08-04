@@ -271,13 +271,14 @@ async function loadExamList(data) {
           // If a single question is out of date we invalidate the lot...
           const q_object = { qid: String(q), type: saved_exam.exam_type };
           console.log(q_object);
-          question_db.question_data
-            .get(q_object)
-            .then((d) => {
+
+          let save_question_data = await question_db.question_data.get(q_object);
+
+            try {
               console.log("saved question data", d, new_question_json_id)
-              // d is undefined if the question is not saved
+              // saved_question_data is undefined if the question is not saved
               // we should really just requeue the required question for dowload...
-              if (d == undefined || d.data.question_json_id != new_question_json_id) {
+              if (saved_question_data == undefined || saved_question_data.data.question_json_id != new_question_json_id) {
                 $(`li.cache-item[data-eid="${saved_exam.eid}"]`).addClass(
                   "cache-out-of-date"
                 );
@@ -295,8 +296,7 @@ async function loadExamList(data) {
                   .delete();
               }
               d = null;
-            })
-            .catch((e) => {
+            } catch(e) {
               console.log("Error loading qusetion data", q_object);
               console.log(e);
               console.log("1234", saved_exam.eid);
@@ -316,7 +316,7 @@ async function loadExamList(data) {
                 .where(["qid", "type"])
                 .equals([String(q), saved_exam.exam_type])
                 .delete();
-            });
+            }
         }
       }
     });
