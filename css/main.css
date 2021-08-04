@@ -1103,7 +1103,7 @@ display: block
 
 .inactive::before {
     content:  "inactive";
-    transform: rotate(19deg);
+    transform: rotate(45deg);
 	color: red;
 	font-size: 1rem;
 	font-weight: 900;
@@ -1114,4 +1114,7 @@ display: block
 	border-radius: 1rem;
 	font-family: 'Courier';
   /* mix-blend-mode: multiply; */
+    opacity: 30%;
+    margin-left: -2em;
+    position: absolute;
 }
