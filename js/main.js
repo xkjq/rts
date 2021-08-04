@@ -275,7 +275,7 @@ async function loadExamList(data) {
           let save_question_data = await question_db.question_data.get(q_object);
 
             try {
-              console.log("saved question data", d, new_question_json_id)
+              console.log("saved question data", save_question_data, new_question_json_id)
               // saved_question_data is undefined if the question is not saved
               // we should really just requeue the required question for dowload...
               if (save_question_data == undefined || save_question_data.data.question_json_id != new_question_json_id) {
