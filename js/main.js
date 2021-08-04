@@ -229,14 +229,14 @@ async function loadExamList(data) {
   }
 
   // Check the database for exams that have been saved
-  question_db.saved_exams.toArray().then(async (saved_exams) => {
+  question_db.saved_exams.toArray().then((saved_exams) => {
     if (saved_exams.length < 1) {
       $("#cache-details summary").append("<span>No cached exams / questions</span>");
     } else {
       $("#cache-details summary").append("<span>Cached exams / questions:</span>");
     }
     console.log("Loop through saved exams");
-    saved_exams.forEach((saved_exam, n) => {
+    saved_exams.forEach(async (saved_exam, n) => {
       console.log("Check", saved_exam);
       $("#cache-details ul").append(
         `<li class="cache-item" data-eid=${saved_exam.eid}>Exam: ${saved_exam.exam_name} [${saved_exam.eid}]: ${saved_exam.exam_json_id}`
