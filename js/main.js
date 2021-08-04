@@ -229,7 +229,7 @@ async function loadExamList(data) {
   }
 
   // Check the database for exams that have been saved
-  question_db.saved_exams.toArray().then((saved_exams) => {
+  question_db.saved_exams.toArray().then(async (saved_exams) => {
     if (saved_exams.length < 1) {
       $("#cache-details summary").append("<span>No cached exams / questions</span>");
     } else {
@@ -278,7 +278,7 @@ async function loadExamList(data) {
               console.log("saved question data", d, new_question_json_id)
               // saved_question_data is undefined if the question is not saved
               // we should really just requeue the required question for dowload...
-              if (saved_question_data == undefined || saved_question_data.data.question_json_id != new_question_json_id) {
+              if (save_question_data == undefined || save_question_data.data.question_json_id != new_question_json_id) {
                 $(`li.cache-item[data-eid="${saved_exam.eid}"]`).addClass(
                   "cache-out-of-date"
                 );
