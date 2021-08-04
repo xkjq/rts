@@ -279,6 +279,7 @@ async function loadExamList(data) {
               // saved_question_data is undefined if the question is not saved
               // we should really just requeue the required question for dowload...
               if (save_question_data == undefined || save_question_data.data.question_json_id != new_question_json_id) {
+                console.log(`INVALIDATE eid: ${saved_exam.eid}, q ${q}`);
                 $(`li.cache-item[data-eid="${saved_exam.eid}"]`).addClass(
                   "cache-out-of-date"
                 );
