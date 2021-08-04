@@ -295,7 +295,6 @@ async function loadExamList(data) {
                   .equals([String(q), saved_exam.exam_type])
                   .delete();
               }
-              d = null;
             } catch(e) {
               console.log("Error loading qusetion data", q_object);
               console.log(e);
