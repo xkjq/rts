@@ -250,6 +250,7 @@ async function loadExamList(data) {
         if (saved_exam.exam_json_id != exam_json_id) {
           console.log("id mismath", saved_exam.exam_json_id, exam_json_id);
           question_db.saved_exams.where("eid").equals(saved_exam.eid).delete();
+          db.answers.where("eid").equals(saved_exam.eid).delete();
 
           console.log("HOL");
           $(`li.cache-item[data-eid="${saved_exam.eid}"]`)
@@ -289,7 +290,12 @@ async function loadExamList(data) {
                 $(`.packet-button[data-eid="${saved_exam.eid}"]`).addClass(
                   "out-of-date"
                 );
+            
+                // Invalidate associated exam
                 question_db.saved_exams.where("eid").equals(saved_exam.eid).delete();
+
+                // Invalidate and any associated answers
+                db.answers.where("eid").equals(saved_exam.eid).delete();
 
                 //question_db.saved_exams.where("eid").equals(saved_exam.eid).delete();
                 question_db.question_data
