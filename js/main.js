@@ -63,7 +63,7 @@ db.version(1).stores({
   flags: "[aid+cid+eid+qid+qidn], [aid+cid+eid], qid",
   user_answers: "[qid+type+ans], [qid+type]",
   session:
-    "[packet+aid], packet, aid, status, date, score, max_score, exam_time, time_left, question_order, questions_answered, total_questions",
+    "[eid+aid], eid, packet, aid, status, date, score, max_score, exam_time, time_left, question_order, questions_answered, total_questions",
 });
 
 const question_db = new Dexie("question_database");
@@ -524,6 +524,8 @@ function setUpPacket(data, path) {
 
   if (data.hasOwnProperty("eid")) {
     exam_details.eid = data.eid;
+  } else {
+    exam_details.eid = packet_name
   }
 
   if (data.hasOwnProperty("exam_type")) {
@@ -686,8 +688,8 @@ function loadSession() {
   db.session
     // .where("status")
     // .equals("active")
-    .where("[packet+aid]")
-    .between([packet_name, Dexie.minKey], [packet_name, Dexie.maxKey])
+    .where("[eid+aid]")
+    .between([exam_details.eid, Dexie.minKey], [exam_details.eid, Dexie.maxKey])
     .toArray()
     .then((sessions) => {
       //console.log("sessions", sessions);
@@ -2467,6 +2469,7 @@ function saveSession(start_review) {
     time_values.seconds;
   db.session.put({
     packet: packet_name,
+    eid: exam_details.eid,
     aid: exam_details.aid,
     cid: exam_details.cid,
     status: status,
