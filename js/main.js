@@ -189,6 +189,7 @@ async function loadExamList(data) {
   //Display user info if it exists
   if (data.hasOwnProperty("user") && data.user) {
     $("#user").append(`User: ${data.user}`);
+    $(".exam-wrapper").show();
   }
 
 
