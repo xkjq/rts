@@ -123,10 +123,10 @@ async function retrievePacketList() {
       let cid = "";
       let passcode = "";
       if (s[0] == "cid") {
-        let cid = s[1];
+        cid = s[1];
       }
       if (s[0] == "passcode") {
-        let passcode = s[1];
+        passcode = s[1];
       }
 
       user_db.user.add({
