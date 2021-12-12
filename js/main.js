@@ -140,9 +140,9 @@ async function retrievePacketList() {
         }
       },
       error: function(httpObj, textStatus) {
-        if (httpObj.status==401) {
+        if (httpObj.status == 401 || httpObj.status == 404) {
           $.notify("Unable to login", "error");
-        
+
         }
       },
     })
