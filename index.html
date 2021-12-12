@@ -63,10 +63,20 @@
             </div>
             <div id="options-panel" class="fullscreen-overlay">
                 <h1>RTS</h1>
+                <input type='button' id='btn-candidate-login' class="login-button" value='Enter candidate details'><span
+                    id="candidate-details"></span>
                 <!-- <a href="#" id="overlay-close" class="close"></a> -->
                 <div id="user" class="user-text"></div>
                 <div id="packets">
-                    <p>Available Packets (click to load):</p>
+                    <p>Click buttons below to load an exam / packet</p>
+                    <span class="exam-wrapper hidden">
+                        <h2>Available Exams:</h2>
+                        <span id="exam-list">
+
+                        </span>
+                    </span>
+
+                    <h2>Available Packets:</h2>
                     <span id="packet-list">
                     </span>
                 </div>
@@ -75,28 +85,28 @@
                 <div id="storage-details">
                 </div>
                 <div id="cache-details">
-                <details>
-                <summary></summary>
-                <ul>
-                </ul>
-                </details>
+                    <details>
+                        <summary></summary>
+                        <ul>
+                        </ul>
+                    </details>
                 </div>
                 <details>
-                <summary>Options</summary>
-                <div id="database-buttons">
-                    <input type='button' id='btn-delete-answer-databases' value='Delete local answers'>
-                    <input type='button' id='btn-delete-cached-questions' value='Delete cached questions'>
-                </div>
-                <div id="local-fileloader">
-                    <form id="jsonFile" name="jsonFile" enctype="multipart/form-data" method="post">
+                    <summary>Options</summary>
+                    <div id="database-buttons">
+                        <input type='button' id='btn-delete-answer-databases' value='Delete local answers'>
+                        <input type='button' id='btn-delete-cached-questions' value='Delete cached questions'>
+                    </div>
+                    <div id="local-fileloader">
+                        <form id="jsonFile" name="jsonFile" enctype="multipart/form-data" method="post">
 
-                        <fieldset>
-                            <h2>Load local question set</h2>
-                            <input type='file' id='fileinput'>
-                            <input type='button' id='btn-local-file-load' value='Load'>
-                        </fieldset>
-                    </form>
-                </div>
+                            <fieldset>
+                                <h2>Load local question set</h2>
+                                <input type='file' id='fileinput'>
+                                <input type='button' id='btn-local-file-load' value='Load'>
+                            </fieldset>
+                        </form>
+                    </div>
                 </details>
             </div>
             <div id="review-overlay" class="fullscreen-overlay">
@@ -138,7 +148,7 @@
         </div>
         <div id="exam-candidate-number" class="dialog-text hidden">
             Check your below candidate number is correct.
-            <input type='number' size=10 id='candidate-number2'></input>
+            <input type='number' size=10 id='candidate-number2' disabled></input>
         </div>
         <button class="start-packet-button navigation dialog-yes">Start</button>
     </div>
@@ -153,12 +163,13 @@
         <button id="dialog-submit-button" class="submit-button navigation dialog-review hidden"><b>submit</b></button>
     </div>
 
-    <div id="login-dialog" class="dialog modal">
-        <h3 class="dialog-title">Select exam</h3>
+    <div id="login-dialog" class="dialog modal noclose">
+        <h3 class="dialog-title">Enter Details</h3>
         <div class="dialog-text">
-            Candidate number: <input type="text" id="candidate-number" name="candidate" required size="10">
+            Candidate number: <input type="number" id="candidate-number" name="candidate" required size="10"><br />
+            Passcode: <input type="text" id="passcode" name="passcode" required size="10"><br />
         </div>
-        <button id="start-exam-button" class="navigation dialog-yes">Start</button>
+        <button id="login-button" class="navigation dialog-yes">Login</button>
     </div>
 
     <div id="loading" class="fullscreen-overlay">
@@ -180,7 +191,10 @@
     </div>
     <div id="question-loading" class="fullscreen-overlay-transparent">
         <div class="progress-block">
-            <div class="lds-ripple"><div></div><div></div></div>
+            <div class="lds-ripple">
+                <div></div>
+                <div></div>
+            </div>
         </div>
     </div>
 
