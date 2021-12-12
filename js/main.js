@@ -118,7 +118,7 @@ async function retrievePacketList() {
   } else {
 
 
-    items = window.location.search.substr(1).split("&")
+    let items = window.location.search.substr(1).split("&");
     if (items.length == 2) {
       let cid = "";
       let passcode = "";
