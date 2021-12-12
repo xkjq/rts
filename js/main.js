@@ -122,7 +122,7 @@ async function retrievePacketList() {
     if (items.length == 2) {
       let cid = "";
       let passcode = "";
-      for (let index = 0; index < array.length; index++) {
+      for (let index = 0; index < items.length; index++) {
         const item = items[index];
         let s = item.split("=");
 
