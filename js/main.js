@@ -37,17 +37,16 @@ let timer = null;
 
 let use_local_question_cache = false;
 
-window.location.search.substr(1).split("&").forEach((item) =>
-    {
-        s = item.split("=");
-        if (s[0] == "cid") {
-            $("#cid-box").val(s[1]);
+window.location.search.substr(1).split("&").forEach((item) => {
+  let s = item.split("=");
+  if (s[0] == "cid") {
+    global_cid = s[1];
 
-        }
-        if (s[0] == "passcode") {
-            $("#passcode-box").val(s[1]);
-        }
-    });
+  }
+  if (s[0] == "passcode") {
+    global_passcode = s[1];
+  }
+});
 
 cornerstone.imageCache.setMaximumSizeBytes(5128800);
 
