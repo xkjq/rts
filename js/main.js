@@ -37,16 +37,7 @@ let timer = null;
 
 let use_local_question_cache = false;
 
-window.location.search.substr(1).split("&").forEach((item) => {
-  let s = item.split("=");
-  if (s[0] == "cid") {
-    global_cid = s[1];
 
-  }
-  if (s[0] == "passcode") {
-    global_passcode = s[1];
-  }
-});
 
 cornerstone.imageCache.setMaximumSizeBytes(5128800);
 
@@ -124,6 +115,25 @@ async function retrievePacketList() {
     })
 
     $("#candidate-details").append(`Current: CID ${global_cid} / Passcode ${global_passcode} `).append(logout);
+  } else {
+
+    window.location.search.substr(1).split("&").forEach((item) => {
+      s = item.split("=");
+      if (s[0] == "cid") {
+        let cid = s[1];
+
+      }
+      if (s[0] == "passcode") {
+        let passcode = s[1];
+      }
+
+      user_db.user.add({
+        cid: cid,
+        passcode: passcode
+      })
+      location.reload();
+    });
+
   }
 
   try {
