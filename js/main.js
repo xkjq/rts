@@ -109,7 +109,7 @@ async function retrievePacketList() {
     let logout = $("<span>[x]</span>")
     logout.click(() => {
       user_db.user.clear().then(() => {
-        location.reload();
+        window.location = window.location.pathname;
         return;
       });
     })
