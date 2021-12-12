@@ -139,6 +139,12 @@ async function retrievePacketList() {
           loadPacketList(data);
         }
       },
+      error: function(httpObj, textStatus) {
+        if (httpObj.status==401) {
+          $.notify("Unable to login", "error");
+        
+        }
+      },
     })
     .done(function() {})
     .fail(function() {
