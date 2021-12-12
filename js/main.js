@@ -151,7 +151,7 @@ async function retrievePacketList() {
       if (global_cid == null) {
         url = config.exam_query_url;
       } else {
-        url = `${config.exam_query_url}${global_cid}/${global_passcode}`;
+        url = `${config.exam_query_url}/${global_cid}/${global_passcode}`;
       }
     }
   } catch (e) {
