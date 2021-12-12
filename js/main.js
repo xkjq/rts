@@ -117,24 +117,31 @@ async function retrievePacketList() {
     $("#candidate-details").append(`Current: CID ${global_cid} / Passcode ${global_passcode} `).append(logout);
   } else {
 
-    window.location.search.substr(1).split("&").forEach((item) => {
-      let s = item.split("=");
 
+    items = window.location.search.substr(1).split("&")
+    if (items.length == 2) {
       let cid = "";
       let passcode = "";
-      if (s[0] == "cid") {
-        cid = s[1];
-      }
-      if (s[0] == "passcode") {
-        passcode = s[1];
-      }
+      for (let index = 0; index < array.length; index++) {
+        const item = items[index];
+        let s = item.split("=");
+
+        if (s[0] == "cid") {
+          cid = s[1];
+        }
+        if (s[0] == "passcode") {
+          passcode = s[1];
+        }
+
+      };
+      console.log(cid, passcode)
 
       user_db.user.add({
         cid: cid,
         passcode: passcode
       })
       location.reload();
-    });
+    }
 
   }
 
