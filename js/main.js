@@ -37,6 +37,18 @@ let timer = null;
 
 let use_local_question_cache = false;
 
+window.location.search.substr(1).split("&").forEach((item) =>
+    {
+        s = item.split("=");
+        if (s[0] == "cid") {
+            $("#cid-box").val(s[1]);
+
+        }
+        if (s[0] == "passcode") {
+            $("#passcode-box").val(s[1]);
+        }
+    });
+
 cornerstone.imageCache.setMaximumSizeBytes(5128800);
 
 // Set up cornerstone (the dicom viewer)
