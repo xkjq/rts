@@ -119,9 +119,11 @@ async function retrievePacketList() {
 
     window.location.search.substr(1).split("&").forEach((item) => {
       let s = item.split("=");
+
+      let cid = "";
+      let passcode = "";
       if (s[0] == "cid") {
         let cid = s[1];
-
       }
       if (s[0] == "passcode") {
         let passcode = s[1];
