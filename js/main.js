@@ -1889,6 +1889,11 @@ function reviewQuestions() {
           $("#review-overlay").hide();
         });
 
+        console.log(db.user_answers)
+        console.log({
+          type: question_type,
+          qid: qid
+        })
         db.user_answers
           .where({
             type: question_type,
@@ -1942,23 +1947,24 @@ function reviewQuestions() {
             ) {
               if (normal) {
                 el.html(
-                  "<span class='" +
-                  c +
-                  "'>Answer: " +
-                  user_answer +
-                  " (Normal)</span>"
+                  `<span class='${c}'>Answer: ${user_answer} (Normal)</span>`
                 );
               } else {
                 el.html(
-                  "<span class='" +
-                  c +
-                  "'>Answer: " +
-                  user_answer +
-                  " (Abnormal: " +
-                  question_answers.join(", ") +
-                  ")</span>"
+                  `<span class='${c}'>Answer: ${user_answer} (Abnormal: ${question_answers.join(', ')})</span>`
                 );
               }
+            }
+
+            function setAnatomyReviewAnswer(
+              el,
+              c,
+              user_answer,
+              question_answers
+            ) {
+              el.html(
+                `<span class='${c}'>Answer: ${user_answer} (Correct answers: ${question_answers.join(', ')})</span>`
+              )
             }
 
             if (question_type == "rapid") {
@@ -2028,20 +2034,18 @@ function reviewQuestions() {
               // Anatomy answers are either correct or incorrect
               if (answerInArray(question_answers, section_1_answer)) {
                 correct_count++;
-                setReviewAnswer(
+                setAnatomyReviewAnswer(
                   el,
                   "correct",
                   section_1_answer,
-                  false,
                   question_answers
                 );
                 questions_correct[qid] = true;
               } else {
-                setReviewAnswer(
+                setAnatomyReviewAnswer(
                   el,
                   "incorrect",
                   section_1_answer,
-                  false,
                   question_answers
                 );
                 questions_correct[qid] = false;
