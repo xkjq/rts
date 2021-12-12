@@ -143,6 +143,7 @@ async function retrievePacketList() {
         console.log(httpObj);
         if (httpObj.status == 401 || httpObj.status == 404) {
           $.notify("Unable to login", "error");
+          $("options-panel").show()
         }
       },
     })
@@ -156,9 +157,6 @@ async function retrievePacketList() {
         }
       }).fail(function(jqXHR, textStatus, errorThrown) {
         console.log("No packet list available");
-        if (jqXHR.status == 401 || jqXHR.status == 404) {
-          $.notify("Unable to login", "error");
-        }
         //showLoginDialog();
       });
     })
