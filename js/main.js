@@ -146,18 +146,21 @@ async function retrievePacketList() {
       },
     })
     .done(function() {})
-    //.fail(function() {
-    //  $.getJSON("packets", function(data) {
-    //    if (data.hasOwnProperty("exams")) {
-    //      loadExamList(data);
-    //    } else {
-    //      loadPacketList(data);
-    //    }
-    //  }).fail(function(jqXHR, textStatus, errorThrown) {
-    //    console.log("No packet list available");
-    //    showLoginDialog();
-    //  });
-    //})
+    .fail(function() {
+      $.getJSON("packets", function(data) {
+        if (data.hasOwnProperty("exams")) {
+          loadExamList(data);
+        } else {
+          loadPacketList(data);
+        }
+      }).fail(function(jqXHR, textStatus, errorThrown) {
+        console.log("No packet list available");
+        if (jqXHR.status == 401 || jqXHR.status == 404) {
+          $.notify("Unable to login", "error");
+        }
+        //showLoginDialog();
+      });
+    })
     .always(function() {});
 }
 
