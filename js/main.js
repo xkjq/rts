@@ -143,7 +143,7 @@ async function retrievePacketList() {
         console.log(httpObj);
         if (httpObj.status == 401 || httpObj.status == 404) {
           $.notify("Unable to login", "error");
-          $("options-panel").show()
+          $("#options-panel").show()
         }
       },
     })
