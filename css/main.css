@@ -1183,3 +1183,7 @@ select option:disabled {
     margin-left: -2em;
     position: absolute;
 }
+
+.invalid-login {
+    color: red;
+}

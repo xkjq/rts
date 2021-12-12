@@ -143,7 +143,8 @@ async function retrievePacketList() {
         console.log(httpObj);
         if (httpObj.status == 401 || httpObj.status == 404) {
           $.notify("Unable to login", "error");
-          $("#options-panel").show()
+          $("#options-panel").show();
+          $("#candidate-details").addClass("invalid-login");
         }
       },
     })
@@ -452,7 +453,7 @@ async function loadPacketList(data) {
   $("#packet-list").empty();
 
   if (packet_json_id == undefined) {
-    $("#options-panel").toggle();
+    $("#options-panel").show();
     return
   }
   //console.log(packet_list)
