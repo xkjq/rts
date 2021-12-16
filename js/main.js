@@ -114,6 +114,16 @@ async function retrievePacketList() {
       });
     })
 
+    if (config.exam_results_url != "" && config.exam_results_url != undefined) {
+      let url = `${config.exam_results_url}${global_cid}/${global_passcode}`;
+
+      $("#options-link")
+        .empty()
+        .append(
+          `<a href="${url}" target="_blank"><div class="packet-button">Results and answers</div></a>`
+        );
+    }
+
     $("#candidate-details").append(`Current: CID ${global_cid} / Passcode ${global_passcode} `).append(logout);
   } else {
 
@@ -297,15 +307,6 @@ async function loadExamList(data) {
     );
   }
 
-  if (config.exam_results_url != "" && config.exam_results_url != undefined) {
-    let url = `${config.exam_results_url}${global_cid}/${global_passcode}`;
-
-    $("#options-link")
-      .empty()
-      .append(
-        `<a href="${url}" target="_blank"><div class="packet-button">Results and answers</div></a>`
-      );
-  }
 
   // Check the database for exams that have been saved
   question_db.saved_exams.toArray().then((saved_exams) => {
