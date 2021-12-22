@@ -8,6 +8,8 @@ export function submitAnswers(exam_details, db, config) {
     .then((a) => {
       let json = {
         eid: exam_details.eid,
+        cid: exam_details.cid,
+        start_time: exam_details.start_time,
         answers: JSON.stringify(a),
       };
       postAnswers(json, config, exam_details);
@@ -25,10 +27,10 @@ export function submitAnswers(exam_details, db, config) {
 export function getJsonAnswers(exam_details, db) {
   console.log(exam_details)
   console.log({
-      aid: exam_details.aid,
-      cid: exam_details.cid,
-      eid: exam_details.eid,
-    })
+    aid: exam_details.aid,
+    cid: exam_details.cid,
+    eid: exam_details.eid,
+  })
   return db.answers
     .where({
       aid: exam_details.aid,
@@ -56,7 +58,7 @@ export function postAnswers(ans, config, exam_details) {
           );
 
           if (ret) {
-            $( document ).trigger( "saveSessionEvent", [ true ] );
+            $(document).trigger("saveSessionEvent", [true]);
             if (config.exam_results_url != "") {
               let url = config.exam_results_url;
 
@@ -70,8 +72,7 @@ export function postAnswers(ans, config, exam_details) {
                 );
             }
             $("#options-panel").show();
-          } else {
-          }
+          } else {}
         } else {
           alert(`${data.question_count} answers sucessfully submitted.`);
         }
@@ -100,13 +101,13 @@ function submissionError(data, answer_json, exam_details) {
 
   let answer_map = {}
 
-  answers.forEach((ans, n) => { 
+  answers.forEach((ans, n) => {
     if (!answer_map.hasOwnProperty(ans.qid)) {
       answer_map[ans.qid] = [];
     }
 
     answer_map[ans.qid].push(ans);
-  
+
   });
 
   let html = $("<ul></ul>");
@@ -114,13 +115,13 @@ function submissionError(data, answer_json, exam_details) {
   exam_details.question_order.forEach((i, j) => {
     console.log(i, answer_map)
     if (i in answer_map) {
-    console.log("YES", i, answer_map)
+      console.log("YES", i, answer_map)
       let ans_array = answer_map[i];
       ans_array.forEach((x, y) => {
-      $(html).append(`<li><b>Question ${j+1}.${y}:</b> ${x.ans}</li>`);
+        $(html).append(`<li><b>Question ${j+1}.${y}:</b> ${x.ans}</li>`);
       });
     }
-  
+
   })
 
   console.log(exam_details.question_order);
@@ -145,7 +146,7 @@ export function getQuestion(url, question_number, question_total) {
   return $.ajax({
     dataType: "json",
     url: url,
-    progress: function (e) {
+    progress: function(e) {
       $("#progress").html(
         `Downloading question [${question_number}/${question_total}]<br/>This file is compressed (no size available)`
       );
@@ -170,14 +171,18 @@ export function getQuestion(url, question_number, question_total) {
 }
 
 export function postSavedAnswer(type, qid, answer, e, db_object, db) {
-console.log("post", type, qid, answer, e)
-return $.ajax({
+  console.log("post", type, qid, answer, e)
+  return $.ajax({
     type: "POST",
     url: config.question_answer_submit_url,
-    data: JSON.stringify({ qid: `${type}/${qid}`, answer: answer, status: 2 }),
+    data: JSON.stringify({
+      qid: `${type}/${qid}`,
+      answer: answer,
+      status: 2
+    }),
     contentType: "application/json; charset=utf-8",
     dataType: "json",
-    success: function(data){
+    success: function(data) {
       db_object.submitted = true;
       db.user_answers.put(db_object);
       e.target.remove()
@@ -185,7 +190,7 @@ return $.ajax({
 
     },
     error: function(errMsg) {
-        alert(errMsg);
+      alert(errMsg);
     }
-});
+  });
 }

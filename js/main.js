@@ -13,6 +13,7 @@ let exam_details = {
   exam_mode: false,
   number_of_questions: null,
   question_order: [],
+  start_time: null,
 };
 
 let packet_list = [];
@@ -2448,6 +2449,8 @@ $(".start-packet-button").click(function(evt) {
       return;
     }
   }
+
+  exam_details.start_time = new Date().getTime() / 1000;
 
   if (timer != null) {
     timer.stop();
