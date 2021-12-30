@@ -2443,12 +2443,13 @@ $("#login-button").click(function(evt) {
 });
 
 $(".start-packet-button").click(function(evt) {
-  if (exam_details.exam_mode) {
-    if (!Number.isInteger(parseInt($("#candidate-number2").val()))) {
-      alert("Please enter a valid candidate number.");
-      return;
-    }
-  }
+  // No longer needed as candidates log in...
+  //if (exam_details.exam_mode) {
+  //  if (!Number.isInteger(parseInt($("#candidate-number2").val()))) {
+  //    alert("Please enter a valid candidate number.");
+  //    return;
+  //  }
+  //}
 
   exam_details.start_time = new Date().getTime() / 1000;
 
