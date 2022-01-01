@@ -147,9 +147,6 @@ export function getQuestion(url, question_number, question_total) {
     dataType: "json",
     url: url,
     progress: function(e) {
-      $("#progress").html(
-        `Downloading question [${question_number}/${question_total}]<br/>This file is compressed (no size available)`
-      );
       if (e.lengthComputable) {
         var completedPercentage = Math.round((e.loaded * 100) / e.total);
 
@@ -158,6 +155,10 @@ export function getQuestion(url, question_number, question_total) {
             e.total
           )}`
         );
+      } else {
+      $("#progress").html(
+        `Downloading question [${question_number}/${question_total}]<br/>This file is compressed (downloaded ${helper.humanFileSize(e.loaded)})`
+      );
       }
     },
     error: (jqXHR, textStatus, errorThrown) => {

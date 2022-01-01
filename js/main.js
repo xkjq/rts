@@ -2695,6 +2695,10 @@ $(document).on("saveSessionEvent", {}, (evt, review) => {
   saveSession(review);
 });
 
+$(document).contextmenu(() => {
+  return false;
+})
+
 // Helper to compare dates
 function compareDates(d1, d2) {
   console.log("compare", d1, d2);
