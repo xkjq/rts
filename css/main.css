@@ -1188,7 +1188,7 @@ select option:disabled {
     color: red;
 }
 
-input {
+input[type="number"] {
     user-select: text;
     -moz-user-select: text;
     -webkit-user-select: text;
