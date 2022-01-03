@@ -1190,4 +1190,6 @@ select option:disabled {
 
 input {
     user-select: text;
+    -moz-user-select: text;
+    -webkit-user-select: text;
 }
