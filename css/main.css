@@ -1187,3 +1187,7 @@ select option:disabled {
 .invalid-login {
     color: red;
 }
+
+input {
+    user-select: text;
+}
