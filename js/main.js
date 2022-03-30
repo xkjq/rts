@@ -348,7 +348,7 @@ async function loadExamList(data) {
           console.log("new question json id", new_question_json_id)
           //q = q.toString();
           $("#cache-details ul").append(
-            `<li class="cache-item" data-qid=${q}>Question (${saved_exam.exam_type}): ${q}`
+            `<li class="cache-item" data-qid=${q}>Question (${saved_exam.exam_type}): ${q} [New JSON id: ${new_question_json_id}]`
           );
           // If a single question is out of date we invalidate the lot...
           const q_object = {

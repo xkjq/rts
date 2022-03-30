@@ -1187,3 +1187,9 @@ select option:disabled {
 .invalid-login {
     color: red;
 }
+
+input[type="number"] {
+    user-select: text;
+    -moz-user-select: text;
+    -webkit-user-select: text;
+}
