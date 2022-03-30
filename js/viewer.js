@@ -78,7 +78,22 @@ export function loadMainImage(image, stack) {
 
   // Add tool selector
   $(".canvas-panel").append(
-    '<select class="control-overlay"><option value="pan">pan [p]</option><option value="zoom">zoom [z]</option><option value="rotate">rotate [r]</option><option value="cobbangle">cobb angle</option>]<option value="scroll" hidden="" disabled="">scroll (1/1)</option><option value="window">window ()</option><option value="abdomen" hidden="" disabled="">window = abdomen [a]</option><option value="pulmonary" hidden="" disabled="">window = pulmonary [u]</option><option value="brain" hidden="" disabled="">window = brain [b]</option><option value="bone" hidden="" disabled="">window = bone [o]</option><option value="reset">reset [e]</option><option value="close">close [c]</option><option disabled="true" value="notes">[modality = CR][size = 9.8]</option></select>'
+    '<select class="control-overlay"> \
+    <option value="pan">pan [p]</option> \
+    <option value="zoom">zoom [z]</option> \
+    <option value="rotate">rotate [r]</option> \
+    <option value="angle">angle</option> \
+    <option value="cobbangle">cobb angle</option> \
+    <option value="scroll" hidden="" disabled="">scroll (1/1)</option> \
+    <option value="window">window ()</option> \
+    <option value="abdomen" hidden="" disabled="">window = abdomen [a]</option> \
+    <option value="pulmonary" hidden="" disabled="">window = pulmonary [u]</option> \
+    <option value="brain" hidden="" disabled="">window = brain [b]</option> \
+    <option value="bone" hidden="" disabled="">window = bone [o]</option> \
+    <option value="reset">reset [e]</option> \
+    <option value="close">close [c]</option> \
+    <option disabled="true" value="notes">[modality = CR][size = 9.8]</option> \
+    </select>'
   );
 
   $(".control-overlay")
