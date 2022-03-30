@@ -13,6 +13,7 @@ export function loadMainImage(image, stack) {
   const ArrowAnnotateTool = cornerstoneTools.ArrowAnnotateTool;
   const AngleTool = cornerstoneTools.AngleTool;
   const CobbAngleTool = cornerstoneTools.CobbAngleTool;
+  const EraserTool = cornerstoneTools.EraserTool;
 
   const element = document.getElementById("dicom-image");
   cornerstone.enable(element);
@@ -33,6 +34,7 @@ export function loadMainImage(image, stack) {
   cornerstoneTools.addToolForElement(element, AngleTool);
   cornerstoneTools.addToolForElement(element, CobbAngleTool);
   cornerstoneTools.addToolForElement(element, StackScrollTool);
+  cornerstoneTools.addToolForElement(element, EraserTool);
 
   cornerstoneTools.addToolForElement(element, ArrowAnnotateTool, {
     configuration: {
@@ -84,6 +86,7 @@ export function loadMainImage(image, stack) {
     <option value="rotate">rotate [r]</option> \
     <option value="angle">angle</option> \
     <option value="cobbangle">cobb angle</option> \
+    <option value="eraser">eraser</option> \
     <option value="scroll" hidden="" disabled="">scroll (1/1)</option> \
     <option value="window">window ()</option> \
     <option value="abdomen" hidden="" disabled="">window = abdomen [a]</option> \
@@ -312,6 +315,12 @@ export function changeControlSelection() {
     }
     case "cobbangle": {
       cornerstoneTools.setToolActiveForElement(dicom_element, "CobbAngle", {
+        mouseButtonMask: 1,
+      });
+      break;
+    }
+    case "eraser": {
+      cornerstoneTools.setToolActiveForElement(dicom_element, "Eraser", {
         mouseButtonMask: 1,
       });
       break;
