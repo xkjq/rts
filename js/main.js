@@ -1036,6 +1036,11 @@ async function loadQuestion(n, section = 1, force_reload = false) {
     $(".question .title").get(0).innerHTML =
       '<span style="font-weight:700;">' + display_n + "</span>";
   }
+  if (question_data.history) {
+    $(".question .stem").text(question_data.history);
+  } else {
+    $(".question .stem").empty();
+  }
 
   // Close any open figures
   //let el = document.getElementById("dicom-image");
