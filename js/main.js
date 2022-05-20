@@ -31,6 +31,8 @@ let packet_json_id = null;
 
 let global_cid = null;
 let global_passcode = null;
+let global_uid = null;
+let global_username = null;
 
 let allow_self_marking = true;
 
@@ -231,6 +233,13 @@ async function loadExamList(data) {
   if (data.hasOwnProperty("user") && data.user) {
     $("#user").append(`User: ${data.user}`);
     $(".exam-wrapper").show();
+    global_uid = data.user_id;
+    global_username = data.user;
+
+
+    if (global_cid == null) {
+      global_cid = "u-"+global_uid;
+    }
   }
 
 
@@ -939,9 +948,15 @@ function setUpQuestions(load_previous) {
     //  .change(() => {
     //    exam_details.cid = parseInt($("#candidate-number2").val());
     //  });
+    console.log("OTNUHOTNU", global_cid)
     exam_details.cid = global_cid;
     $("#candidate-number2").val(global_cid)
     exam_details.passcode = global_passcode;
+
+    if (global_uid != null) {
+    $("#exam-candidate-number").append(`User: ${global_username} / ${global_uid}`);
+    }
+    $("#exam-candidate-number").show();
 
     $("#start-dialog").addClass("no-close");
     $("#start-dialog .exam-time").prop("disabled", "true");
@@ -2448,13 +2463,6 @@ $("#login-button").click(function(evt) {
 });
 
 $(".start-packet-button").click(function(evt) {
-  // No longer needed as candidates log in...
-  //if (exam_details.exam_mode) {
-  //  if (!Number.isInteger(parseInt($("#candidate-number2").val()))) {
-  //    alert("Please enter a valid candidate number.");
-  //    return;
-  //  }
-  //}
 
   exam_details.start_time = new Date().getTime() / 1000;
 
