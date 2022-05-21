@@ -391,6 +391,7 @@ async function loadExamList(data) {
               // Invalidate and any associated answers
               db.answers.where("eid").equals(saved_exam.eid).delete();
 
+
               //question_db.saved_exams.where("eid").equals(saved_exam.eid).delete();
               question_db.question_data
                 .where(["qid", "type"])
