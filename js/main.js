@@ -107,7 +107,7 @@ async function retrievePacketList() {
     global_cid = users[0].cid;
     global_passcode = users[0].passcode;
 
-    $(".exam-wrapper").toggle();
+    //$(".exam-wrapper").toggle();
 
     let logout = $("<span>[x]</span>")
     logout.click(() => {
@@ -232,7 +232,7 @@ async function loadExamList(data) {
   //Display user info if it exists
   if (data.hasOwnProperty("user") && data.user) {
     $("#user").append(`User: ${data.user}`);
-    $(".exam-wrapper").show();
+    //$(".exam-wrapper").show();
     global_uid = data.user_id;
     global_username = data.user;
 
@@ -2444,7 +2444,7 @@ $("#btn-candidate-login").click(function(evt) {
     showClose: false
   });
   $("#options-panel").toggle();
-  $(".exam-wrapper").toggle();
+  //$(".exam-wrapper").toggle();
 });
 
 
