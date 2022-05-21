@@ -389,6 +389,7 @@ async function loadExamList(data) {
 
 
               // Invalidate and any associated answers
+
               db.answers.where("eid").equals(saved_exam.eid).delete();
 
 
