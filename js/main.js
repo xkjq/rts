@@ -99,9 +99,9 @@ refreshDatabaseSettings();
 async function retrievePacketList() {
   let url = "packets/packets.json";
 
-  //console.log(config.exam_query_url);
+  //console.debug(config.exam_query_url);
   let users = await user_db.user.toArray();
-  console.log(users)
+  console.debug(users)
 
   if (users.length > 0) {
     global_cid = users[0].cid;
@@ -147,7 +147,7 @@ async function retrievePacketList() {
         }
 
       };
-      console.log(cid, passcode)
+      console.debug(cid, passcode)
 
       user_db.user.add({
         cid: cid,
@@ -183,7 +183,7 @@ async function retrievePacketList() {
         }
       },
       error: function(httpObj, textStatus) {
-        console.log(httpObj);
+        console.debug(httpObj);
         if (httpObj.status == 401 || httpObj.status == 404) {
           $.notify("Unable to login", "error");
           $("#options-panel").show();
@@ -200,7 +200,7 @@ async function retrievePacketList() {
           loadPacketList(data);
         }
       }).fail(function(jqXHR, textStatus, errorThrown) {
-        console.log("No packet list available");
+        console.debug("No packet list available");
         //showLoginDialog();
       });
     })
@@ -215,7 +215,7 @@ async function retrievePacketList() {
  */
 async function loadExamList(data) {
   let sessions = await db.session.toArray().catch(function(error) {
-    console.log("Error loading session", error);
+    console.debug("Error loading session", error);
     $("#database-error").text(
       "Error loading the database, schema has probably changed and needs updating. You will probably need to delete the local database."
     );
@@ -263,7 +263,7 @@ async function loadExamList(data) {
   //exam_list.sort((a, b) => (a.name > b.name) ? 1 : -1).forEach(function (exam) {
   for (let index = 0; index < exam_list.length; index++) {
     const exam = exam_list[index];
-    console.log(exam)
+    console.debug(exam)
     let name = exam["name"];
     let url = exam["url"];
     let eid = exam["eid"];
@@ -325,9 +325,9 @@ async function loadExamList(data) {
     } else {
       $("#cache-details summary").append("<span>Cached exams / questions:</span>");
     }
-    console.log("Loop through saved exams");
+    console.debug("Loop through saved exams");
     saved_exams.forEach(async (saved_exam, n) => {
-      console.log("Check", saved_exam);
+      console.debug("Check", saved_exam);
       $("#cache-details ul").append(
         `<li class="cache-item" data-eid=${saved_exam.eid}>Exam: ${saved_exam.exam_name} [${saved_exam.eid}]: ${saved_exam.exam_json_id}`
       );
@@ -338,23 +338,23 @@ async function loadExamList(data) {
         const question_json_id_hash = exam_generated_map[saved_exam.eid][1];
 
         if (saved_exam.exam_json_id != exam_json_id) {
-          console.log("id mismath", saved_exam.exam_json_id, exam_json_id);
+          console.debug("id mismath", saved_exam.exam_json_id, exam_json_id);
           question_db.saved_exams.where("eid").equals(saved_exam.eid).delete();
           db.answers.where("eid").equals(saved_exam.eid).delete();
 
-          console.log("HOL");
+          console.debug("HOL");
           $(`li.cache-item[data-eid="${saved_exam.eid}"]`)
             .addClass("cache-out-of-date")
             .append(` [out of date (latest: ${exam_json_id})]`);
         } else {
-          console.log("id match", saved_exam.exam_json_id, exam_json_id);
+          console.debug("id match", saved_exam.exam_json_id, exam_json_id);
           $(`.packet-button[data-eid="${saved_exam.eid}"]`).addClass("cached");
         }
 
-        console.log("Check question ids")
+        console.debug("Check question ids")
         for (let q in question_json_id_hash) {
           let new_question_json_id = question_json_id_hash[q];
-          console.log("new question json id", new_question_json_id)
+          console.debug("new question json id", new_question_json_id)
           //q = q.toString();
           $("#cache-details ul").append(
             `<li class="cache-item" data-qid=${q}>Question (${saved_exam.exam_type}): ${q} [New JSON id: ${new_question_json_id}]`
@@ -364,16 +364,16 @@ async function loadExamList(data) {
             qid: String(q),
             type: saved_exam.exam_type
           };
-          console.log(q_object);
+          console.debug(q_object);
 
           let save_question_data = await question_db.question_data.get(q_object);
 
           try {
-            console.log("saved question data", save_question_data, new_question_json_id)
+            console.debug("saved question data", save_question_data, new_question_json_id)
             // saved_question_data is undefined if the question is not saved
             // we should really just requeue the required question for dowload...
             if (save_question_data == undefined || save_question_data.data.question_json_id != new_question_json_id) {
-              console.log(`INVALIDATE eid: ${saved_exam.eid}, q ${q}`);
+              console.debug(`INVALIDATE eid: ${saved_exam.eid}, q ${q}`);
               $(`li.cache-item[data-eid="${saved_exam.eid}"]`).addClass(
                 "cache-out-of-date"
               );
@@ -397,9 +397,9 @@ async function loadExamList(data) {
                 .delete();
             }
           } catch (e) {
-            console.log("Error loading qusetion data", q_object);
-            console.log(e);
-            console.log("1234", saved_exam.eid);
+            console.debug("Error loading qusetion data", q_object);
+            console.debug(e);
+            console.debug("1234", saved_exam.eid);
             // If the question isn't found in the cache...
             $(`li.cache-item[data-eid="${saved_exam.eid}"]`).addClass(
               "cache-out-of-date"
@@ -462,7 +462,7 @@ async function loadExamList(data) {
 // TODO: remove (data formats should be switched to the exam format)
 async function loadPacketList(data) {
   let sessions = await db.session.toArray().catch(function(error) {
-    console.log("Error loading session", error);
+    console.debug("Error loading session", error);
     $("#database-error").text(
       "Error loading the database, schema has probably changed and needs updating. You will probably need to delete the local database."
     );
@@ -498,7 +498,7 @@ async function loadPacketList(data) {
     $("#options-panel").show();
     return
   }
-  //console.log(packet_list)
+  //console.debug(packet_list)
   packet_list.forEach(function(packet) {
     // Seperate packet types
     let list;
@@ -532,7 +532,7 @@ async function loadPacketList(data) {
         $(
           `<div class='save-button' title='Download packet for offline use (or to save bandwidth)'><a href='packets/${packet}' download='${packet}'>💾</a></div>`
         ).click(function(evt) {
-          //console.log("packets/" + packet);
+          //console.debug("packets/" + packet);
           evt.stopPropagation();
         })
       )
@@ -552,12 +552,12 @@ function loadPacketFromAjax(path, eid, exam_json_id) {
       .get(eid)
       .then((exam) => {
         if (exam == undefined || (exam["exam_json_id"] != exam_json_id)) {
-          console.log("AjaxRequestPacket:", eid);
+          console.debug("AjaxRequestPacket:", eid);
           ajaxRequestionPacket(true);
         } else {
           // We have an up to date exam in the database
           // TODO: check the questions are valid
-          console.log("LoadLocalPacket:", eid);
+          console.debug("LoadLocalPacket:", eid);
           use_local_question_cache = true;
           setUpPacket(exam, path);
           $("#options-panel").hide();
@@ -565,9 +565,9 @@ function loadPacketFromAjax(path, eid, exam_json_id) {
       })
       .catch(function(error) {
         // Will be triggered if eid does not exist in database
-        console.log("Unable to load exam:", eid);
-        console.log("error-", error);
-        console.log("Exam will be downloaded");
+        console.debug("Unable to load exam:", eid);
+        console.debug("error-", error);
+        console.debug("Exam will be downloaded");
         ajaxRequestionPacket();
       });
 
@@ -575,7 +575,7 @@ function loadPacketFromAjax(path, eid, exam_json_id) {
   }
 
   function ajaxRequestionPacket(force_refresh) {
-    //console.log("loading packet from " + path);
+    //console.debug("loading packet from " + path);
     $("#progress").html(`Requesting packet: ${path}`);
 
     let browser_cache = true;
@@ -602,7 +602,7 @@ function loadPacketFromAjax(path, eid, exam_json_id) {
         $("#options-panel").hide();
       })
       .fail(function() {
-        console.log("Unable to load packet at: " + path);
+        console.debug("Unable to load packet at: " + path);
       });
   }
 }
@@ -688,7 +688,7 @@ function setUpPacket(data, path) {
     var clone_data = Object.assign({}, data, {
       questions: "cached"
     });
-    console.log(clone_data)
+    console.debug(clone_data)
     //clone_data["cached_questions"] = Object.keys(data["questions"]);
     question_db.saved_exams.put(clone_data);
   }
@@ -735,19 +735,19 @@ function setUpPacket(data, path) {
 
         const question_url = `${path}/${n}`;
 
-        //console.log("Creating ", question_url, question_number, question_total);
+        //console.debug("Creating ", question_url, question_number, question_total);
         //$("#progress").html(`Downloading [${question_number}/${question_total}]`);
         let question_json = {};
         question_json = await interact
           .getQuestion(question_url, question_number, question_total)
           .fail((jqXHR, textStatus, errorThrown) => {
-            //console.log(jqXHR, textStatus, errorThrown);
-            console.log(`error loading question: ${n}`);
+            //console.debug(jqXHR, textStatus, errorThrown);
+            console.debug(`error loading question: ${n}`);
             //data["questions"][n] = {};
           });
 
         if (question_json.hasOwnProperty("cached") && question_json["cached"]) {
-          console.log("loading cached packet");
+          console.debug("loading cached packet");
         }
 
         if (
@@ -776,7 +776,7 @@ function setUpPacket(data, path) {
       loadSession();
     })().catch((error) => {
       alert("Error downloading, try refreshing");
-      console.log(error);
+      console.debug(error);
     });
   } else {
     // Just carry on loading
@@ -785,7 +785,7 @@ function setUpPacket(data, path) {
 }
 
 function loadSession() {
-  console.log("load session", exam_details, db.session);
+  console.debug("load session", exam_details, db.session);
   // Either continue session or create a new one
   db.session
     // .where("status")
@@ -794,7 +794,7 @@ function loadSession() {
     .between([exam_details.eid, Dexie.minKey], [exam_details.eid, Dexie.maxKey])
     .toArray()
     .then((sessions) => {
-      //console.log("sessions", sessions);
+      //console.debug("sessions", sessions);
 
       // let active_sessions = [];
 
@@ -815,7 +815,7 @@ function loadSession() {
         if (exam_details.exam_mode) {
           text = "Session will be continued";
         }
-        //console.log(sessions.date);
+        //console.debug(sessions.date);
 
         for (let i = 0; i < sessions.length; i++) {
           let d = new Date(sessions[i].date);
@@ -876,7 +876,7 @@ function loadSession() {
           // If cancel is pressed or input is blank
           exam_details.aid = uuidv4();
           date_started = Date.now();
-          //console.log("new date", date_started);
+          //console.debug("new date", date_started);
         }
       }
 
@@ -948,7 +948,7 @@ function setUpQuestions(load_previous) {
     //  .change(() => {
     //    exam_details.cid = parseInt($("#candidate-number2").val());
     //  });
-    console.log("OTNUHOTNU", global_cid)
+    console.debug("OTNUHOTNU", global_cid)
     exam_details.cid = global_cid;
     $("#candidate-number2").val(global_cid)
     exam_details.passcode = global_passcode;
@@ -990,7 +990,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
   const passcode = exam_details.passcode;
 
   n = parseInt(n);
-  //console.log("loading question (n)", n);
+  //console.debug("loading question (n)", n);
 
   if (n == loaded_question && force_reload == false) {
     // Question already loaded
@@ -999,16 +999,16 @@ async function loadQuestion(n, section = 1, force_reload = false) {
     return;
   }
 
-  console.log(exam_details, n);
+  console.debug(exam_details, n);
   const qid = exam_details.question_order[n];
 
-  console.log("qid", qid)
+  console.debug("qid", qid)
   let q = {
     qid: String(qid),
     type: question_type
   };
-  console.log(q)
-  console.log(question_db.question_data)
+  console.debug(q)
+  console.debug(question_db.question_data)
 
   let return_data = await question_db.question_data.get(q);
   const question_data = return_data.data;
@@ -1066,7 +1066,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
   // disable any further enabled elements
   let enabled_elements = cornerstone.getEnabledElements();
   for (var i = enabled_elements.length - 1; i >= 0; i--) {
-    //console.log("disable, ", enabled_elements[i]);
+    //console.debug("disable, ", enabled_elements[i]);
     cornerstone.disable(enabled_elements[i].element);
   }
   $(".canvas-panel").remove();
@@ -1084,7 +1084,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
 
   // TODO: figure captions (need to extend base json)
   function createThumbnail(image, id, caption, thumbnails) {
-    //console.log("create thumb", image);
+    //console.debug("create thumb", image);
     // For thumbnails we only want a single image
 
     thumbnails.append(
@@ -1255,7 +1255,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
       // We chain our db requests as we can only check answers once
       // they have been loaded (should probably use then or after)
 
-      console.log("Load rapid answers")
+      console.debug("Load rapid answers")
       db.answers
         .get({
           aid: aid,
@@ -1279,8 +1279,8 @@ async function loadQuestion(n, section = 1, force_reload = false) {
           }
         })
         .catch(function(error) {
-          console.log("DB", cid, eid, qid);
-          console.log("error-", error);
+          console.debug("DB", cid, eid, qid);
+          console.debug("error-", error);
         })
       //.then(function() {
       db.answers
@@ -1299,7 +1299,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
           markAnswer(qid, question_data, n);
         })
         .catch(function(error) {
-          console.log("error-", error);
+          console.debug("error-", error);
         })
       //});
 
@@ -1367,7 +1367,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
           markAnswer(qid, question_data, n);
         })
         .catch(function(error) {
-          console.log(error);
+          console.debug(error);
         });
 
       addFlagEvents();
@@ -1476,7 +1476,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
             }
           })
           .catch(function(error) {
-            console.log(error);
+            console.debug(error);
           });
       }
 
@@ -1598,7 +1598,7 @@ function rebuildQuestionListPanel() {
       // $(".long-answer").text(answer.ans);
     })
     .catch(function(error) {
-      console.log("error - ", error);
+      console.debug("error - ", error);
     });
 
   db.flags
@@ -1615,16 +1615,16 @@ function rebuildQuestionListPanel() {
       // $(".long-answer").text(answer.ans);
     })
     .catch(function(error) {
-      console.log("error - ", error);
+      console.debug("error - ", error);
     });
 
   if (review_mode == true) {
     $(".question-panel-ans").remove();
     for (const qid in questions_correct) {
       let q_no = exam_details.question_order.indexOf(qid);
-      //console.log("q", q_no, qid, questions_correct[qid]);
+      //console.debug("q", q_no, qid, questions_correct[qid]);
       let question_list_elements = $(`.question-list-item[data-qid='${q_no}']`);
-      //console.log(question_list_elements, questions_correct[qid]);
+      //console.debug(question_list_elements, questions_correct[qid]);
       if (questions_correct[qid]) {
         $(`.question-list-item[data-qid='${q_no}']`).append(
           "<span class='question-panel-ans question-panel-correct'>✓</span>"
@@ -1895,7 +1895,7 @@ function reviewQuestions() {
 
           titles.forEach((title, x) => {
             let user_answer = current_answers[`${qid},${+1}`];
-            //console.log(`${qid},${n}`, user_answer);
+            //console.debug(`${qid},${n}`, user_answer);
             if (user_answer == undefined) {
               user_answer = "Not answered";
             }
@@ -1943,8 +1943,8 @@ function reviewQuestions() {
           $("#review-overlay").hide();
         });
 
-        console.log(db.user_answers)
-        console.log({
+        console.debug(db.user_answers)
+        console.debug({
           type: question_type,
           qid: qid
         })
@@ -2128,7 +2128,7 @@ function reviewQuestions() {
             }
           })
           .catch(function(error) {
-            console.log("error-", error);
+            console.debug("error-", error);
           })
           .finally(() => {
             // This will lead to saveSession being called after each question is marked
@@ -2148,7 +2148,7 @@ function reviewQuestions() {
       });
     })
     .catch(function(error) {
-      console.log("error - ", error);
+      console.debug("error - ", error);
     });
 }
 
@@ -2159,7 +2159,7 @@ function reviewQuestions() {
  */
 function markAnswer(qid, current_question, n) {
   const type = current_question.type;
-  console.log("Mark", current_question);
+  console.debug("Mark", current_question);
 
   let option = null;
   if (review_mode == true) {
@@ -2219,13 +2219,13 @@ function markAnswer(qid, current_question, n) {
       })
       .toArray()
       .then(function(saved_user_answers) {
-        //console.log("saved user answers", saved_user_answers)
+        //console.debug("saved user answers", saved_user_answers)
         // check if given answer matches a user saved answer
         if (saved_user_answers != undefined) {
-          //console.log(saved_user_answers);
+          //console.debug(saved_user_answers);
           saved_user_answers.forEach(function(saved_answer_object, n) {
             let saved_answer = saved_answer_object.ans;
-            //console.log("ua", user_answer, saved_answer);
+            //console.debug("ua", user_answer, saved_answer);
             ul.append("<li>" + saved_answer + "</li>");
             if (compareString(saved_answer, user_answer)) {
               textarea.removeClass("incorrect").addClass("correct");
@@ -2283,7 +2283,7 @@ function markAnswer(qid, current_question, n) {
         }
       })
       .catch(function(error) {
-        console.log("error-", error);
+        console.debug("error-", error);
       });
     addFeedback(current_question, qid);
     rebuildQuestionListPanel();
@@ -2291,7 +2291,7 @@ function markAnswer(qid, current_question, n) {
 }
 
 function addFeedback(current_question, qid) {
-  console.log(current_question);
+  console.debug(current_question);
   if (
     current_question.hasOwnProperty("feedback") &&
     current_question.feedback.length > 0
@@ -2346,7 +2346,7 @@ function markCorrect(qid, user_answer, type) {
   //    db.user_answers.put({ type: type, qid: qid, ans: new_answers });
   //  })
   //  .catch(function (error) {
-  //    console.log("error-", error);
+  //    console.debug("error-", error);
   //  });
 
   if (allow_self_marking) {
@@ -2431,7 +2431,7 @@ function loadFlagsFromDb(qid, n) {
       }
     })
     .catch(function(error) {
-      console.log(error);
+      console.debug(error);
     });
 }
 
@@ -2554,7 +2554,7 @@ $("#btn-delete-answer-databases").click(function(evt) {
         setTimeout(() => {
           location.reload();
         }, 2000);
-        console.log("Database successfully deleted");
+        console.debug("Database successfully deleted");
       })
       .catch((err) => {
         $.notify("Error deleting databases", "error");
@@ -2576,7 +2576,7 @@ $("#btn-delete-cached-questions").click(function(evt) {
         setTimeout(() => {
           location.reload();
         }, 2000);
-        console.log("Database successfully deleted");
+        console.debug("Database successfully deleted");
       })
       .catch((err) => {
         $.notify("Error deleting databases", "error");
@@ -2617,12 +2617,12 @@ $("#btn-delete-current").click(function(evt) {
       // setTimeout(() => {
       //   location.reload();
       // }, 2000);
-      console.log("Deleted " + deleteCount + " objects");
+      console.debug("Deleted " + deleteCount + " objects");
     })
     .catch((err) => {
       $.notify("Error reseting packet", "error");
       $.notify("You may have to delete all answers this time", "info");
-      console.log(err);
+      console.debug(err);
     });
 });
 
@@ -2664,7 +2664,7 @@ function saveSession(start_review) {
     status = "complete";
   }
 
-  //console.log("save session", score);
+  //console.debug("save session", score);
 
   let time_values = timer.getTimeValues();
   let time_remaining =
@@ -2716,8 +2716,8 @@ $(document).contextmenu(() => {
 
 // Helper to compare dates
 function compareDates(d1, d2) {
-  console.log("compare", d1, d2);
-  console.log("compare striped", Date.parse(d1.split("+")[0]), Date.parse(d2.split("+")[0]));
-  console.log("compare striped", Date.parse(d1.split("+")[0]), Date.parse(d2.split("+")[0]));
+  console.debug("compare", d1, d2);
+  console.debug("compare striped", Date.parse(d1.split("+")[0]), Date.parse(d2.split("+")[0]));
+  console.debug("compare striped", Date.parse(d1.split("+")[0]), Date.parse(d2.split("+")[0]));
   return Date.parse(d1.split("+")[0]) != Date.parse(d2.split("+")[0]);
 }

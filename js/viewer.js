@@ -409,7 +409,7 @@ export function changeControlSelection() {
  * @param {*} event - KeyEvent
  */
 export function keydown_handler(event) {
-  //console.log(event);
+  //console.debug(event);
   const target_element = event.target.tagName;
 
   // Cancel if no active element
@@ -588,7 +588,7 @@ export function openMainImage(current_question, t, source) {
     toolStateManager.restoreToolState(tool_state);
   }
   async function load(images, annotations) {
-    //console.log("Load function", images)
+    //console.debug("Load function", images)
     const imageIds = [];
     for (let i = 0; i < images.length; i++) {
       const data_url = images[i];
@@ -633,7 +633,7 @@ export function openMainImage(current_question, t, source) {
         if (/(?:\/|^)[^.\/]+$/.test(url)) {
           url = "wadouri:" + url;
         }
-        //console.log(url)
+        //console.debug(url)
 
         loadAnnotation(url, annotation);
 

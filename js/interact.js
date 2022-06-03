@@ -15,7 +15,7 @@ export function submitAnswers(exam_details, db, config) {
       postAnswers(json, config, exam_details);
     })
     .catch((e) => {
-      console.log(e)
+      console.debug(e)
       alert("No answers to submit");
     });
 }
@@ -25,8 +25,8 @@ export function submitAnswers(exam_details, db, config) {
  * @return {JSON} - answers
  */
 export function getJsonAnswers(exam_details, db) {
-  console.log(exam_details)
-  console.log({
+  console.debug(exam_details)
+  console.debug({
     aid: exam_details.aid,
     cid: exam_details.cid,
     eid: exam_details.eid,
@@ -49,7 +49,7 @@ export function postAnswers(ans, config, exam_details) {
 
   $.post(config.exam_submit_url, ans, null, "json")
     .done((data) => {
-      console.log("returned data", data);
+      console.debug("returned data", data);
       if (data.success) {
         $("#submit-error-overlay").remove();
         if (data.question_count == exam_details.number_of_questions) {
@@ -82,7 +82,7 @@ export function postAnswers(ans, config, exam_details) {
     })
     .fail((e) => {
       // Will occur with server error such as 500
-      console.log("error", e);
+      console.debug("error", e);
       submissionError(e, ans, exam_details);
     });
   // $.post( "http://localhost:8000/submit_answers", JSON.stringify(ans));
@@ -113,9 +113,9 @@ function submissionError(data, answer_json, exam_details) {
   let html = $("<ul></ul>");
 
   exam_details.question_order.forEach((i, j) => {
-    console.log(i, answer_map)
+    console.debug(i, answer_map)
     if (i in answer_map) {
-      console.log("YES", i, answer_map)
+      console.debug("YES", i, answer_map)
       let ans_array = answer_map[i];
       ans_array.forEach((x, y) => {
         $(html).append(`<li><b>Question ${j+1}.${y}:</b> ${x.ans}</li>`);
@@ -124,9 +124,9 @@ function submissionError(data, answer_json, exam_details) {
 
   })
 
-  console.log(exam_details.question_order);
-  console.log(answer_map);
-  console.log(html);
+  console.debug(exam_details.question_order);
+  console.debug(answer_map);
+  console.debug(html);
 
   if ($("#submit-error-overlay").length < 1) {
     $("body").append(
@@ -142,7 +142,7 @@ function submissionError(data, answer_json, exam_details) {
 }
 
 export function getQuestion(url, question_number, question_total) {
-  console.log("Downloading question ", url, question_number, question_total);
+  console.debug("Downloading question ", url, question_number, question_total);
   return $.ajax({
     dataType: "json",
     url: url,
@@ -162,7 +162,7 @@ export function getQuestion(url, question_number, question_total) {
       }
     },
     error: (jqXHR, textStatus, errorThrown) => {
-      console.log("error downlading", jqXHR, textStatus, errorThrown);
+      console.debug("error downlading", jqXHR, textStatus, errorThrown);
     },
     //success: function (data) {
     //  strReturn = data;
@@ -172,7 +172,7 @@ export function getQuestion(url, question_number, question_total) {
 }
 
 export function postSavedAnswer(type, qid, answer, e, db_object, db) {
-  console.log("post", type, qid, answer, e)
+  console.debug("post", type, qid, answer, e)
   return $.ajax({
     type: "POST",
     url: config.question_answer_submit_url,
@@ -187,7 +187,7 @@ export function postSavedAnswer(type, qid, answer, e, db_object, db) {
       db_object.submitted = true;
       db.user_answers.put(db_object);
       e.target.remove()
-      console.log(data);
+      console.debug(data);
 
     },
     error: function(errMsg) {
