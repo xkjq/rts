@@ -238,7 +238,7 @@ async function loadExamList(data) {
 
 
     if (global_cid == null) {
-      global_cid = "u-"+global_uid;
+      global_cid = "u-" + global_uid;
     }
   }
 
@@ -954,7 +954,7 @@ function setUpQuestions(load_previous) {
     exam_details.passcode = global_passcode;
 
     if (global_uid != null) {
-    $("#exam-candidate-number").append(`User: ${global_username} / ${global_uid}`);
+      $("#exam-candidate-number").append(`User: ${global_username} / ${global_uid}`);
     }
     $("#exam-candidate-number").show();
 
@@ -1255,6 +1255,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
       // We chain our db requests as we can only check answers once
       // they have been loaded (should probably use then or after)
 
+      console.log("Load rapid answers")
       db.answers
         .get({
           aid: aid,
@@ -1281,26 +1282,26 @@ async function loadQuestion(n, section = 1, force_reload = false) {
           console.log("DB", cid, eid, qid);
           console.log("error-", error);
         })
-        .then(
-          db.answers
-          .get({
-            aid: aid,
-            cid: cid,
-            eid: eid,
-            qid: qid,
-            qidn: "2",
-            passcode: passcode,
-          })
-          .then(function(answer) {
-            if (answer != undefined) {
-              $(".long-answer").text(answer.ans);
-            }
-            markAnswer(qid, question_data, n);
-          })
-          .catch(function(error) {
-            console.log("error-", error);
-          })
-        );
+      //.then(function() {
+      db.answers
+        .get({
+          aid: aid,
+          cid: cid,
+          eid: eid,
+          qid: qid,
+          qidn: "2",
+          passcode: passcode,
+        })
+        .then(function(answer) {
+          if (answer != undefined) {
+            $(".long-answer").text(answer.ans);
+          }
+          markAnswer(qid, question_data, n);
+        })
+        .catch(function(error) {
+          console.log("error-", error);
+        })
+      //});
 
       addFlagEvents();
       loadFlagsFromDb(qid, "1");
@@ -1937,7 +1938,7 @@ function reviewQuestions() {
           (n + 1) +
           ":</a> <span>Not answered</span></li>"
         );
-        $("#review-answer-list a").click(function(evt) {
+        $(`#review-answer-list a[data-qid=${n}]`).click(function(evt) {
           loadQuestion(this.dataset.qid);
           $("#review-overlay").hide();
         });
@@ -2158,7 +2159,7 @@ function reviewQuestions() {
  */
 function markAnswer(qid, current_question, n) {
   const type = current_question.type;
-  //console.log("Mark", current_question);
+  console.log("Mark", current_question);
 
   let option = null;
   if (review_mode == true) {
@@ -2218,6 +2219,7 @@ function markAnswer(qid, current_question, n) {
       })
       .toArray()
       .then(function(saved_user_answers) {
+        //console.log("saved user answers", saved_user_answers)
         // check if given answer matches a user saved answer
         if (saved_user_answers != undefined) {
           //console.log(saved_user_answers);
@@ -2289,7 +2291,7 @@ function markAnswer(qid, current_question, n) {
 }
 
 function addFeedback(current_question, qid) {
-  //console.log(current_question);
+  console.log(current_question);
   if (
     current_question.hasOwnProperty("feedback") &&
     current_question.feedback.length > 0
