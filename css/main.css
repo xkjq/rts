@@ -1193,3 +1193,7 @@ input[type="number"] {
     -moz-user-select: text;
     -webkit-user-select: text;
 }
+
+.feedback-image {
+    max-width: 100%;
+}

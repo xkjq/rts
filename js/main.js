@@ -2304,8 +2304,9 @@ function addFeedback(current_question, qid) {
       )
     );
   }
+  // TODO: render in dicom viewer
   if (
-    current_question.hasOwnProperty("feedback_image") &&
+    current_question.hasOwnProperty("feedback_images") &&
     current_question.feedback_images.length > 0
   ) {
     // TODO: finish (load in dicom viewer)
