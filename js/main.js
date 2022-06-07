@@ -68,7 +68,7 @@ cornerstoneTools.init();
 // Set up database
 const db = new Dexie("answers_database");
 db.version(1).stores({
-  answers: "[aid+cid+eid+qid+qidn], [aid+cid+eid], qid, ans, eid",
+  answers: "[aid+cid+eid+qid+qidn+passcode], [aid+cid+eid], qid, ans, eid",
   flags: "[aid+cid+eid+qid+qidn], [aid+cid+eid], qid",
   user_answers: "[qid+type+ans], [qid+type]",
   session: "[eid+aid], eid, packet, aid, status, date, score, max_score, exam_time, time_left, question_order, questions_answered, total_questions",
@@ -2306,10 +2306,10 @@ function addFeedback(current_question, qid) {
   }
   if (
     current_question.hasOwnProperty("feedback_image") &&
-    current_question.feedback_image.length > 0
+    current_question.feedback_images.length > 0
   ) {
     // TODO: finish (load in dicom viewer)
-    current_question.feedback_image.forEach((img) => {
+    current_question.feedback_images.forEach((img) => {
       $(".question").append($(`<img class="feedback-image" src="${img}" />`));
     });
   }
