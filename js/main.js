@@ -9,7 +9,7 @@ let exam_details = {
   aid: null,
   cid: "",
   eid: 5678,
-  passcode: "",
+  passcode: "abc",
   exam_mode: false,
   number_of_questions: null,
   question_order: [],
