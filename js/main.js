@@ -1213,6 +1213,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
         };
 
         db.answers.put(answer);
+        console.debug("Save ", answer)
         saveSession();
         updateQuestionListPanel(answer);
       });
@@ -1240,6 +1241,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
           ans: evt.target.value,
         };
         // db.answers.put({aid: [cid, eid, qidn], ans: evt.target.value});
+        console.debug("Save ", answer)
         db.answers.put(answer);
 
         $(

@@ -46,6 +46,7 @@ export function getJsonAnswers(exam_details, db) {
  */
 export function postAnswers(ans, config, exam_details) {
   $("#progress").html("Submitting answers...");
+  console.debug("postAnswers", ans, config, exam_details)
 
   $.post(config.exam_submit_url, ans, null, "json")
     .done((data) => {
