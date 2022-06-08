@@ -68,7 +68,7 @@ cornerstoneTools.init();
 // Set up database
 const db = new Dexie("answers_database");
 db.version(1).stores({
-  answers: "[aid+cid+eid+qid+qidn+passcode], [aid+cid+eid], qid, ans, eid",
+  answers: "[aid+cid+eid+qid+qidn], [aid+cid+eid], qid, ans, eid",
   flags: "[aid+cid+eid+qid+qidn], [aid+cid+eid], qid",
   user_answers: "[qid+type+ans], [qid+type]",
   session: "[eid+aid], eid, packet, aid, status, date, score, max_score, exam_time, time_left, question_order, questions_answered, total_questions",
