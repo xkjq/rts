@@ -240,6 +240,17 @@ async function loadExamList(data) {
     if (global_cid == null) {
       global_cid = "u-" + global_uid;
     }
+
+    $("#btn-user-login").hide();
+
+    let logout = $("<span>[x]</span>")
+    logout.click(() => {
+      user_db.user.clear().then(() => {
+        window.location = "/accounts/logout/";
+        return;
+      });
+    })
+  $("#user").append(logout);
   }
 
 
@@ -2453,7 +2464,7 @@ $("#btn-candidate-login").click(function(evt) {
 });
 
 $("#btn-user-login").click(function(evt) {
-  window.location = "https://www.penracourses.org.uk/accounts/login/?next=/rts"
+  window.location = "/accounts/login/?next=/rts"
   //$(".exam-wrapper").toggle();
 });
 
