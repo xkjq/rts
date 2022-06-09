@@ -2452,6 +2452,11 @@ $("#btn-candidate-login").click(function(evt) {
   //$(".exam-wrapper").toggle();
 });
 
+$("#btn-user-login").click(function(evt) {
+  window.location = "https://www.penracourses.org.uk/accounts/login/?next=/rts"
+  //$(".exam-wrapper").toggle();
+});
+
 
 $("#login-button").click(function(evt) {
   global_cid = parseInt($("#candidate-number").val());
