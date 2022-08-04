@@ -2605,6 +2605,14 @@ $("#btn-delete-cached-questions").click(function(evt) {
         // Do what should be done next...
       });
   } else {}
+$("#btn-reset-local").click(function(evt) {
+  var r = confirm("Clear all local data");
+  if (r == true) {
+  (async () => {
+      const dbs = await window.indexedDB.databases();
+      dbs.forEach(db => { window.indexedDB.deleteDatabase(db.name) });
+  })();
+  } else {}
 });
 
 $("#btn-delete-current").click(function(evt) {
