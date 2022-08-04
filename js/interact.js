@@ -55,7 +55,8 @@ export function postAnswers(ans, config, exam_details) {
         $("#submit-error-overlay").remove();
         if (data.question_count == exam_details.number_of_questions) {
           let ret = confirm(
-            `${data.question_count} answers sucessfully submitted. Click OK to finish the exam.`
+            // `${data.question_count} answers successfully submitted. Click OK to finish the exam.`
+            `Answers successfully submitted. Click OK to finish the exam.`
           );
 
           if (ret) {
