@@ -2598,7 +2598,26 @@ function delete_question_db() {
     .finally(() => {
       // Do what should be done next...
     });
+}
 
+function delete_user_db() {
+  user_db
+    .delete()
+    .then(() => {
+      $.notify("User successfully deleted", "success");
+      $.notify("The page will now reload", "warn");
+      setTimeout(() => {
+        location.reload();
+      }, 2000);
+      console.debug("Database successfully deleted");
+    })
+    .catch((err) => {
+      $.notify("Error deleting databases", "error");
+      console.error("Could not delete database");
+    })
+    .finally(() => {
+      // Do what should be done next...
+    });
 }
 
 $("#btn-delete-answer-databases").click(function(evt) {
@@ -2620,6 +2639,7 @@ $("#btn-reset-local").click(function(evt) {
   if (r == true) {
     delete_answer_db();
     delete_question_db();
+    delete_user_db();
   } else {}
 });
 
