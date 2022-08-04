@@ -250,7 +250,7 @@ async function loadExamList(data) {
         return;
       });
     })
-  $("#user").append(logout);
+    $("#user").append(logout);
   }
 
 
@@ -2561,58 +2561,65 @@ $(".start-packet-button").click(function(evt) {
   $.modal.close();
 });
 
+function delete_answer_db() {
+  db.delete()
+    .then(() => {
+      $.notify("Database successfully deleted", "success");
+      $.notify("The page will now reload", "warn");
+      setTimeout(() => {
+        location.reload();
+      }, 2000);
+      console.debug("Database successfully deleted");
+    })
+    .catch((err) => {
+      $.notify("Error deleting databases", "error");
+      console.error("Could not delete database");
+    })
+    .finally(() => {
+      // Do what should be done next...
+    });
+}
+
+function delete_question_db() {
+  question_db
+    .delete()
+    .then(() => {
+      $.notify("Database successfully deleted", "success");
+      $.notify("The page will now reload", "warn");
+      setTimeout(() => {
+        location.reload();
+      }, 2000);
+      console.debug("Database successfully deleted");
+    })
+    .catch((err) => {
+      $.notify("Error deleting databases", "error");
+      console.error("Could not delete database");
+    })
+    .finally(() => {
+      // Do what should be done next...
+    });
+
+}
+
 $("#btn-delete-answer-databases").click(function(evt) {
   var r = confirm(
     "This will delete ALL saved answers (including saved correct answers)!"
   );
   if (r == true) {
-    db.delete()
-      .then(() => {
-        $.notify("Database successfully deleted", "success");
-        $.notify("The page will now reload", "warn");
-        setTimeout(() => {
-          location.reload();
-        }, 2000);
-        console.debug("Database successfully deleted");
-      })
-      .catch((err) => {
-        $.notify("Error deleting databases", "error");
-        console.error("Could not delete database");
-      })
-      .finally(() => {
-        // Do what should be done next...
-      });
+    delete_answer_db();
   } else {}
 });
 $("#btn-delete-cached-questions").click(function(evt) {
   var r = confirm("Delete cached questions?");
   if (r == true) {
-    question_db
-      .delete()
-      .then(() => {
-        $.notify("Database successfully deleted", "success");
-        $.notify("The page will now reload", "warn");
-        setTimeout(() => {
-          location.reload();
-        }, 2000);
-        console.debug("Database successfully deleted");
-      })
-      .catch((err) => {
-        $.notify("Error deleting databases", "error");
-        console.error("Could not delete database");
-      })
-      .finally(() => {
-        // Do what should be done next...
-      });
+    delete_question_db();
   } else {}
 });
 $("#btn-reset-local").click(function(evt) {
   var r = confirm("Clear all local data");
   if (r == true) {
-  (async () => {
-      const dbs = await window.indexedDB.databases();
-      dbs.forEach(db => { window.indexedDB.deleteDatabase(db.name) });
-  })();
+    delete_answer_db();
+    delete_question_db();
   } else {}
 });
 
