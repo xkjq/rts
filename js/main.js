@@ -2605,6 +2605,7 @@ $("#btn-delete-cached-questions").click(function(evt) {
         // Do what should be done next...
       });
   } else {}
+});
 $("#btn-reset-local").click(function(evt) {
   var r = confirm("Clear all local data");
   if (r == true) {
