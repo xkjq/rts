@@ -142,7 +142,7 @@ function submissionError(data, answer_json, exam_details) {
 
     $("#submit-error-overlay").height(docHeight);
 
-    let file = new Blob([answer_json], {type: "application/json"})
+    let file = new Blob([JSON.stringify(answer_json)], {type: "application/json"})
 
     let link = document.getElementById("save-failed-answers");
     link.href = URL.createObjectURL(file);
