@@ -144,7 +144,7 @@ function submissionError(data, answer_json, exam_details) {
 
     let file = new Blob([answer_json], {type: "application/json"})
 
-    let link = document.getElementById("saved-failed-answers");
+    let link = document.getElementById("save-failed-answers");
     link.href = URL.createObjectURL(file);
     link.download = "answers.json";
   }
