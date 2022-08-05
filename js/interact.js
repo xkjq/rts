@@ -76,7 +76,8 @@ export function postAnswers(ans, config, exam_details) {
             $("#options-panel").show();
           } else {}
         } else {
-          alert(`${data.question_count} answers sucessfully submitted.`);
+          //alert(`${data.question_count} answers sucessfully submitted.`);
+          alert(`Answers sucessfully submitted.`);
         }
       } else {
         submissionError(data, ans, exam_details);
@@ -132,7 +133,7 @@ function submissionError(data, answer_json, exam_details) {
 
   if ($("#submit-error-overlay").length < 1) {
     $("body").append(
-      `<div id='submit-error-overlay'><span style='color: white'><p>An error has occured when submit your answers. A copy of your answers are displayed below, you may wish to save a copy. Please try submitting again or refresh this page to continue.</p><p>${html.get(0).innerHTML}</p><p>${JSON.stringify(
+      `<div id='submit-error-overlay'><span style='color: white'><p>An error has occured when submit your answers. A copy of your answers are displayed below, you may wish to <a id="save-failed-answers" href="#">save a copy</a>. Please try submitting again or refresh this page to continue.</p><p>${html.get(0).innerHTML}</p><p>${JSON.stringify(
         answer_json
       )}</p></span></div>`
     );
@@ -140,6 +141,12 @@ function submissionError(data, answer_json, exam_details) {
     $("#nav-submit-button").prependTo("#submit-error-overlay");
 
     $("#submit-error-overlay").height(docHeight);
+
+    let file = new Blob([answer_json], {type: "application/json"})
+
+    link = document.getElementById("saved-failed-answers");
+    link.href = URL.createObjectURL(file);
+    link.download = "answers.json";
   }
 }
 
