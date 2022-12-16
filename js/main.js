@@ -2453,6 +2453,7 @@ function showLoginDialog() {
   $("#login-dialog").modal();
 }
 
+$(document).ready(function() {
 $("#btn-candidate-login").click(function(evt) {
   $("#login-dialog").modal({
     escapeClose: false,
@@ -2466,6 +2467,8 @@ $("#btn-candidate-login").click(function(evt) {
 $("#btn-user-login").click(function(evt) {
   window.location = "/accounts/login/?next=/rts"
   //$(".exam-wrapper").toggle();
+});
+
 });
 
 
