@@ -549,6 +549,23 @@ async function loadPacketList(data) {
       )
     );
   });
+
+
+$("#btn-candidate-login").click(function(evt) {
+  $("#login-dialog").modal({
+    escapeClose: false,
+    clickClose: false,
+    showClose: false
+  });
+  $("#options-panel").toggle();
+  //$(".exam-wrapper").toggle();
+});
+
+$("#btn-user-login").click(function(evt) {
+  window.location = "/accounts/login/?next=/rts"
+  //$(".exam-wrapper").toggle();
+});
+
   $("#options-panel").show();
 }
 
@@ -2453,24 +2470,7 @@ function showLoginDialog() {
   $("#login-dialog").modal();
 }
 
-$(document).ready(function() {
-alert("test");
-$("#btn-candidate-login").click(function(evt) {
-  $("#login-dialog").modal({
-    escapeClose: false,
-    clickClose: false,
-    showClose: false
-  });
-  $("#options-panel").toggle();
-  //$(".exam-wrapper").toggle();
-});
 
-$("#btn-user-login").click(function(evt) {
-  window.location = "/accounts/login/?next=/rts"
-  //$(".exam-wrapper").toggle();
-});
-
-});
 
 
 $("#login-button").click(function(evt) {
