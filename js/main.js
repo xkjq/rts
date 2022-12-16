@@ -5,16 +5,6 @@ import * as interact from "./interact.js";
 import * as config from "./config.js";
 // const { v4: uuidv4 } = require('uuid');
 
-$("#btn-candidate-login").click(function(evt) {
-  $("#login-dialog").modal({
-    escapeClose: false,
-    clickClose: false,
-    showClose: false
-  });
-  $("#options-panel").toggle();
-  //$(".exam-wrapper").toggle();
-});
-
 let exam_details = {
   aid: null,
   cid: "",
@@ -97,7 +87,7 @@ user_db.version(1).stores({
 
 retrievePacketList();
 
-//refreshDatabaseSettings();
+refreshDatabaseSettings();
 
 /**
  * Retrieves a list of available packets via JSON ajax requests
@@ -2464,6 +2454,15 @@ function showLoginDialog() {
 }
 
 
+$("#btn-candidate-login").click(function(evt) {
+  $("#login-dialog").modal({
+    escapeClose: false,
+    clickClose: false,
+    showClose: false
+  });
+  $("#options-panel").toggle();
+  //$(".exam-wrapper").toggle();
+});
 
 $("#btn-user-login").click(function(evt) {
   window.location = "/accounts/login/?next=/rts"
@@ -2748,7 +2747,7 @@ function saveSession(start_review) {
 }
 
 function refreshDatabaseSettings() {
-  if (navigator.storage != undefined) {
+  if ("storage" in navigator && navigator.storage != undefined) {
     navigator.storage.estimate().then((value) => {
       $("#storage-details").empty();
       $("#storage-details").append(
