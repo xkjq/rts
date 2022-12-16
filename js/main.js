@@ -2453,7 +2453,7 @@ function showLoginDialog() {
   $("#login-dialog").modal();
 }
 
-$("#btn-candidate-login").click(function(evt) {
+$("#btn-candidate-login").click(function() {
   $("#login-dialog").modal({
     escapeClose: false,
     clickClose: false,
