@@ -5,6 +5,16 @@ import * as interact from "./interact.js";
 import * as config from "./config.js";
 // const { v4: uuidv4 } = require('uuid');
 
+$("#btn-candidate-login").click(function(evt) {
+  $("#login-dialog").modal({
+    escapeClose: false,
+    clickClose: false,
+    showClose: false
+  });
+  $("#options-panel").toggle();
+  //$(".exam-wrapper").toggle();
+});
+
 let exam_details = {
   aid: null,
   cid: "",
@@ -2454,17 +2464,6 @@ function showLoginDialog() {
 }
 
 
-$(document).ready(function() {
-$("#btn-candidate-login").click(function(evt) {
-  $("#login-dialog").modal({
-    escapeClose: false,
-    clickClose: false,
-    showClose: false
-  });
-  $("#options-panel").toggle();
-  //$(".exam-wrapper").toggle();
-});
-});
 
 $("#btn-user-login").click(function(evt) {
   window.location = "/accounts/login/?next=/rts"
