@@ -1198,6 +1198,6 @@ input[type="number"] {
     max-width: 100%;
 }
 
-input[type="button"] {
+input[type="button"], button {
     cursor: pointer;
 }
