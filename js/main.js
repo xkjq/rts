@@ -2454,6 +2454,7 @@ function showLoginDialog() {
 }
 
 $(document).ready(function() {
+alert("test");
 $("#btn-candidate-login").click(function(evt) {
   $("#login-dialog").modal({
     escapeClose: false,
