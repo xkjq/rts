@@ -1201,3 +1201,7 @@ input[type="number"] {
 input[type="button"], button {
     cursor: pointer;
 }
+
+.login-button {
+    cursor: pointer;
+}
