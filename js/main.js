@@ -87,7 +87,12 @@ user_db.version(1).stores({
 
 retrievePacketList();
 
+try {
 refreshDatabaseSettings();
+}
+catch {
+console.log("unable to check database settings")
+}
 
 /**
  * Retrieves a list of available packets via JSON ajax requests
