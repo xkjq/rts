@@ -97,7 +97,7 @@ user_db.version(1).stores({
 
 retrievePacketList();
 
-refreshDatabaseSettings();
+//refreshDatabaseSettings();
 
 /**
  * Retrieves a list of available packets via JSON ajax requests
