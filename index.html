@@ -228,6 +228,18 @@
     <script src="js/main.js" defer="defer" type="module"></script>
     <script src="lib/notify.min.js" type="text/javascript"></script>
 
+<script>
+
+$("#btn-candidate-login").click(function() {
+  $("#login-dialog").modal({
+    escapeClose: false,
+    clickClose: false,
+    showClose: false
+  });
+  $("#options-panel").toggle();
+  //$(".exam-wrapper").toggle();
+});
+</script>
 </body>
 
 </html>
