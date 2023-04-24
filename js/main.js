@@ -5,6 +5,37 @@ import * as interact from "./interact.js";
 import * as config from "./config.js";
 // const { v4: uuidv4 } = require('uuid');
 
+log.setDefaultLevel("warn")
+
+
+let URLS = {};
+
+// Generate urls base on base_url
+if (config.base_url != "" && config.base_url != undefined) {
+  URLS.base_url = config.base_url;
+  URLS.exam_query_url = config.base_url + "exam/json";
+  URLS.exam_submit_url = config.base_url + "exam/submit";
+  URLS.exam_results_url = config.base_url + "cid/";
+  URLS.question_feedback_url = config.base_url + "feedback/";
+  URLS.question_answer_submit_url = config.base_url + "feedback/answer";
+  URLS.login_url = config.base_url + "/accounts/login/?next=/rts";
+  URLS.logout_url = config.base_url + "/accounts/logout/?next=/rts";
+}
+
+// Override individual urls
+let urls_to_check = ["exam_query_url",  "exam_submit_url", 
+  "exam_results_url", "question_feedback_url", 
+  "quetion_answer_submit_url", "login_url", "logout_url"]
+
+for (let url of urls_to_check) {
+  if (config[url] != "" && config[url] != undefined) {
+    URLS[url] = config[url];
+  }
+}
+
+log.debug(URLS)
+
+
 let exam_details = {
   aid: null,
   cid: "",
@@ -80,6 +111,7 @@ question_db.version(1).stores({
   saved_exams: "&eid, type, exam_mode, name, order, time, exam_json_id",
 });
 
+// Would possible be better with local storage (only want 1 user active at once)
 const user_db = new Dexie("user_database");
 user_db.version(1).stores({
   user: "cid, passcode",
@@ -88,10 +120,10 @@ user_db.version(1).stores({
 retrievePacketList();
 
 try {
-refreshDatabaseSettings();
+  refreshDatabaseSettings();
 }
 catch {
-console.log("unable to check database settings")
+  log.warn("unable to check database settings")
 }
 
 /**
@@ -104,15 +136,13 @@ console.log("unable to check database settings")
 async function retrievePacketList() {
   let url = "packets/packets.json";
 
-  //console.debug(config.exam_query_url);
+  log.debug(`Load users from database...`)
   let users = await user_db.user.toArray();
-  console.debug(users)
+  log.debug(`available users "${users}"`)
 
   if (users.length > 0) {
     global_cid = users[0].cid;
     global_passcode = users[0].passcode;
-
-    //$(".exam-wrapper").toggle();
 
     let logout = $("<span>[x]</span>")
     logout.click(() => {
@@ -122,20 +152,23 @@ async function retrievePacketList() {
       });
     })
 
-    if (config.exam_results_url != "" && config.exam_results_url != undefined) {
-      let url = `${config.exam_results_url}${global_cid}/${global_passcode}`;
+    if (URLS.exam_results_url != "" && URLS.exam_results_url != undefined) {
+      let url = `${URLS.exam_results_url}${global_cid}/${global_passcode}`;
+      log.debug(`Setting exam results url to ${URLS.exam_results_url}`);
 
       $("#options-link")
         .empty()
         .append(
           `<a href="${url}" target="_blank"><div class="packet-button">Results and answers</div></a>`
         );
+    } else {
+      log.debug("No exams results url set in config.");
     }
 
     $("#candidate-details").append(`Current: CID ${global_cid} / Passcode ${global_passcode} `).append(logout);
   } else {
 
-
+    log.debug("Try and set CID / Passcode from current URL")
     let items = window.location.search.substr(1).split("&");
     if (items.length == 2) {
       let cid = "";
@@ -152,52 +185,57 @@ async function retrievePacketList() {
         }
 
       };
-      console.debug(cid, passcode)
-
+      log.debug("CID and passcode extracted from URL", cid, passcode)
+      log.debug("adding to local db")
       user_db.user.add({
         cid: cid,
         passcode: passcode
       })
+      log.debug("reload page")
       location.reload();
     }
 
   }
 
   try {
-    if (config.exam_query_url != undefined) {
+    log.debug("Try to set exam query url")
+    if (URLS.exam_query_url != undefined) {
 
       if (global_cid == null) {
-        url = config.exam_query_url;
+        url = URLS.exam_query_url;
       } else {
-        url = `${config.exam_query_url}/${global_cid}/${global_passcode}`;
+        url = `${URLS.exam_query_url}/${global_cid}/${global_passcode}`;
       }
     }
+    log.debug(`url: {url}`)
   } catch (e) {
-    //
+    log.debug("Unable to set exam query url", e)
+    log.debug("this will default to packets/packets.json")
   }
 
   $.ajax({
-      dataType: "json",
-      cache: false,
-      url: url,
-      success: function(data) {
-        if (data.hasOwnProperty("exams")) {
-          loadExamList(data);
-        } else {
-          loadPacketList(data);
-        }
-      },
-      error: function(httpObj, textStatus) {
-        console.debug(httpObj);
-        if (httpObj.status == 401 || httpObj.status == 404) {
-          $.notify("Unable to login", "error");
-          $("#options-panel").show();
-          $("#candidate-details").addClass("invalid-login");
-        }
-      },
-    })
+    dataType: "json",
+    cache: false,
+    url: url,
+    success: function(data) {
+      if (data.hasOwnProperty("exams")) {
+        loadExamList(data);
+      } else {
+        loadPacketList(data);
+      }
+    },
+    error: function(httpObj, textStatus) {
+      console.debug(httpObj);
+      if (httpObj.status == 401 || httpObj.status == 404) {
+        $.notify("Unable to login", "error");
+        $("#options-panel").show();
+        $("#candidate-details").addClass("invalid-login");
+      }
+    },
+  })
     .done(function() {})
     .fail(function() {
+      log.debug("Unable to load packets / exams, try loading '/packets' (legacy)")
       $.getJSON("packets", function(data) {
         if (data.hasOwnProperty("exams")) {
           loadExamList(data);
@@ -205,8 +243,7 @@ async function retrievePacketList() {
           loadPacketList(data);
         }
       }).fail(function(jqXHR, textStatus, errorThrown) {
-        console.debug("No packet list available");
-        //showLoginDialog();
+        console.warn("No packet list available");
       });
     })
     .always(function() {});
@@ -251,7 +288,7 @@ async function loadExamList(data) {
     let logout = $("<span>[x]</span>")
     logout.click(() => {
       user_db.user.clear().then(() => {
-        window.location = "/accounts/logout/";
+        window.location = URLS.logout_url;
         return;
       });
     })
@@ -326,10 +363,10 @@ async function loadExamList(data) {
       $(
         `<div class='packet-button${c}' data-eid='${eid}' title='Load packet'></div>`
       )
-      .text(name)
-      .click(function() {
-        loadPacketFromAjax(url, eid, exam_json_id);
-      })
+        .text(name)
+        .click(function() {
+          loadPacketFromAjax(url, eid, exam_json_id);
+        })
     );
   }
 
@@ -444,8 +481,8 @@ async function loadExamList(data) {
       return a.dataset.eid > b.dataset.eid ?
         1 :
         a.dataset.eid < b.dataset.eid ?
-        -1 :
-        0;
+          -1 :
+          0;
     })
     .appendTo(".packet-list.rapid");
   $(".packet-list.anatomy div")
@@ -453,8 +490,8 @@ async function loadExamList(data) {
       return a.dataset.eid > b.dataset.eid ?
         1 :
         a.dataset.eid < b.dataset.eid ?
-        -1 :
-        0;
+          -1 :
+          0;
     })
     .appendTo(".packet-list.anatomy");
   $(".packet-list.long div")
@@ -462,8 +499,8 @@ async function loadExamList(data) {
       return a.dataset.eid > b.dataset.eid ?
         1 :
         a.dataset.eid < b.dataset.eid ?
-        -1 :
-        0;
+          -1 :
+          0;
     })
     .appendTo(".packet-list.long");
 
@@ -540,18 +577,18 @@ async function loadPacketList(data) {
     }
     list.append(
       $(`<div class='packet-button${c}' title='Load packet'></div>`)
-      .text(packet)
-      .click(function() {
-        loadPacketFromAjax("packets/" + packet, packet);
-      })
-      .append(
-        $(
-          `<div class='save-button' title='Download packet for offline use (or to save bandwidth)'><a href='packets/${packet}' download='${packet}'>💾</a></div>`
-        ).click(function(evt) {
-          //console.debug("packets/" + packet);
-          evt.stopPropagation();
+        .text(packet)
+        .click(function() {
+          loadPacketFromAjax("packets/" + packet, packet);
         })
-      )
+        .append(
+          $(
+            `<div class='save-button' title='Download packet for offline use (or to save bandwidth)'><a href='packets/${packet}' download='${packet}'>💾</a></div>`
+          ).click(function(evt) {
+            //console.debug("packets/" + packet);
+            evt.stopPropagation();
+          })
+        )
     );
   });
   $("#options-panel").show();
@@ -600,19 +637,19 @@ function loadPacketFromAjax(path, eid, exam_json_id) {
     }
 
     $.ajax({
-        dataType: "json",
-        url: path,
-        cache: browser_cache,
-        progress: function(e) {
-          if (e.lengthComputable) {
-            var completedPercentage = Math.round((e.loaded * 100) / e.total);
+      dataType: "json",
+      url: path,
+      cache: browser_cache,
+      progress: function(e) {
+        if (e.lengthComputable) {
+          var completedPercentage = Math.round((e.loaded * 100) / e.total);
 
-            $("#progress").html(
-              `${completedPercentage}%<br/>${helper.formatBytes(e.total)}`
-            );
-          }
-        },
-      })
+          $("#progress").html(
+            `${completedPercentage}%<br/>${helper.formatBytes(e.total)}`
+          );
+        }
+      },
+    })
       .done(function(data) {
         setUpPacket(data, path);
         $("#options-panel").hide();
@@ -1872,10 +1909,8 @@ function reviewQuestions() {
         if (question_type == "long") {
           $("#review-answer-table").append(
             $(
-              `<tr class='review-table-heading' data-qid=${
-                n + 1
-              } title='Click to load question ${
-                n + 1
+              `<tr class='review-table-heading' data-qid=${n + 1
+              } title='Click to load question ${n + 1
               }'><td colspan=2>Question ${n + 1}</td></tr>`
             ).click(() => {
               loadQuestion(n);
@@ -1884,8 +1919,7 @@ function reviewQuestions() {
           );
           // $("#review-answer-table").append(`<tr id='review-answer-${qid}'><td class='review-user-answer-cell'></td><td class='review-model-answer-cell'></td></tr>`);
           $("#review-answer-table").append(
-            `<tr class='answer-sub' data-qid=${
-              n + 1
+            `<tr class='answer-sub' data-qid=${n + 1
             }><td>Your answers</td><td>Model answers</td></tr>`
           );
 
@@ -1926,8 +1960,7 @@ function reviewQuestions() {
               model_answers[title.toLowerCase()];
 
             $("#review-answer-table").append(
-              `<tr class='' data-qid=${
-                n + 1
+              `<tr class='' data-qid=${n + 1
               }><td>${user_ans}</td><td>${model_ans}</td></tr>`
             );
           });
@@ -1938,8 +1971,8 @@ function reviewQuestions() {
               return a.dataset.qid > b.dataset.qid ?
                 1 :
                 a.dataset.qid < b.dataset.qid ?
-                -1 :
-                0;
+                  -1 :
+                  0;
             })
             .appendTo("#review-answer-table");
           return;
@@ -2158,8 +2191,8 @@ function reviewQuestions() {
                 return a.dataset.qid > b.dataset.qid ?
                   1 :
                   a.dataset.qid < b.dataset.qid ?
-                  -1 :
-                  0;
+                    -1 :
+                    0;
               })
               .appendTo("#review-answer-list");
           });
@@ -2260,7 +2293,8 @@ function markAnswer(qid, current_question, n) {
                     saved_answer,
                     e,
                     saved_answer_object,
-                    db
+                    db,
+                    URLS.question_answer_submit_url
                   );
                 })
               );
@@ -2337,7 +2371,7 @@ function addFeedback(current_question, qid) {
 
   $(".answer-panel").append(
     $(
-      `<div class='feedback-link'><a href=${config.question_feedback_url}${current_question.type}/${qid} target=”_blank”>Submit question feedback</a></div>`
+      `<div class='feedback-link'><a href=${URLS.question_feedback_url}${current_question.type}/${qid} target=”_blank”>Submit question feedback</a></div>`
     )
   );
 }
@@ -2384,8 +2418,8 @@ function compareString(a, b) {
 function answerInArray(arr, ans) {
   return (
     arr
-    .map((v) => v.toLowerCase().replace(/\s/g, ""))
-    .includes(ans.toLowerCase().replace(/\s/g, "")) == true
+      .map((v) => v.toLowerCase().replace(/\s/g, ""))
+      .includes(ans.toLowerCase().replace(/\s/g, "")) == true
   );
 }
 
@@ -2470,7 +2504,7 @@ $("#btn-candidate-login").click(function(evt) {
 });
 
 $("#btn-user-login").click(function(evt) {
-  window.location = "/accounts/login/?next=/rts"
+  window.location = URLS.login_url;
   //$(".exam-wrapper").toggle();
 });
 
