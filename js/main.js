@@ -247,8 +247,10 @@ async function retrievePacketList() {
  * @param {JSON} data - json containing available exams
  */
 async function loadExamList(data) {
+  log.debug(`Load exam list: ${data}`)
+  log.debug("Loading saved sessions")
   let sessions = await db.session.toArray().catch(function(error) {
-    console.debug("Error loading session", error);
+    log.debug("Error loading session", error);
     $("#database-error").text(
       "Error loading the database, schema has probably changed and needs updating. You will probably need to delete the local database."
     );
@@ -261,8 +263,11 @@ async function loadExamList(data) {
     $("#database-error").append(delete_button);
     $("#database-error").show();
   });
+  log.debug(sessions)
 
   //Display user info if it exists
+  // If a user is loggged into the server it any exam responses
+  // should have the details embedded
   if (data.hasOwnProperty("user") && data.user) {
     $("#user").append(`User: ${data.user}`);
     //$(".exam-wrapper").show();
@@ -288,70 +293,86 @@ async function loadExamList(data) {
 
   let exams_started = [];
   let exams_completed = [];
-  sessions.forEach((s) => {
+  log.debug("Check status of saved exams")
+  for (const s of sessions) {
+    log.debug(`checking status of`, s)
     if (s.status == "active") {
       exams_started.push(s.packet);
     } else {
       exams_completed.push(s.packet);
     }
-  });
+  };
 
+  // Wouldn't we be better terminating ealier in this situation
   let exam_list = [];
   if (data != null) {
     exam_list = data.exams;
   }
 
+  // exam_generated_map stores the exam and its json ID to
+  // enable invalidation when the question is updated on the server
   let exam_generated_map = {};
   $("#packet-list").empty();
-  //exam_list.sort((a, b) => (a.name > b.name) ? 1 : -1).forEach(function (exam) {
-  for (let index = 0; index < exam_list.length; index++) {
-    const exam = exam_list[index];
-    console.debug(exam)
-    let name = exam["name"];
-    let url = exam["url"];
-    let eid = exam["eid"];
-    let exam_json_id = exam["exam_json_id"];
+  
+  log.debug("Loop available exams")
+  for (const exam of exam_list) {
+    log.debug(exam)
+    const name = exam["name"];
+    const url = exam["url"];
+    const eid = exam["eid"];
+    const exam_json_id = exam["exam_json_id"];
 
     let question_json_id_hash = {};
 
+    // In the case of multiquestion exams (longs) we 
+    // check each question json_id in addition
     if (exam.hasOwnProperty("multi_question_json")) {
       question_json_id_hash = exam["multi_question_json"];
     }
     exam_generated_map[eid] = [exam_json_id, question_json_id_hash];
 
-    let c = "";
+    // The exam against stored session data
+    let item_class = "";
     if (exams_started.indexOf(name) > -1) {
-      c = " session-started";
+      item_class = " session-started";
     }
     if (exams_completed.indexOf(name) > -1) {
-      c = " session-completed";
+      item_class = " session-completed";
     }
 
     if (!exam.exam_active) {
-      c = c + " inactive";
+      item_class = item_class + " inactive";
     }
 
+    // Place the exam under the relavant subheading
+    // by defailt they will be under the packet section
     let target_list = "packet-list";
+    // if in exam mode we place them under the exam section
     if (exam.exam_mode) {
       target_list = "exam-list";
     }
 
     let list;
     if (exam.type != undefined) {
+      // If the relevant subheading exists target_it it
       if ($(`.${target_list}.${exam.type}`).length) {
         list = $(`.${target_list}.${exam.type}`);
+      // or create and add it
       } else {
         list = $(`<div class='${target_list} ${exam.type}'><span class='packet-list-title'>${exam.type}</span><br/></div>`);
         $(`#${target_list}`).append(list);
 
       }
+    // if the packet / exam type is not defined just add it at the bottom
+    // TODO: do we actually want this?
     } else {
       list = $("#packet-list");
     }
 
+    // Add the button that is used to load the packet/exam
     $(list).append(
       $(
-        `<div class='packet-button${c}' data-eid='${eid}' title='Load packet'></div>`
+        `<div class='packet-button${item_class}' data-eid='${eid}' title='Load packet'></div>`
       )
         .text(name)
         .click(function() {
