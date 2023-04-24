@@ -18,8 +18,8 @@ if (config.base_url != "" && config.base_url != undefined) {
   URLS.exam_results_url = config.base_url + "cid/";
   URLS.question_feedback_url = config.base_url + "feedback/";
   URLS.question_answer_submit_url = config.base_url + "feedback/answer";
-  URLS.login_url = config.base_url + "/accounts/login/?next=/rts";
-  URLS.logout_url = config.base_url + "/accounts/logout/?next=/rts";
+  URLS.login_url = config.base_url + "accounts/login/?next=/rts";
+  URLS.logout_url = config.base_url + "accounts/logout/?next=/rts";
 }
 
 // Override individual urls
@@ -111,12 +111,6 @@ question_db.version(1).stores({
   saved_exams: "&eid, type, exam_mode, name, order, time, exam_json_id",
 });
 
-// Would possible be better with local storage (only want 1 user active at once)
-const user_db = new Dexie("user_database");
-user_db.version(1).stores({
-  user: "cid, passcode",
-});
-
 retrievePacketList();
 
 try {
@@ -137,19 +131,20 @@ async function retrievePacketList() {
   let url = "packets/packets.json";
 
   log.debug(`Load users from database...`)
-  let users = await user_db.user.toArray();
-  log.debug(`available users "${users}"`)
+  //let users = await user_db.user.toArray();
+  //log.debug(`available users "${users}"`)
+  let cid = localStorage.getItem("cid.cid")
+  let passcode = localStorage.getItem("cid.passcode")
 
-  if (users.length > 0) {
-    global_cid = users[0].cid;
-    global_passcode = users[0].passcode;
+  if (cid != null && passcode != null) {
+    global_cid = cid;
+    global_passcode = passcode;
 
     let logout = $("<span>[x]</span>")
     logout.click(() => {
-      user_db.user.clear().then(() => {
-        window.location = window.location.pathname;
-        return;
-      });
+      localStorage.removeItem("cid.cid");
+      localStorage.removeItem("cid.passcode");
+      window.location = window.location.pathname;
     })
 
     if (URLS.exam_results_url != "" && URLS.exam_results_url != undefined) {
@@ -171,8 +166,6 @@ async function retrievePacketList() {
     log.debug("Try and set CID / Passcode from current URL")
     let items = window.location.search.substr(1).split("&");
     if (items.length == 2) {
-      let cid = "";
-      let passcode = "";
       for (let index = 0; index < items.length; index++) {
         const item = items[index];
         let s = item.split("=");
@@ -187,10 +180,8 @@ async function retrievePacketList() {
       };
       log.debug("CID and passcode extracted from URL", cid, passcode)
       log.debug("adding to local db")
-      user_db.user.add({
-        cid: cid,
-        passcode: passcode
-      })
+      localStorage.setItem("cid.cid", cid)
+      localStorage.setItem("cid.passcode", passcode)
       log.debug("reload page")
       location.reload();
     }
@@ -287,10 +278,9 @@ async function loadExamList(data) {
 
     let logout = $("<span>[x]</span>")
     logout.click(() => {
-      user_db.user.clear().then(() => {
-        window.location = URLS.logout_url;
-        return;
-      });
+      localStorage.removeItem("cid.cid");
+      localStorage.removeItem("cid.passcode");
+      window.location = URLS.logout_url;
     })
     $("#user").append(logout);
   }
@@ -2514,13 +2504,9 @@ $("#btn-login").click(function(evt) {
   global_cid = parseInt($("#candidate-number").val());
   global_passcode = $("#passcode").val();
 
-  user_db.user.clear().then(() => {
-    user_db.user.add({
-      cid: global_cid,
-      passcode: global_passcode
-    })
-    location.reload();
-  });
+  localStorage.setItem("cid.cid", global_cid)
+  localStorage.setItem("cid.passcode", global_passcode)
+  location.reload();
   $.modal.close();
 });
 
@@ -2641,26 +2627,6 @@ function delete_question_db() {
     });
 }
 
-function delete_user_db() {
-  user_db
-    .delete()
-    .then(() => {
-      $.notify("User successfully deleted", "success");
-      $.notify("The page will now reload", "warn");
-      setTimeout(() => {
-        location.reload();
-      }, 2000);
-      console.debug("Database successfully deleted");
-    })
-    .catch((err) => {
-      $.notify("Error deleting databases", "error");
-      console.error("Could not delete database");
-    })
-    .finally(() => {
-      // Do what should be done next...
-    });
-}
-
 $("#btn-delete-answer-databases").click(function(evt) {
   var r = confirm(
     "This will delete ALL saved answers (including saved correct answers)!"
@@ -2680,7 +2646,8 @@ $("#btn-reset-local").click(function(evt) {
   if (r == true) {
     delete_answer_db();
     delete_question_db();
-    delete_user_db();
+    localStorage.removeItem("cid.cid")
+    localStorage.removeItem("cid.passcode")
   } else {}
 });
 
@@ -2806,6 +2773,7 @@ $(document).on("saveSessionEvent", {}, (evt, review) => {
   saveSession(review);
 });
 
+// Disable right click
 $(document).contextmenu(() => {
   return false;
 })
