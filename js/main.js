@@ -933,7 +933,7 @@ function setUpQuestions(load_previous) {
   //question_type = questions[Object.keys(questions)[0]].type;
 
   if (exam_details.exam_mode) {
-    $("#options-button, #review-overlay-button").hide();
+    $("#options-button, #btn-review-overlay").hide();
   } else {
     $(".submit-button").hide();
   }
@@ -1728,7 +1728,7 @@ $(".submit-button").click(function(evt) {
   interact.submitAnswers(exam_details, db, config);
 });
 
-$("#review-button").click(function(evt) {
+$("#btn-review").click(function(evt) {
   $(".question-list-panel").toggle();
 });
 
@@ -1737,7 +1737,7 @@ $("#options-button").click(function(evt) {
   $("#options-panel").toggle();
 });
 
-$("#review-overlay-button").click(function(evt) {
+$("#btn-review-overlay").click(function(evt) {
   if (review_mode == true) {
     reviewQuestions();
   } else {
@@ -1745,7 +1745,7 @@ $("#review-overlay-button").click(function(evt) {
   }
 });
 
-$("#fullscreen-overlay-button").click(function(evt) {
+$("#btn-fullscreen-overlay").click(function(evt) {
   if (document.fullscreen == false) {
     document.documentElement.requestFullscreen();
   } else {
@@ -1753,13 +1753,13 @@ $("#fullscreen-overlay-button").click(function(evt) {
   }
 });
 
-$("#finish-exam, #time-up-review-button").click(function(evt) {
+$("#finish-exam, #btn-time-up-review").click(function(evt) {
   review_mode = true;
   reviewQuestions();
   $.modal.close();
 });
 
-$("#time-up-continue-button").click(function(evt) {
+$("#btn-time-up-continue").click(function(evt) {
   $.modal.close();
 });
 
@@ -2476,7 +2476,7 @@ $("#btn-user-login").click(function(evt) {
 
 
 
-$("#login-button").click(function(evt) {
+$("#btn-login").click(function(evt) {
   global_cid = parseInt($("#candidate-number").val());
   global_passcode = $("#passcode").val();
 
@@ -2513,7 +2513,7 @@ $(".start-packet-button").click(function(evt) {
   timer.addEventListener("targetAchieved", function(e) {
     if (exam_details.exam_mode == true) {
       $(
-        "#dialog-submit-button, #time-up-review-button, #time-up-continue-button"
+        "#btn-dialog-submit, #btn-time-up-review, #btn-time-up-continue"
       ).toggle();
       $("#time-up-dialog .dialog-text").text(
         "Allocated time has ended. Click to submit answers."

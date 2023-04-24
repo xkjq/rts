@@ -138,7 +138,7 @@ function submissionError(data, answer_json, exam_details) {
       )}</p></span></div>`
     );
 
-    $("#nav-submit-button").prependTo("#submit-error-overlay");
+    $("#btn-submit-nav").prependTo("#submit-error-overlay");
 
     $("#submit-error-overlay").height(docHeight);
 
