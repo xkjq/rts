@@ -1,8 +1,11 @@
 {
     "editor.autoIndent": "keep",
     "javascript.format.insertSpaceAfterFunctionKeywordForAnonymousFunctions": false,
-    "javascript.format.insertSpaceAfterKeywordsInControlFlowStatements": false,
+    "javascript.format.insertSpaceAfterKeywordsInControlFlowStatements": true,
     "javascript.format.insertSpaceAfterOpeningAndBeforeClosingNonemptyBraces": false,
-    "javascript.format.enable": false,
-    "liveServer.settings.port": 5502
+    "javascript.format.enable": true,
+    "liveServer.settings.port": 5502,
+    "javascript.format.insertSpaceAfterConstructor": true,
+    "javascript.format.insertSpaceBeforeFunctionParenthesis": false,
+    "javascript.format.insertSpaceAfterOpeningAndBeforeClosingEmptyBraces": false
 }

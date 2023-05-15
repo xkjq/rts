@@ -138,7 +138,7 @@ export function submissionError(data, answer_json, exam_details) {
       )}</p></span></div>`
     );
 
-    $("#nav-submit-button").prependTo("#submit-error-overlay");
+    $("#btn-submit-nav").prependTo("#submit-error-overlay");
 
     $("#submit-error-overlay").height(docHeight);
 
@@ -180,11 +180,11 @@ export function getQuestion(url, question_number, question_total) {
   });
 }
 
-export function postSavedAnswer(type, qid, answer, e, db_object, db) {
+export function postSavedAnswer(type, qid, answer, e, db_object, db, submit_url) {
   console.debug("post", type, qid, answer, e)
   return $.ajax({
     type: "POST",
-    url: config.question_answer_submit_url,
+    url: submit_url,
     data: JSON.stringify({
       qid: `${type}/${qid}`,
       answer: answer,
