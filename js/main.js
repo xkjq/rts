@@ -2492,6 +2492,9 @@ $("#login-button").click(function(evt) {
 
 $(".start-packet-button").click(function(evt) {
 
+  // TODO: send packet to server to indicated that we have started the exam
+  // if in exam mode
+
   exam_details.start_time = new Date().getTime() / 1000;
 
   if (timer != null) {
@@ -2626,6 +2629,31 @@ function delete_user_db() {
       // Do what should be done next...
     });
 }
+
+$("#btn-view-local-answers").click(async function(evt) {
+
+
+  var docHeight = $(document).height();
+
+  let answer_json = await db.answers.toArray();
+
+  if ($("#view-answers-overlay").length < 1) {
+    $("body").append(
+      `<div id='view-answers-overlay'><span style='color: white'><p>${JSON.stringify(
+        answer_json
+      )}</p></span></div>`
+    );
+
+    $("#view-answers-overlay").height(docHeight);
+    $("#view-answers-overlay").append("<a id='save-failed-answers'>Save</a>")
+
+    let file = new Blob([JSON.stringify(answer_json)], {type: "application/json"})
+
+    let link = document.getElementById("save-failed-answers");
+    link.href = URL.createObjectURL(file);
+    link.download = "answers.json";
+  }
+});
 
 $("#btn-delete-answer-databases").click(function(evt) {
   var r = confirm(

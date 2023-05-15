@@ -91,7 +91,7 @@ export function postAnswers(ans, config, exam_details) {
   // $.post( "http://localhost:8000/submit_answers", JSON.stringify(ans));
 }
 
-function submissionError(data, answer_json, exam_details) {
+export function submissionError(data, answer_json, exam_details) {
   // error will not be defined with server errors
   if (data.error != undefined) {
     alert(`Error submitting answers: ${data.error}`);

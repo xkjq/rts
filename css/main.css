@@ -1,5 +1,6 @@
 @charset "UTF-8";
 @import "./base.css";
+@import "./loading.css";
 @import url("https://fonts.googleapis.com/css?family=Noto+Sans:400,700");
 /* Colourscheme from https://www.materialui.co/colors */
 
@@ -50,7 +51,7 @@ html {
 
 html,
 body,
-input:not([type=text]),
+input:not([type=text]):not([type=number]), /* TODO: check it works in safari */
 button,
 select,
 option {
@@ -72,8 +73,6 @@ textarea {
     margin: 0;
     padding: 0;
     color: black;
-    /*#1d3850;*/
-    /*font-family: 'Noto Sans', sans-serif;*/
     overflow: hidden;
 }
 
@@ -272,7 +271,7 @@ td {
     border-style: dashed;
 }
 
-/*@media screen and (orientation:landscape) {*/
+/* LANDSCAPE */
 @media screen and (min-aspect-ratio:12/9) {
     .exam-content-panel {
         display: flex;
@@ -339,7 +338,7 @@ td {
     }
 }
 
-/*@media screen and (orientation:portrait) {*/
+/* PORTRAIT*/
 @media screen and (max-aspect-ratio:12/9) {
     .exam-content-panel {
         display: block;
@@ -921,94 +920,6 @@ select option:disabled {
     content: "⏸"
 }
 
-.sk-cube-grid {
-    width: 60px;
-    height: 60px;
-}
-
-.sk-cube-grid .sk-cube {
-    width: 33%;
-    height: 33%;
-    background-color: #4527A0;
-    float: left;
-    -webkit-animation: sk-cubeGridScaleDelay 1.3s infinite ease-in-out;
-    animation: sk-cubeGridScaleDelay 1.3s infinite ease-in-out;
-}
-
-.sk-cube-grid .sk-cube1 {
-    -webkit-animation-delay: 0.2s;
-    animation-delay: 0.2s;
-}
-
-.sk-cube-grid .sk-cube2 {
-    -webkit-animation-delay: 0.3s;
-    animation-delay: 0.3s;
-}
-
-.sk-cube-grid .sk-cube3 {
-    -webkit-animation-delay: 0.4s;
-    animation-delay: 0.4s;
-}
-
-.sk-cube-grid .sk-cube4 {
-    -webkit-animation-delay: 0.1s;
-    animation-delay: 0.1s;
-}
-
-.sk-cube-grid .sk-cube5 {
-    -webkit-animation-delay: 0.2s;
-    animation-delay: 0.2s;
-}
-
-.sk-cube-grid .sk-cube6 {
-    -webkit-animation-delay: 0.3s;
-    animation-delay: 0.3s;
-}
-
-.sk-cube-grid .sk-cube7 {
-    -webkit-animation-delay: 0s;
-    animation-delay: 0s;
-}
-
-.sk-cube-grid .sk-cube8 {
-    -webkit-animation-delay: 0.1s;
-    animation-delay: 0.1s;
-}
-
-.sk-cube-grid .sk-cube9 {
-    -webkit-animation-delay: 0.2s;
-    animation-delay: 0.2s;
-}
-
-@-webkit-keyframes sk-cubeGridScaleDelay {
-
-    0%,
-    70%,
-    100% {
-        -webkit-transform: scale3D(1, 1, 1);
-        transform: scale3D(1, 1, 1);
-    }
-
-    35% {
-        -webkit-transform: scale3D(0, 0, 1);
-        transform: scale3D(0, 0, 1);
-    }
-}
-
-@keyframes sk-cubeGridScaleDelay {
-
-    0%,
-    70%,
-    100% {
-        -webkit-transform: scale3D(1, 1, 1);
-        transform: scale3D(1, 1, 1);
-    }
-
-    35% {
-        -webkit-transform: scale3D(0, 0, 1);
-        transform: scale3D(0, 0, 1);
-    }
-}
 
 
 .displayblock {
@@ -1145,7 +1056,7 @@ select option:disabled {
     }
 }
 
-#submit-error-overlay {
+#submit-error-overlay, #view-answers-overlay {
     opacity: 0.9;
     position: absolute;
     top: 0;
@@ -1188,11 +1099,11 @@ select option:disabled {
     color: red;
 }
 
-input[type="number"] {
+/* input[type="number"] {
     user-select: text;
     -moz-user-select: text;
     -webkit-user-select: text;
-}
+} */
 
 .feedback-image {
     max-width: 100%;
