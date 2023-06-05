@@ -640,6 +640,7 @@ function loadPacketFromAjax(path, eid, exam_json_id) {
 
   function ajaxRequestionPacket(force_refresh) {
     //console.debug("loading packet from " + path);
+    // TODO: check where path comes from ??????
     $("#progress").html(`Requesting packet: ${path}`);
 
     let browser_cache = true;
@@ -797,7 +798,7 @@ function setUpPacket(data, path) {
           continue;
         }
 
-        const question_url = `${path}/${n}`;
+        const question_url = `${path}/question/${n}`;
 
         //console.debug("Creating ", question_url, question_number, question_total);
         //$("#progress").html(`Downloading [${question_number}/${question_total}]`);
