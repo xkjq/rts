@@ -1116,3 +1116,12 @@ input[type="button"], button {
 .login-button {
     cursor: pointer;
 }
+
+h2:has(+ #exam-list:empty),  h2:has(+ #packet-list:empty){
+    opacity: 30%;
+}
+
+#exam-list:empty::after,  #packet-list:empty::after{
+    content: "None available.";
+    opacity: 30%;
+}
