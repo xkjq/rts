@@ -31,6 +31,7 @@ if (config.base_url != "" && config.base_url != undefined) {
   URLS.exam_query_url = config.base_url + "exam/json";
   URLS.exam_submit_url = config.base_url + "exam/submit";
   URLS.exam_results_url = config.base_url + "cid/";
+  URLS.exam_user_results_url = config.base_url + "user/scores";
   URLS.question_feedback_url = config.base_url + "feedback/";
   URLS.question_answer_submit_url = config.base_url + "feedback/answer";
   URLS.login_url = config.base_url + "accounts/login/?next=/rts";
@@ -169,7 +170,11 @@ async function retrievePacketList() {
 
     if (URLS.exam_results_url != "" && URLS.exam_results_url != undefined) {
       let url = `${URLS.exam_results_url}${global_cid}/${global_passcode}`;
-      log.debug(`Setting exam results url to ${URLS.exam_results_url}`);
+      if (cid.startsWith("u-")) {
+        url = URLS.exam_user_results_url;
+      }
+
+      log.debug(`Setting exam results url to ${url}`);
 
       $("#options-link")
         .empty()

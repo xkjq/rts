@@ -66,7 +66,10 @@ export function postAnswers(ans, URLS, exam_details) {
               let url = URLS.exam_results_url;
 
               if (exam_details.cid != "") {
-                url = url + exam_details.cid;
+                url = `${url}${exam_details.cid}`;
+                if (localStorage.getItem("cid.passcode") != null) {
+                  url = `${url}/${localStorage.getItem("cid.passcode")}`;
+                }
               }
               $("#options-link")
                 .empty()
