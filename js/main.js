@@ -170,6 +170,7 @@ async function retrievePacketList() {
 
     if (URLS.exam_results_url != "" && URLS.exam_results_url != undefined) {
       let url = `${URLS.exam_results_url}${global_cid}/${global_passcode}`;
+      log.debug(`cid = ${cid}`);
       if (cid.startsWith("u-")) {
         url = URLS.exam_user_results_url;
       }
