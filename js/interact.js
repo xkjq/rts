@@ -3,7 +3,7 @@ import * as config from "./config.js";
 /**
  * Submits answers
  */
-export function submitAnswers(exam_details, db, config) {
+export function submitAnswers(exam_details, db, URLS) {
   getJsonAnswers(exam_details, db)
     .then((a) => {
       let json = {
@@ -12,7 +12,7 @@ export function submitAnswers(exam_details, db, config) {
         start_time: exam_details.start_time,
         answers: JSON.stringify(a),
       };
-      postAnswers(json, config, exam_details);
+      postAnswers(json, URLS, exam_details);
     })
     .catch((e) => {
       console.debug(e)
@@ -44,11 +44,12 @@ export function getJsonAnswers(exam_details, db) {
  * Posts answers to url
  * @param {*} ans - json representation of answers
  */
-export function postAnswers(ans, config, exam_details) {
+export function postAnswers(ans, URLS, exam_details) {
   $("#progress").html("Submitting answers...");
-  console.debug("postAnswers", ans, config, exam_details)
+  console.debug("postAnswers", ans, URLS, exam_details)
+  console.debug("posturl", URLS.exam_submit_url)
 
-  $.post(config.exam_submit_url, ans, null, "json")
+  $.post(URLS.exam_submit_url, ans, null, "json")
     .done((data) => {
       console.debug("returned data", data);
       if (data.success) {
@@ -61,8 +62,8 @@ export function postAnswers(ans, config, exam_details) {
 
           if (ret) {
             $(document).trigger("saveSessionEvent", [true]);
-            if (config.exam_results_url != "") {
-              let url = config.exam_results_url;
+            if (URLS.exam_results_url != "") {
+              let url = URLS.exam_results_url;
 
               if (exam_details.cid != "") {
                 url = url + exam_details.cid;

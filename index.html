@@ -1,210 +1,299 @@
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" class="no-touch" lang="en">
-
-<head>
-    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
-    <meta charset="UTF-8">
-    <meta name="viewport"
-        content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no">
-    <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, width=device-width, height=device-height">
-    <link type="text/css" rel="stylesheet" href="lib/jquery.modal.min.css">
-    <link type="text/css" rel="stylesheet" href="lib/cornerstone.min.css">
-    <link type="text/css" rel="stylesheet" href="css/main.css">
+<html
+  xmlns="http://www.w3.org/1999/xhtml"
+  xml:lang="en"
+  class="no-touch"
+  lang="en"
+>
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no"
+    />
+    <meta
+      name="viewport"
+      content="initial-scale=1.0, maximum-scale=1.0, width=device-width, height=device-height"
+    />
+    <link type="text/css" rel="stylesheet" href="lib/jquery.modal.min.css" />
+    <link type="text/css" rel="stylesheet" href="lib/cornerstone.min.css" />
+    <link type="text/css" rel="stylesheet" href="css/main.css" />
     <title>RTS</title>
-</head>
+  </head>
 
-<body>
+  <body>
     <div id="content">
-        <div class="content-panel">
-            <div class="nav-bar">
-                <button id="btn-review" class="navigation nav-right"><b>☰</b></button>
-                <button id="btn-submit-nav" class="submit-button navigation nav-right"><b>submit</b></button>
-                <button id="btn-review-overlay" class="navigation nav-right"
-                    title="click to finish exam and review answers">review</button>
-                <button id="btn-fullscreen-overlay" class="navigation nav-right"
-                    title="click to toggle fullscreen">fullscreen</button>
-                <div class="app-name nav-left">RTS</div>
-                <div id="timer" title="click to pause"></div>
-                <div class="exam-name" title="currently loaded packet"></div>
-                <input type="button" class="navigation nav-left" value="previous" disabled="disabled">
-                <input type="button" class="navigation nav-left" value="next">
-            </div>
-            <div class="main-panel">
-                <div class="question-list-panel" style="display: block;">
-                </div>
-                <div class="exam-panel">
-                    <div class="exam-content-panel">
-                        <div class="question">
-                            <div class="title"><span style="font-weight:700;">1</span> </div>
-                            <div class="stem">
-                                <div id="thumbnails"></div>
-                            </div>
-                            <div class="thumbs">
-                            </div>
-                        </div>
-                        <div class="answers">
-                            <div class="answer-title">Answer</div>
-                            <div class="answer-panel">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="logout-background">
-                <div class="logout-panel">
-                    <div class="logout-title">Ready to logout?</div>
-                    <div class="logout-text"></div>
-                    <button class="navigation logout-cancel">continue exam</button>
-                    <button class="navigation logout-okay">logout now</button>
-                </div>
-            </div>
-            <div id="options-panel" class="fullscreen-overlay">
-                <h1>RTS</h1>
-                <input type='button' id='btn-candidate-login' class="login-button" value='Enter candidate details' onclick='void(0)' ><span
-                    id="candidate-details"></span>
-                <input type='button' id='btn-user-login' class="login-button" value='User log in'>
-                <!-- <a href="#" id="overlay-close" class="close"></a> -->
-                <div id="user" class="user-text"></div>
-                <div id="packets">
-                    <p>Click buttons below to load an exam / packet</p>
-                    <span class="exam-wrapper">
-                        <h2>Exams:</h2>
-                        <span id="exam-list"></span>
-                    </span>
-
-                    <span class="packet-wrapper">
-                        <h2>Packets:</h2>
-                        <span id="packet-list"></span>
-                    </span>
-                </div>
-                <div id="options-link">
-                </div>
-                <div id="storage-details">
-                </div>
-                <div id="cache-details">
-                    <details>
-                        <summary></summary>
-                        <ul>
-                        </ul>
-                    </details>
-                </div>
-                <details>
-                    <summary>Options</summary>
-                    <div id="database-buttons">
-                        <input type='button' id='btn-delete-answer-databases' value='Delete local answers'>
-                        <input type='button' id='btn-delete-cached-questions' value='Delete cached questions'>
-                        <input type='button' id='btn-reset-local' value='Clear all local data'>
-                    </div>
-                    <div id="local-fileloader">
-                        <form id="jsonFile" name="jsonFile" enctype="multipart/form-data" method="post">
-
-                            <fieldset>
-                                <h2>Load local question set</h2>
-                                <input type='file' id='fileinput'>
-                                <input type='button' id='btn-local-file-load' value='Load'>
-                            </fieldset>
-                        </form>
-                    </div>
-                    <p><button id='btn-view-local-answers'>View local saved answers</button></p>
-                </details>
-            </div>
-            <div id="review-overlay" class="fullscreen-overlay">
-                <a href="#" id="review-overlay-close" class="close"></a>
-                <div id="review-score"></div>
-                <div id="exam-stats">
-                    <p>Performance breakdown:</p>
-                    Unanswered questions: <span id="unanswered-number"></span><br />
-                    Answered normal: <span id="normal-number"></span><br />
-                    Answered abnormal: <span id="abnormal-number"></span><br />
-                    <br />
-                    Undercall: <span id="undercall-number"></span><br />
-                    Overcall: <span id="overcall-number"></span><br />
-                    Incorrect call: <span id="incorrectcall-number"></span><br />
-                </div>
-                <ul id='review-answer-list'></ul>
-                <table id='review-answer-table'></table>
-            </div>
+      <div class="content-panel">
+        <div class="nav-bar">
+          <button id="btn-review" class="navigation nav-right"><b>☰</b></button>
+          <button
+            id="btn-submit-nav"
+            class="submit-button navigation nav-right"
+          >
+            <b>submit</b>
+          </button>
+          <button
+            id="btn-review-overlay"
+            class="navigation nav-right"
+            title="click to finish exam and review answers"
+          >
+            review
+          </button>
+          <button
+            id="btn-fullscreen-overlay"
+            class="navigation nav-right"
+            title="click to toggle fullscreen"
+          >
+            fullscreen
+          </button>
+          <div class="app-name nav-left">RTS</div>
+          <div id="timer" title="click to pause"></div>
+          <div class="exam-name" title="currently loaded packet"></div>
+          <input
+            type="button"
+            class="navigation nav-left"
+            value="previous"
+            disabled="disabled"
+          />
+          <input type="button" class="navigation nav-left" value="next" />
         </div>
+        <div class="main-panel">
+          <div class="question-list-panel" style="display: block"></div>
+          <div class="exam-panel">
+            <div class="exam-content-panel">
+              <div class="question">
+                <div class="title"><span style="font-weight: 700">1</span></div>
+                <div class="stem">
+                  <div id="thumbnails"></div>
+                </div>
+                <div class="thumbs"></div>
+              </div>
+              <div class="answers">
+                <div class="answer-title">Answer</div>
+                <div class="answer-panel"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="logout-background">
+          <div class="logout-panel">
+            <div class="logout-title">Ready to logout?</div>
+            <div class="logout-text"></div>
+            <button class="navigation logout-cancel">continue exam</button>
+            <button class="navigation logout-okay">logout now</button>
+          </div>
+        </div>
+        <div id="options-panel" class="fullscreen-overlay">
+          <h1>RTS</h1>
+          <span id="user-details">
+            <input
+              type="button"
+              id="btn-candidate-login"
+              class="login-button"
+              value="Enter candidate details"
+              onclick="void(0)"
+            /><span id="candidate-details"></span>
+            <input
+              type="button"
+              id="btn-user-login"
+              class="login-button"
+              value="User log in"
+            />
+            <!-- <a href="#" id="overlay-close" class="close"></a> -->
+            <div id="user" class="user-text"></div>
+          </span>
+          <div id="packets">
+            <p>Click buttons below to load an exam / packet</p>
+            <span class="exam-wrapper">
+              <h2>Exams:</h2>
+              <span id="exam-list"></span>
+            </span>
+
+            <span class="packet-wrapper">
+              <h2>Packets:</h2>
+              <span id="packet-list"></span>
+            </span>
+          </div>
+          <div id="options-link"></div>
+          <div id="storage-details"></div>
+          <div id="cache-details">
+            <details>
+              <summary></summary>
+              <ul></ul>
+            </details>
+          </div>
+          <details>
+            <summary>Options</summary>
+            <div id="database-buttons">
+              <input
+                type="button"
+                id="btn-delete-answer-databases"
+                value="Delete local answers"
+              />
+              <input
+                type="button"
+                id="btn-delete-cached-questions"
+                value="Delete cached questions"
+              />
+              <input
+                type="button"
+                id="btn-reset-local"
+                value="Clear all local data"
+              />
+            </div>
+            <div id="local-fileloader">
+              <form
+                id="jsonFile"
+                name="jsonFile"
+                enctype="multipart/form-data"
+                method="post"
+              >
+                <fieldset>
+                  <h2>Load local question set</h2>
+                  <input type="file" id="fileinput" />
+                  <input type="button" id="btn-local-file-load" value="Load" />
+                </fieldset>
+              </form>
+            </div>
+            <p>
+              <button id="btn-view-local-answers">
+                View local saved answers
+              </button>
+            </p>
+          </details>
+        </div>
+        <div id="review-overlay" class="fullscreen-overlay">
+          <a href="#" id="review-overlay-close" class="close"></a>
+          <div id="review-score"></div>
+          <div id="exam-stats">
+            <p>Performance breakdown:</p>
+            Unanswered questions: <span id="unanswered-number"></span><br />
+            Answered normal: <span id="normal-number"></span><br />
+            Answered abnormal: <span id="abnormal-number"></span><br />
+            <br />
+            Undercall: <span id="undercall-number"></span><br />
+            Overcall: <span id="overcall-number"></span><br />
+            Incorrect call: <span id="incorrectcall-number"></span><br />
+          </div>
+          <ul id="review-answer-list"></ul>
+          <table id="review-answer-table"></table>
+        </div>
+      </div>
     </div>
 
     <div id="finish-dialog" class="dialog modal">
-        <h3 class="dialog-title">Finish exam and review?</h3>
-        <div class="dialog-text">
-            <button id="finish-exam" class="navigation dialog-yes">Finish and review</button>
-            <button id="finish-cancel" class="navigation dialog-cancel">Continue exam</button>
-        </div>
+      <h3 class="dialog-title">Finish exam and review?</h3>
+      <div class="dialog-text">
+        <button id="finish-exam" class="navigation dialog-yes">
+          Finish and review
+        </button>
+        <button id="finish-cancel" class="navigation dialog-cancel">
+          Continue exam
+        </button>
+      </div>
     </div>
 
     <div id="start-dialog" class="dialog modal">
-        <h3 class="dialog-title">Start <span class="exam-name"></span></h3>
-        <div class="packet-database-options">
-            <input type='button' id='btn-delete-current' value='Reset current packet answers'><br />
-            <input type='button' id='btn-delete-current-saved-answers' value='Reset current packet saved answers'>
-        </div>
-        <div class="dialog-text">
-            Click to start exam.
-            <p>You will have <input type='number' size=2 class='exam-time'></input> minutes.</p>
-        </div>
-        <div id="exam-candidate-number" class="dialog-text hidden">
-            Check your below candidate number / user is correct.
-            <input type='text' size=10 id='candidate-number2' disabled></input>
-        </div>
-        <button class="start-packet-button navigation dialog-yes">Start</button>
+      <h3 class="dialog-title">Start <span class="exam-name"></span></h3>
+      <div class="packet-database-options">
+        <input
+          type="button"
+          id="btn-delete-current"
+          value="Reset current packet answers"
+        /><br />
+        <input
+          type="button"
+          id="btn-delete-current-saved-answers"
+          value="Reset current packet saved answers"
+        />
+      </div>
+      <div class="dialog-text">
+        Click to start exam.
+        <p>
+          You will have
+          <input type="number" size="2" class="exam-time" /> minutes.
+        </p>
+      </div>
+      <div id="exam-candidate-number" class="dialog-text hidden">
+        Check your below candidate number / user is correct.
+        <input type="text" size="10" id="candidate-number2" disabled />
+      </div>
+      <button class="start-packet-button navigation dialog-yes">Start</button>
     </div>
 
     <div id="time-up-dialog" class="dialog modal">
-        <h3 class="dialog-title">Time ended</h3>
-        <div class="dialog-text">
-            Allocated time has ended. You can review or continue.
-        </div>
-        <button id="btn-time-up-review" class="navigation dialog-review">Review</button>
-        <button id="time-up-continue-button" class="navigation dialog-yes">Continue</button>
-        <button id="dialog-submit-button" class="submit-button navigation dialog-review hidden"><b>submit</b></button>
+      <h3 class="dialog-title">Time ended</h3>
+      <div class="dialog-text">
+        Allocated time has ended. You can review or continue.
+      </div>
+      <button id="btn-time-up-review" class="navigation dialog-review">
+        Review
+      </button>
+      <button id="time-up-continue-button" class="navigation dialog-yes">
+        Continue
+      </button>
+      <button
+        id="dialog-submit-button"
+        class="submit-button navigation dialog-review hidden"
+      >
+        <b>submit</b>
+      </button>
     </div>
 
     <div id="login-dialog" class="dialog modal noclose">
-        <h3 class="dialog-title">Enter Details</h3>
-        <div class="dialog-text">
-            Candidate number: <input type="number" id="candidate-number" name="candidate" required size="10"><br />
-            Passcode: <input type="text" id="passcode" name="passcode" required size="10"><br />
-        </div>
-        <button id="btn-login" class="navigation dialog-yes">Login</button>
+      <h3 class="dialog-title">Enter Details</h3>
+      <div class="dialog-text">
+        Candidate number:
+        <input
+          type="number"
+          id="candidate-number"
+          name="candidate"
+          required
+          size="10"
+        /><br />
+        Passcode:
+        <input
+          type="text"
+          id="passcode"
+          name="passcode"
+          required
+          size="10"
+        /><br />
+      </div>
+      <button id="btn-login" class="navigation dialog-yes">Login</button>
     </div>
 
     <div id="loading" class="fullscreen-overlay">
-        <div class="progress-block">
-            <div id="progress">
-            </div>
-            <div class="sk-cube-grid full">
-                <div class="sk-cube sk-cube1"></div>
-                <div class="sk-cube sk-cube2"></div>
-                <div class="sk-cube sk-cube3"></div>
-                <div class="sk-cube sk-cube4"></div>
-                <div class="sk-cube sk-cube5"></div>
-                <div class="sk-cube sk-cube6"></div>
-                <div class="sk-cube sk-cube7"></div>
-                <div class="sk-cube sk-cube8"></div>
-                <div class="sk-cube sk-cube9"></div>
-            </div>
+      <div class="progress-block">
+        <div id="progress"></div>
+        <div class="sk-cube-grid full">
+          <div class="sk-cube sk-cube1"></div>
+          <div class="sk-cube sk-cube2"></div>
+          <div class="sk-cube sk-cube3"></div>
+          <div class="sk-cube sk-cube4"></div>
+          <div class="sk-cube sk-cube5"></div>
+          <div class="sk-cube sk-cube6"></div>
+          <div class="sk-cube sk-cube7"></div>
+          <div class="sk-cube sk-cube8"></div>
+          <div class="sk-cube sk-cube9"></div>
         </div>
+      </div>
     </div>
     <div id="question-loading" class="fullscreen-overlay-transparent">
-        <div class="progress-block">
-            <div class="lds-ripple">
-                <div></div>
-                <div></div>
-            </div>
+      <div class="progress-block">
+        <div class="lds-ripple">
+          <div></div>
+          <div></div>
         </div>
+      </div>
     </div>
 
-    <div id="pause" class="fullscreen-overlay">
-    </div>
+    <div id="pause" class="fullscreen-overlay"></div>
 
-    <div id="packet-history" class="fullscreen-overlay">
-    </div>
+    <div id="packet-history" class="fullscreen-overlay"></div>
 
-    <div id="database-error" class="fullscreen-overlay">
-    </div>
+    <div id="database-error" class="fullscreen-overlay"></div>
 
     <script src="lib/loglevel.min.js"></script>
     <script src="lib/uuidv4.min.js" type="module"></script>
@@ -226,8 +315,6 @@
     <script src="js/main.js" defer="defer" type="module"></script>
     <script src="lib/notify.min.js" type="text/javascript"></script>
 
-<script>
-</script>
-</body>
-
+    <script></script>
+  </body>
 </html>

@@ -279,6 +279,8 @@ export function debugCornerstone() {
 
 /**
  * Registers the selected dicom tool
+ * 
+ * This also allows selecting of window levels
  */
 export function changeControlSelection() {
   // We also duplicate the sel that are available

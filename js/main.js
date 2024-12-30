@@ -6,9 +6,24 @@ import * as config from "./config.js";
 // const { v4: uuidv4 } = require('uuid');
 
 log.setDefaultLevel("warn")
+log.setDefaultLevel("debug")
 
 
 let URLS = {};
+
+let standalone = false;
+
+if (config.standalone != "" && config.standalone != undefined) {
+  standalone = config.standalone
+}
+
+let allow_users = false;
+
+if (config.allow_users != "" && config.allow_users != undefined) {
+  allow_users = config.allow_users
+}
+
+
 
 // Generate urls base on base_url
 if (config.base_url != "" && config.base_url != undefined) {
@@ -25,7 +40,7 @@ if (config.base_url != "" && config.base_url != undefined) {
 // Override individual urls
 let urls_to_check = ["exam_query_url",  "exam_submit_url", 
   "exam_results_url", "question_feedback_url", 
-  "quetion_answer_submit_url", "login_url", "logout_url"]
+  "question_answer_submit_url", "login_url", "logout_url"]
 
 for (let url of urls_to_check) {
   if (config[url] != "" && config[url] != undefined) {
@@ -33,6 +48,7 @@ for (let url of urls_to_check) {
   }
 }
 
+log.debug("URLS")
 log.debug(URLS)
 
 
@@ -47,7 +63,7 @@ let exam_details = {
   start_time: null,
 };
 
-let packet_list = [];
+//let packet_list = [];
 let packet_name = null;
 let questions = null;
 let questions_correct = {};
@@ -112,6 +128,10 @@ question_db.version(1).stores({
 });
 
 retrievePacketList();
+
+if (!allow_users) {
+  $("#user-details").hide()
+}
 
 try {
   refreshDatabaseSettings();
@@ -198,7 +218,7 @@ async function retrievePacketList() {
         url = `${URLS.exam_query_url}/${global_cid}/${global_passcode}`;
       }
     }
-    log.debug(`url: {url}`)
+    log.debug(`url: ${url}`)
   } catch (e) {
     log.debug("Unable to set exam query url", e)
     log.debug("this will default to packets/packets.json")
@@ -525,8 +545,12 @@ async function loadExamList(data) {
  */
 // TODO: remove (data formats should be switched to the exam format)
 async function loadPacketList(data) {
+  // NOTE: currently the packet id is not available prior ot downloading the packet
+  // this severly limits what we can do with it (but to require would limit the utility)
+  log.debug(`loadPacketList`);
+  log.debug("Loading saved sessions")
   let sessions = await db.session.toArray().catch(function(error) {
-    console.debug("Error loading session", error);
+    log.debug(`Error loading session ${error}`);
     $("#database-error").text(
       "Error loading the database, schema has probably changed and needs updating. You will probably need to delete the local database."
     );
@@ -539,12 +563,15 @@ async function loadPacketList(data) {
     $("#database-error").append(delete_button);
     $("#database-error").show();
   });
+  log.debug(sessions)
   // db.session
   //   .where("packet")
   //   .equals()
   let packets_started = [];
   let packets_completed = [];
+  log.debug("Check status of saved packets")
   sessions.forEach((s) => {
+    log.debug(`checking status of`, s)
     if (s.status == "active") {
       packets_started.push(s.packet);
     } else {
@@ -552,17 +579,29 @@ async function loadPacketList(data) {
     }
   });
 
+  log.debug("Packets started")
+  log.debug(packets_started)
+  log.debug("Packets completed")
+  log.debug(packets_completed)
+
+  let packet_list = [];
   if (data != null) {
     packet_list = data.packets;
+  } else {
+    log.debug("data == null")
   }
 
+  log.debug(packet_list)
   $("#packet-list").empty();
 
-  if (packet_json_id == undefined) {
-    $("#options-panel").show();
-    return
-  }
-  //console.debug(packet_list)
+  //if (packet_json_id == undefined) {
+  //  $("#options-panel").show();
+  //  return
+  //}
+
+
+
+
   packet_list.forEach(function(packet) {
     // Seperate packet types
     let list;
@@ -1774,7 +1813,7 @@ $("#btn-local-file-load").click(function(evt) {
 });
 
 $(".submit-button").click(function(evt) {
-  interact.submitAnswers(exam_details, db, config);
+  interact.submitAnswers(exam_details, db, URLS);
 });
 
 $("#btn-review").click(function(evt) {
