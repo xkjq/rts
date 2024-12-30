@@ -69,7 +69,10 @@ export function postAnswers(ans, URLS, exam_details) {
                 url = `${url}${exam_details.cid}`;
                 if (localStorage.getItem("cid.passcode") != null) {
                   url = `${url}/${localStorage.getItem("cid.passcode")}`;
-                }
+                  }
+                if (exam_details.cid.startsWith("u-")) {
+                  url = URLS.exam_user_results_url;
+              }
               }
               $("#options-link")
                 .empty()
