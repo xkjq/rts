@@ -168,13 +168,11 @@ async function retrievePacketList() {
       window.location = window.location.pathname;
     })
 
+    console.debug("global_cid", global_cid)
+    console.debug("cid", cid)
+
     if (URLS.exam_results_url != "" && URLS.exam_results_url != undefined) {
       let url = `${URLS.exam_results_url}${global_cid}/${global_passcode}`;
-      log.debug(`cid = ${cid}`);
-      if (cid.startsWith("u-")) {
-        url = URLS.exam_user_results_url;
-      }
-
       log.debug(`Setting exam results url to ${url}`);
 
       $("#options-link")
