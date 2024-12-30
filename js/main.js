@@ -157,6 +157,13 @@ async function retrievePacketList() {
   let cid = localStorage.getItem("cid.cid")
   let passcode = localStorage.getItem("cid.passcode")
 
+  // Set a default (user) results link
+  $("#options-link")
+    .empty()
+    .append(
+      `<a href="${URLS.exam_user_results_url}" target="_blank"><div class="packet-button">Results and answers</div></a>`
+    );
+
   if (cid != null && passcode != null) {
     global_cid = cid;
     global_passcode = passcode;
@@ -167,9 +174,6 @@ async function retrievePacketList() {
       localStorage.removeItem("cid.passcode");
       window.location = window.location.pathname;
     })
-
-    console.debug("global_cid", global_cid)
-    console.debug("cid", cid)
 
     if (URLS.exam_results_url != "" && URLS.exam_results_url != undefined) {
       let url = `${URLS.exam_results_url}${global_cid}/${global_passcode}`;
