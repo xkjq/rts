@@ -1140,12 +1140,12 @@ async function loadQuestion(n, section = 1, force_reload = false) {
   loaded_question = n;
 
   // Set up question navigation
-  $(".navigation[value='next']").off();
-  $(".navigation[value='previous']").off();
+  $(".navigation[data-nav='next']").off();
+  $(".navigation[data-nav='previous']").off();
   if (n == 0) {
-    $(".navigation[value='previous']").attr("disabled", "disabled");
+    $(".navigation[data-nav='previous']").attr("disabled", "disabled");
   } else {
-    $(".navigation[value='previous']")
+    $(".navigation[data-nav='previous']")
       .removeAttr("disabled")
       .click(function() {
         loadQuestion(n - 1);
@@ -1153,9 +1153,9 @@ async function loadQuestion(n, section = 1, force_reload = false) {
   }
 
   if (n == exam_details.number_of_questions - 1) {
-    $(".navigation[value='next']").attr("disabled", "disabled");
+    $(".navigation[data-nav='next']").attr("disabled", "disabled");
   } else {
-    $(".navigation[value='next']")
+    $(".navigation[data-nav='next']")
       .removeAttr("disabled")
       .click(function() {
         loadQuestion(n + 1);

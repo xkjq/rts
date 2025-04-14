@@ -238,6 +238,7 @@ td {
     box-shadow: none;
     text-shadow: none;
     flex-shrink: 0;
+    font-size: 12px;
 }
 
 .nav-left {

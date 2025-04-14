@@ -74,13 +74,7 @@ export function loadMainImage(image, stack) {
       // already fullscreen (disable it)
       disableFullscreen(this);
     } else {
-      $(".content-panel").prepend($(".canvas-panel"));
-      $(".canvas-panel").toggleClass("canvas-panel canvas-panel-fullscreen");
-      $("#dicom-image").attr("height", "100%");
-      $("#dicom-image").height("100%");
-      // $(".cornerstone-canvas").attr("height", "100%");
-      // $(".cornerstone-canvas").height("100%");
-      cornerstone.resize(this, true);
+      enableFullscreen(this);
     }
   });
 
@@ -163,6 +157,9 @@ export function disableFullscreen(dicom_element) {
   $(".canvas-panel-fullscreen").toggleClass(
     "canvas-panel canvas-panel-fullscreen"
   );
+
+  $("#disable-fullscreen-viewer-button").hide();
+  $("#fullscreen-viewer-button").show();
   $(".question").prepend($(".canvas-panel"));
   $(".canvas-panel").get(0).scrollIntoView();
 
@@ -384,7 +381,7 @@ export function changeControlSelection() {
       break;
     }
     case "reset": {
-      cornerstone.reset(dicom_element);
+      resetViewer(dicom_element);
       sel.selectedIndex = old;
       sel.oldSelectedIndex = old;
       break;
@@ -398,6 +395,12 @@ export function changeControlSelection() {
   if (event) {
     event.preventDefault();
   }
+}
+
+function resetViewer(dicom_element) {
+  cornerstoneTools.clearToolState(dicom_element, "RectangleRoi");
+  cornerstoneTools.clearToolState(dicom_element, "Length");
+  cornerstone.reset(dicom_element);
 }
 
 /**
@@ -423,6 +426,10 @@ export function keydown_handler(event) {
   switch (event.code) {
     case "KeyP":
       sel.selectedIndex = find_option(sel, "pan");
+      changeControlSelection();
+      break;
+    case "KeyC":
+      sel.selectedIndex = find_option(sel, "rectangle");
       changeControlSelection();
       break;
     case "KeyZ":
@@ -463,7 +470,7 @@ export function keydown_handler(event) {
       changeControlSelection();
       break;
     // Escape and C do the same
-    case "KeyC":
+    //case "KeyC":
     case "Escape":
       sel.selectedIndex = find_option(sel, "close");
       changeControlSelection();
@@ -524,7 +531,7 @@ export function keydown_handler(event) {
           manualZoomDicom(-1);
           break;
         case "rotate":
-          manualRotateDicom(1);
+          manualRotateDicom(-1);
           break;
         case "scroll":
           manualScrollDicom(1);
@@ -544,7 +551,7 @@ export function keydown_handler(event) {
           manualZoomDicom(1);
           break;
         case "rotate":
-          manualRotateDicom(-1);
+          manualRotateDicom(1);
           break;
         case "scroll":
           manualScrollDicom(-1);
@@ -688,12 +695,15 @@ export function openMainImage(current_question, t, source) {
         <option value="reset">reset [e]</option>
         <option value="notes" disabled="true">[modality = SC]</option>
       </select>
-      <button class="title-bar-button" title="RESET VIEW" class="reset"><span class="viewer-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-counterclockwise" viewBox="0 0 16 16">
+  <button id="reset-viewer-button" class="title-bar-button" title="RESET VIEW" class="reset"><span class="viewer-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-counterclockwise" viewBox="0 0 16 16">
   <path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2z"/>
   <path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466"/>
 </svg></span></button>
-<button class="title-bar-button" title="TOGGLE FULLSCREEN" class="expand"><span class="viewer-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-fullscreen" viewBox="0 0 16 16">
+<button id="fullscreen-viewer-button" class="title-bar-button" title="TOGGLE FULLSCREEN" class="expand"><span class="viewer-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-fullscreen" viewBox="0 0 16 16">
   <path d="M1.5 1a.5.5 0 0 0-.5.5v4a.5.5 0 0 1-1 0v-4A1.5 1.5 0 0 1 1.5 0h4a.5.5 0 0 1 0 1zM10 .5a.5.5 0 0 1 .5-.5h4A1.5 1.5 0 0 1 16 1.5v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 1-.5-.5M.5 10a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 1 0 1h-4A1.5 1.5 0 0 1 0 14.5v-4a.5.5 0 0 1 .5-.5m15 0a.5.5 0 0 1 .5.5v4a1.5 1.5 0 0 1-1.5 1.5h-4a.5.5 0 0 1 0-1h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 1 .5-.5"/>
+</svg></span></button>
+<button style="display:none;" id="disable-fullscreen-viewer-button" class="title-bar-button" title="TOGGLE FULLSCREEN" class="expand"><span class="viewer-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-fullscreen-exit" viewBox="0 0 16 16">
+  <path d="M5.5 0a.5.5 0 0 1 .5.5v4A1.5 1.5 0 0 1 4.5 6h-4a.5.5 0 0 1 0-1h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 1 .5-.5m5 0a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 1 0 1h-4A1.5 1.5 0 0 1 10 4.5v-4a.5.5 0 0 1 .5-.5M0 10.5a.5.5 0 0 1 .5-.5h4A1.5 1.5 0 0 1 6 11.5v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 1-.5-.5m10 1a1.5 1.5 0 0 1 1.5-1.5h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 0-.5.5v4a.5.5 0 0 1-1 0z"/>
 </svg></span></button>
 <button id="close-viewer-button" class="title-bar-button" title="CLOSE VIEWER"><span class="viewer-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16">
   <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z"/>
@@ -720,10 +730,19 @@ export function openMainImage(current_question, t, source) {
       }
     }
 
+    const dicom_element = document.getElementById("dicom-image");
     // Bind button actions
     $("#close-viewer-button").click(function () {
-      const dicom_element = document.getElementById("dicom-image");
       closeViewer(dicom_element);
+    });
+    $("#reset-viewer-button").click(function () {
+      resetViewer(dicom_element);
+    });
+    $("#fullscreen-viewer-button").click(function () {
+      enableFullscreen(dicom_element);
+    });
+    $("#disable-fullscreen-viewer-button").click(function () {
+      disableFullscreen(dicom_element);
     });
 
     load(images, annotations);
@@ -753,4 +772,17 @@ export function urltoFile(url, filename, mimeType) {
     .then(function (buf) {
       return new File([buf], filename, { type: mimeType });
     });
+}
+
+
+function enableFullscreen(dicom_element) {
+    $(".content-panel").prepend($(".canvas-panel"));
+    $(".canvas-panel").toggleClass("canvas-panel canvas-panel-fullscreen");
+    $("#dicom-image").attr("height", "100%");
+    $("#dicom-image").height("100%");
+    $("#disable-fullscreen-viewer-button").show();
+    $("#fullscreen-viewer-button").hide();
+    // $(".cornerstone-canvas").attr("height", "100%");
+    // $(".cornerstone-canvas").height("100%");
+    cornerstone.resize(dicom_element, true);
 }
