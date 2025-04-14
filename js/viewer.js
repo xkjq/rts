@@ -11,6 +11,9 @@ export function loadMainImage(image, stack) {
   const RotateTool = cornerstoneTools.RotateTool;
   const StackScrollTool = cornerstoneTools.StackScrollTool;
   const ArrowAnnotateTool = cornerstoneTools.ArrowAnnotateTool;
+  const LengthTool = cornerstoneTools.LengthTool;
+  const RectangleRoiTool = cornerstoneTools.RectangleRoiTool;
+  const EllipseRoiTool = cornerstoneTools.EllipseRoiTool;
   const AngleTool = cornerstoneTools.AngleTool;
   const CobbAngleTool = cornerstoneTools.CobbAngleTool;
   const EraserTool = cornerstoneTools.EraserTool;
@@ -35,6 +38,9 @@ export function loadMainImage(image, stack) {
   cornerstoneTools.addToolForElement(element, CobbAngleTool);
   cornerstoneTools.addToolForElement(element, StackScrollTool);
   cornerstoneTools.addToolForElement(element, EraserTool);
+  cornerstoneTools.addToolForElement(element, LengthTool);
+  cornerstoneTools.addToolForElement(element, RectangleRoiTool);
+  //cornerstoneTools.addToolForElement(element, EllipseRoiTool);
 
   cornerstoneTools.addToolForElement(element, ArrowAnnotateTool, {
     configuration: {
@@ -58,15 +64,17 @@ export function loadMainImage(image, stack) {
 
   setDicomCanvasNonFullscreen(element);
   cornerstone.reset(element);
-  element.scrollIntoView(false);
-  // element.scrollTo(0);
+  let viewerTitleBar = document.getElementById("viewer-title-bar");
+  viewerTitleBar.scrollIntoView();
+  //element.scrollIntoView(false);
+  //element.scrollTo(0);
 
   $(element).dblclick(function () {
     if ($(".canvas-panel").length == 0) {
       // already fullscreen (disable it)
       disableFullscreen(this);
     } else {
-      $(".content-panel").append($(".canvas-panel"));
+      $(".content-panel").prepend($(".canvas-panel"));
       $(".canvas-panel").toggleClass("canvas-panel canvas-panel-fullscreen");
       $("#dicom-image").attr("height", "100%");
       $("#dicom-image").height("100%");
@@ -78,28 +86,7 @@ export function loadMainImage(image, stack) {
 
   element.removeEventListener("wheel", element.wheelEventHandler);
 
-  // Add tool selector
-  $(".canvas-panel").append(
-    '<select class="control-overlay"> \
-    <option value="pan">pan [p]</option> \
-    <option value="zoom">zoom [z]</option> \
-    <option value="rotate">rotate [r]</option> \
-    <option value="angle">angle</option> \
-    <option value="cobbangle">cobb angle</option> \
-    <option value="eraser">eraser</option> \
-    <option value="scroll" hidden="" disabled="">scroll (1/1)</option> \
-    <option value="window">window ()</option> \
-    <option value="abdomen" hidden="" disabled="">window = abdomen [a]</option> \
-    <option value="pulmonary" hidden="" disabled="">window = pulmonary [u]</option> \
-    <option value="brain" hidden="" disabled="">window = brain [b]</option> \
-    <option value="bone" hidden="" disabled="">window = bone [o]</option> \
-    <option value="reset">reset [e]</option> \
-    <option value="close">close [c]</option> \
-    <option disabled="true" value="notes">[modality = CR][size = 9.8]</option> \
-    </select>'
-  );
-
-  $(".control-overlay")
+  $(".dicom-select-control")
     .get(0)
     .addEventListener("change", function () {
       changeControlSelection();
@@ -117,7 +104,7 @@ function onImageRendered(e) {
   const eventData = e.detail;
 
   // Update ww/wl
-  const sel = $(".control-overlay").get(0);
+  const sel = $(".dicom-select-control").get(0);
   sel.options[find_option(sel, "window")].firstChild.textContent =
     "window (" +
     Math.round(eventData.viewport.voi.windowCenter) +
@@ -176,7 +163,7 @@ export function disableFullscreen(dicom_element) {
   $(".canvas-panel-fullscreen").toggleClass(
     "canvas-panel canvas-panel-fullscreen"
   );
-  $(".question").append($(".canvas-panel"));
+  $(".question").prepend($(".canvas-panel"));
   $(".canvas-panel").get(0).scrollIntoView();
 
   setDicomCanvasNonFullscreen(dicom_element);
@@ -284,7 +271,7 @@ export function debugCornerstone() {
  */
 export function changeControlSelection() {
   // We also duplicate the sel that are available
-  const sel = $(".control-overlay").get(0);
+  const sel = $(".dicom-select-control").get(0);
 
   const old = sel.oldSelectedIndex;
   sel.oldSelectedIndex = sel.selectedIndex;
@@ -309,6 +296,25 @@ export function changeControlSelection() {
       });
       break;
     }
+    case "measure": {
+      cornerstoneTools.setToolActiveForElement(dicom_element, "Length", {
+        mouseButtonMask: 1,
+      });
+      break;
+    }
+    case "rectangle": {
+      cornerstoneTools.setToolActiveForElement(dicom_element, "RectangleRoi", {
+        mouseButtonMask: 1,
+      });
+      break;
+    }
+    case "ellipse": {
+      cornerstoneTools.setToolActiveForElement(dicom_element, "EllipseRoi", {
+        mouseButtonMask: 1,
+      });
+      break;
+    }
+
     case "angle": {
       cornerstoneTools.setToolActiveForElement(dicom_element, "Angle", {
         mouseButtonMask: 1,
@@ -384,18 +390,7 @@ export function changeControlSelection() {
       break;
     }
     case "close": {
-      // disable fullscreen if required
-      if ($(".canvas-panel").length == 0) {
-        disableFullscreen(dicom_element);
-      }
-      if (dicom_element != undefined) {
-        // See https://github.com/cornerstonejs/cornerstoneTools/issues/1337
-        cornerstone.removeElementData(dicom_element);
-        cornerstone.disable(dicom_element);
-        $(".canvas-panel").remove();
-        $(".figure-open").removeClass("figure-open").addClass("figure");
-        $(dicom_element).remove();
-      }
+      closeViewer(dicom_element);
       break;
     }
   }
@@ -424,7 +419,7 @@ export function keydown_handler(event) {
   if (target_element == "INPUT" || target_element == "TEXTAREA") {
     return;
   }
-  const sel = $(".control-overlay").get(0);
+  const sel = $(".dicom-select-control").get(0);
   switch (event.code) {
     case "KeyP":
       sel.selectedIndex = find_option(sel, "pan");
@@ -660,7 +655,7 @@ export function openMainImage(current_question, t, source) {
       // No full size figure / dicom loaded yet
       if (figure_to_load == open_figure) {
         // Scroll to the image if it is already open
-        document.getElementById("dicom-image").scrollIntoView();
+        document.getElementById("viewer-title-bar").scrollIntoView();
         return;
       } else {
         let el;
@@ -678,8 +673,33 @@ export function openMainImage(current_question, t, source) {
 
     source.className = "figure-open";
 
-    $(".question").append(
-      '<div class= "canvas-panel"><div id="dicom-image" data-figure="' +
+    $(".question").prepend(
+      `<div class= "canvas-panel">
+        <div id="viewer-title-bar">
+        <div><div>Sample Title [REPLACE]</div></div>
+        <select title="SELECT CLICK ACTION" class="dicom-select-control title-bar-button">
+        <option value="pan">pan [p]</option>
+        <option value="zoom">zoom [z]</option>
+        <option value="rotate">rotate [r]</option>
+        <option value="window">window (128 ± 127.5) [w]</option>
+        <option value="measure">measure [m]</option>
+        <option value="ellipse">ellipse [l]</option>
+        <option value="rectangle">rectangle [c]</option>
+        <option value="reset">reset [e]</option>
+        <option value="notes" disabled="true">[modality = SC]</option>
+      </select>
+      <button class="title-bar-button" title="RESET VIEW" class="reset"><span class="viewer-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-counterclockwise" viewBox="0 0 16 16">
+  <path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2z"/>
+  <path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466"/>
+</svg></span></button>
+<button class="title-bar-button" title="TOGGLE FULLSCREEN" class="expand"><span class="viewer-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-fullscreen" viewBox="0 0 16 16">
+  <path d="M1.5 1a.5.5 0 0 0-.5.5v4a.5.5 0 0 1-1 0v-4A1.5 1.5 0 0 1 1.5 0h4a.5.5 0 0 1 0 1zM10 .5a.5.5 0 0 1 .5-.5h4A1.5 1.5 0 0 1 16 1.5v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 1-.5-.5M.5 10a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 1 0 1h-4A1.5 1.5 0 0 1 0 14.5v-4a.5.5 0 0 1 .5-.5m15 0a.5.5 0 0 1 .5.5v4a1.5 1.5 0 0 1-1.5 1.5h-4a.5.5 0 0 1 0-1h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 1 .5-.5"/>
+</svg></span></button>
+<button id="close-viewer-button" class="title-bar-button" title="CLOSE VIEWER"><span class="viewer-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16">
+  <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z"/>
+</svg></span></button></div>
+      
+      <div id="dicom-image" data-figure="` +
         figure_to_load +
         '"></div></div>'
     );
@@ -700,8 +720,29 @@ export function openMainImage(current_question, t, source) {
       }
     }
 
+    // Bind button actions
+    $("#close-viewer-button").click(function () {
+      const dicom_element = document.getElementById("dicom-image");
+      closeViewer(dicom_element);
+    });
+
     load(images, annotations);
   }
+}
+
+function closeViewer(dicom_element) {
+      // disable fullscreen if required
+      if ($(".canvas-panel").length == 0) {
+        disableFullscreen(dicom_element);
+      }
+      if (dicom_element != undefined) {
+        // See https://github.com/cornerstonejs/cornerstoneTools/issues/1337
+        cornerstone.removeElementData(dicom_element);
+        cornerstone.disable(dicom_element);
+        $(".canvas-panel").remove();
+        $(".figure-open").removeClass("figure-open").addClass("figure");
+        $(dicom_element).remove();
+      }
 }
 
 export function urltoFile(url, filename, mimeType) {

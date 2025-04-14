@@ -515,6 +515,15 @@ async function loadExamList(data) {
   });
 
   // Sort different lists
+  $(".packet-list.short div")
+    .sort(function(a, b) {
+      return a.dataset.eid > b.dataset.eid ?
+        1 :
+        a.dataset.eid < b.dataset.eid ?
+          -1 :
+          0;
+    })
+    .appendTo(".packet-list.short");
   $(".packet-list.rapid div")
     .sort(function(a, b) {
       return a.dataset.eid > b.dataset.eid ?
@@ -1040,6 +1049,8 @@ function setUpQuestions(load_previous) {
   if (!load_previous && exam_time == null) {
     if (question_type == "rapid") {
       exam_time = 35 * 60;
+    } else if (question_type == "short") {
+      exam_time = 120 * 60;
     } else if (question_type == "anatomy") {
       exam_time = 90 * 60;
     } else if (question_type == "long") {
@@ -1291,6 +1302,138 @@ async function loadQuestion(n, section = 1, force_reload = false) {
   ap.empty();
 
   switch (question_data.type) {
+    case "short": {
+      ap.append(
+        '<div class="answer-item"><div class="answer-label-outer"><p class="answer-label-inner"><span class="answer-label-number">' +
+        display_n +
+        '.1</span><span style="flex:1">Case normal/abnormal</span><button class="flag" data-qid="' +
+        n +
+        '" data-qidn=1 style="margin-right:0">⚐</button></p></div><select class="rapid-option-answer" id="rapid-option" data-answer-section-qidn=1><option selected="selected" disabled="disabled" id="rapid-option-not-answered">--- Not Answered ---</option><option>Abnormal</option><option>Normal</option></select></div>'
+      );
+      ap.append(
+        '<div class="answer-item" id="rapid-text" style="display: none;"><div class="answer-label-outer"><p class="answer-label-inner"><span class="answer-label-number">' +
+        display_n +
+        '.2</span><span style="flex:1">Reason</span><button class="flag" data-qid="' +
+        n +
+        '" data-qidn=2 style="margin-right:0">⚐</button></p></div><textarea class="long-answer" name="Reason" data-answer-section-qidn=2 style="overflow: hidden scroll; overflow-wrap: break-word;"></textarea></div>'
+      );
+      // Handle changing display of optional answer fields and saving of data
+      $("#rapid-option").change(function(evt) {
+        if (evt.target.value == "Abnormal") {
+          $("#rapid-text").css("display", "block");
+        } else {
+          $("#rapid-text").css("display", "none");
+        }
+
+        let answer = {
+          aid: aid,
+          cid: cid,
+          eid: eid,
+          qid: qid,
+          qidn: "1",
+          passcode: passcode,
+          ans: evt.target.value,
+        };
+
+        db.answers.put(answer);
+        console.debug("Save ", answer)
+        saveSession();
+        updateQuestionListPanel(answer);
+      });
+
+      // Save long answers on textchange
+      $(".long-answer").change(function(evt) {
+        // ignore blank text and delete any stored value
+        if (evt.target.value.length < 1) {
+          db.answers.delete([aid, cid, eid, qid, "2"]);
+          $(
+            "#question-list-item-" +
+            exam_details.question_order.indexOf(qid) +
+            "-2"
+          ).removeClass("question-saved-localdb");
+          return;
+        }
+
+        let answer = {
+          aid: aid,
+          cid: cid,
+          eid: eid,
+          qid: qid,
+          qidn: "2",
+          passcode: passcode,
+          ans: evt.target.value,
+        };
+        // db.answers.put({aid: [cid, eid, qidn], ans: evt.target.value});
+        console.debug("Save ", answer)
+        db.answers.put(answer);
+
+        $(
+          "#question-list-item-" +
+          exam_details.question_order.indexOf(qid) +
+          "-2"
+        ).addClass("question-saved-localdb");
+
+        saveSession();
+        updateQuestionListPanel(answer);
+      });
+
+      // We chain our db requests as we can only check answers once
+      // they have been loaded (should probably use then or after)
+
+      console.debug("Load rapid answers")
+      db.answers
+        .get({
+          aid: aid,
+          cid: cid,
+          eid: eid,
+          qid: qid,
+          passcode: passcode,
+          qidn: "1"
+        })
+        .then(function(answer) {
+          if (answer != undefined) {
+            $("#rapid-option option:contains(" + answer.ans + ")").prop(
+              "selected",
+              true
+            );
+            // For some reason a change event is not fired...
+            if (answer.ans == "Abnormal") {
+              $("#rapid-text").css("display", "block");
+            }
+            $("#rapid-option-not-answered").remove();
+          }
+        })
+        .catch(function(error) {
+          console.debug("DB", cid, eid, qid);
+          console.debug("error-", error);
+        })
+      //.then(function() {
+      db.answers
+        .get({
+          aid: aid,
+          cid: cid,
+          eid: eid,
+          qid: qid,
+          qidn: "2",
+          passcode: passcode,
+        })
+        .then(function(answer) {
+          if (answer != undefined) {
+            $(".long-answer").text(answer.ans);
+          }
+          markAnswer(qid, question_data, n);
+        })
+        .catch(function(error) {
+          console.debug("error-", error);
+        })
+      //});
+
+      addFlagEvents();
+      loadFlagsFromDb(qid, "1");
+      loadFlagsFromDb(qid, "2");
+
+      break;
+    }
     case "rapid": {
       ap.append(
         '<div class="answer-item"><div class="answer-label-outer"><p class="answer-label-inner"><span class="answer-label-number">' +
@@ -1646,7 +1789,7 @@ function updateQuestionListPanel(answer) {
     answer.qidn
   ).addClass("question-saved-localdb");
 
-  if (question_type == "rapid" && answer.qidn == "1") {
+  if ((question_type == "rapid" || question_type == "short") && answer.qidn == "1") {
     if (answer.ans == "Abnormal") {
       $(
         "#question-list-item-" +
@@ -1790,6 +1933,12 @@ function createQuestionListPanel() {
   }
 
   if (question_type == "rapid") {
+    // Loop through all questions and append list items
+    for (let n = 1; n < exam_details.number_of_questions + 1; n++) {
+      appendQuestionListItem(n, "1");
+      appendQuestionListItem(n, "2").hide();
+    }
+  } else if (question_type == "short") {
     // Loop through all questions and append list items
     for (let n = 1; n < exam_details.number_of_questions + 1; n++) {
       appendQuestionListItem(n, "1");
@@ -2194,6 +2343,69 @@ function reviewQuestions() {
                   }
                 }
               }
+            } else if (question_type == "short") {
+              // First check normal vs abnormal
+              if (question["normal"] == true) {
+                if (section_1_answer == "Normal") {
+                  setReviewAnswer(
+                    el,
+                    "correct",
+                    section_1_answer,
+                    true,
+                    question_answers
+                  );
+                  correct_count++;
+                  questions_correct[qid] = true;
+                } else {
+                  if (section_1_answer != "Not Answered") {
+                    overcall_number++;
+                  }
+                  setReviewAnswer(
+                    el,
+                    "incorrect",
+                    section_1_answer,
+                    true,
+                    question_answers
+                  );
+                  questions_correct[qid] = false;
+                }
+              } else {
+                if (answerInArray(question_answers, section_2_answer)) {
+                  correct_count++;
+                  setReviewAnswer(
+                    el,
+                    "correct",
+                    section_2_answer,
+                    false,
+                    question_answers
+                  );
+                  questions_correct[qid] = true;
+                } else {
+                  setReviewAnswer(
+                    el,
+                    "incorrect",
+                    section_2_answer,
+                    false,
+                    question_answers
+                  );
+                  questions_correct[qid] = false;
+
+                  if (section_1_answer == "Not Answered") {} else if (section_1_answer == "Normal") {
+                    undercall_number++;
+                  } else {
+                    // Incorrect calls could be correct if
+                    // the answer is not in the database
+                    incorrectcall_number++;
+
+                    el.append(
+                      "<span class='mark-correct'>[Mark correct]</span>"
+                    ).click(() => {
+                      markCorrect(qid, section_2_answer, question_type);
+                      reviewQuestions();
+                    });
+                  }
+                }
+              }
             } else if (question_type == "anatomy") {
               // Anatomy answers are either correct or incorrect
               if (answerInArray(question_answers, section_1_answer)) {
@@ -2278,7 +2490,7 @@ function markAnswer(qid, current_question, n) {
     $(".long-answer").attr("readonly", "true");
     $(".long-answer").addClass("long-answer-marked");
 
-    if (type == "rapid") {
+    if (type == "rapid" || type == "short") {
       option = document.getElementById("rapid-option");
       // If the current question is normal
       if (current_question.normal == true) {

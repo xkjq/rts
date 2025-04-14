@@ -497,6 +497,20 @@ td {
     box-shadow: 0 0 0 3px #4527A0;
 }
 
+/* .short-option-answer {
+    width: 100%;
+    display: block;
+    border: 1px solid #4527A0;
+    margin: 0.8rem 1.6rem 1.6rem 1.6rem;
+    overflow: hidden;
+    resize: none;
+    padding: 0.4rem;
+}
+
+.short-option-answer:focus {
+    box-shadow: 0 0 0 3px #4527A0;
+} */
+
 img {
     display: block;
     padding: 0;
@@ -1124,4 +1138,33 @@ h2:has(+ #exam-list:empty),  h2:has(+ #packet-list:empty){
 #exam-list:empty::after,  #packet-list:empty::after{
     content: "None available.";
     opacity: 30%;
+}
+
+#viewer-title-bar {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.8rem 1.6rem;
+    background-color: gray;
+    color: white;
+}
+
+.title-bar-button {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    border: none;
+    margin: 0 0 0 2px;
+    background-color: gray;
+    color: white;
+    border-left: 1px solid white;
+}
+
+.viewer-icon {
+    margin: auto;
+}
+
+.title-bar-button:hover {
+    background-color: darkgray;
 }
