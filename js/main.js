@@ -1304,25 +1304,42 @@ async function loadQuestion(n, section = 1, force_reload = false) {
   switch (question_data.type) {
     case "short": {
       ap.append(
-        '<div class="answer-item"><div class="answer-label-outer"><p class="answer-label-inner"><span class="answer-label-number">' +
-        display_n +
-        '.1</span><span style="flex:1">Case normal/abnormal</span><button class="flag" data-qid="' +
-        n +
-        '" data-qidn=1 style="margin-right:0">⚐</button></p></div><select class="rapid-option-answer" id="rapid-option" data-answer-section-qidn=1><option selected="selected" disabled="disabled" id="rapid-option-not-answered">--- Not Answered ---</option><option>Abnormal</option><option>Normal</option></select></div>'
+        `<div>
+          <div style="display: flex; align-items: center;">
+        <p style="flex:1; margin:0;">Please provide a short report for this patient and include your recommended next step for onward management</p>
+        <button class="flag" data-qid="${n}" data-qidn="1" style="margin-left:auto;">⚐</button>
+          </div>
+          <div style="display: flex; align-items: flex-start;">
+        <textarea class="long-answer" name="Reason" data-answer-section-qidn="1" style="overflow-wrap: break-word; resize: vertical; min-height: 160px; flex:1;"></textarea>
+          </div>
+          <div class="word-count" style="font-size: 0.9em; color: #666; margin-left: auto; text-align: right;"><span id="word-count-${n}">0</span> words</div>
+        </div>`
       );
-      ap.append(
-        '<div class="answer-item" id="rapid-text" style="display: none;"><div class="answer-label-outer"><p class="answer-label-inner"><span class="answer-label-number">' +
-        display_n +
-        '.2</span><span style="flex:1">Reason</span><button class="flag" data-qid="' +
-        n +
-        '" data-qidn=2 style="margin-right:0">⚐</button></p></div><textarea class="long-answer" name="Reason" data-answer-section-qidn=2 style="overflow: hidden scroll; overflow-wrap: break-word;"></textarea></div>'
-      );
-      // Handle changing display of optional answer fields and saving of data
-      $("#rapid-option").change(function(evt) {
-        if (evt.target.value == "Abnormal") {
-          $("#rapid-text").css("display", "block");
-        } else {
-          $("#rapid-text").css("display", "none");
+
+      // Update word count on input
+      $(".long-answer").on("input", function() {
+        this.style.height = "auto";
+        this.style.height = (this.scrollHeight) + "px";
+        const wordCount = this.value.trim().length > 0 ? this.value.trim().split(/\s+/).length : 0;
+        $(this).siblings(".word-count").find("span").text(wordCount);
+      });
+
+      // Auto-expand textarea as user types
+      $(".long-answer").on("input", function() {
+        this.style.height = "auto";
+        this.style.height = (this.scrollHeight) + "px";
+      });
+
+      $(".long-answer").change(function(evt) {
+        // ignore blank text and delete any stored value
+        if (evt.target.value.length < 1) {
+          db.answers.delete([aid, cid, eid, qid, "1"]);
+          $(
+            "#question-list-item-" +
+            exam_details.question_order.indexOf(qid) +
+            "-1"
+          ).removeClass("question-saved-localdb");
+          return;
         }
 
         let answer = {
@@ -1334,103 +1351,42 @@ async function loadQuestion(n, section = 1, force_reload = false) {
           passcode: passcode,
           ans: evt.target.value,
         };
-
-        db.answers.put(answer);
-        console.debug("Save ", answer)
-        saveSession();
-        updateQuestionListPanel(answer);
-      });
-
-      // Save long answers on textchange
-      $(".long-answer").change(function(evt) {
-        // ignore blank text and delete any stored value
-        if (evt.target.value.length < 1) {
-          db.answers.delete([aid, cid, eid, qid, "2"]);
-          $(
-            "#question-list-item-" +
-            exam_details.question_order.indexOf(qid) +
-            "-2"
-          ).removeClass("question-saved-localdb");
-          return;
-        }
-
-        let answer = {
-          aid: aid,
-          cid: cid,
-          eid: eid,
-          qid: qid,
-          qidn: "2",
-          passcode: passcode,
-          ans: evt.target.value,
-        };
-        // db.answers.put({aid: [cid, eid, qidn], ans: evt.target.value});
-        console.debug("Save ", answer)
         db.answers.put(answer);
 
         $(
           "#question-list-item-" +
           exam_details.question_order.indexOf(qid) +
-          "-2"
+          "-1"
         ).addClass("question-saved-localdb");
-
         saveSession();
         updateQuestionListPanel(answer);
       });
 
-      // We chain our db requests as we can only check answers once
-      // they have been loaded (should probably use then or after)
-
-      console.debug("Load rapid answers")
       db.answers
         .get({
           aid: aid,
           cid: cid,
           eid: eid,
           qid: qid,
-          passcode: passcode,
           qidn: "1"
         })
         .then(function(answer) {
           if (answer != undefined) {
-            $("#rapid-option option:contains(" + answer.ans + ")").prop(
-              "selected",
-              true
-            );
-            // For some reason a change event is not fired...
-            if (answer.ans == "Abnormal") {
-              $("#rapid-text").css("display", "block");
-            }
-            $("#rapid-option-not-answered").remove();
-          }
-        })
-        .catch(function(error) {
-          console.debug("DB", cid, eid, qid);
-          console.debug("error-", error);
-        })
-      //.then(function() {
-      db.answers
-        .get({
-          aid: aid,
-          cid: cid,
-          eid: eid,
-          qid: qid,
-          qidn: "2",
-          passcode: passcode,
-        })
-        .then(function(answer) {
-          if (answer != undefined) {
-            $(".long-answer").text(answer.ans);
+            document.querySelector(".long-answer").value = answer.ans;
+            // Auto-expand textarea to fit content
+            //$(".long-answer").each(function() {
+            //  this.style.height = "auto";
+            //  this.style.height = (this.scrollHeight) + "px";
+            //});
           }
           markAnswer(qid, question_data, n);
         })
         .catch(function(error) {
-          console.debug("error-", error);
-        })
-      //});
+          console.debug(error);
+        });
 
       addFlagEvents();
       loadFlagsFromDb(qid, "1");
-      loadFlagsFromDb(qid, "2");
 
       break;
     }
@@ -1942,7 +1898,6 @@ function createQuestionListPanel() {
     // Loop through all questions and append list items
     for (let n = 1; n < exam_details.number_of_questions + 1; n++) {
       appendQuestionListItem(n, "1");
-      appendQuestionListItem(n, "2").hide();
     }
   } else if (question_type == "anatomy") {
     for (let n = 1; n < exam_details.number_of_questions + 1; n++) {
@@ -2344,67 +2299,25 @@ function reviewQuestions() {
                 }
               }
             } else if (question_type == "short") {
-              // First check normal vs abnormal
-              if (question["normal"] == true) {
-                if (section_1_answer == "Normal") {
-                  setReviewAnswer(
-                    el,
-                    "correct",
-                    section_1_answer,
-                    true,
-                    question_answers
-                  );
-                  correct_count++;
-                  questions_correct[qid] = true;
-                } else {
-                  if (section_1_answer != "Not Answered") {
-                    overcall_number++;
-                  }
-                  setReviewAnswer(
-                    el,
-                    "incorrect",
-                    section_1_answer,
-                    true,
-                    question_answers
-                  );
-                  questions_correct[qid] = false;
-                }
+              // Short answers are either correct or incorrect
+              // TOOD: this just dups the anatomy marking
+              if (answerInArray(question_answers, section_1_answer)) {
+                correct_count++;
+                setAnatomyReviewAnswer(
+                  el,
+                  "correct",
+                  section_1_answer,
+                  question_answers
+                );
+                questions_correct[qid] = true;
               } else {
-                if (answerInArray(question_answers, section_2_answer)) {
-                  correct_count++;
-                  setReviewAnswer(
-                    el,
-                    "correct",
-                    section_2_answer,
-                    false,
-                    question_answers
-                  );
-                  questions_correct[qid] = true;
-                } else {
-                  setReviewAnswer(
-                    el,
-                    "incorrect",
-                    section_2_answer,
-                    false,
-                    question_answers
-                  );
-                  questions_correct[qid] = false;
-
-                  if (section_1_answer == "Not Answered") {} else if (section_1_answer == "Normal") {
-                    undercall_number++;
-                  } else {
-                    // Incorrect calls could be correct if
-                    // the answer is not in the database
-                    incorrectcall_number++;
-
-                    el.append(
-                      "<span class='mark-correct'>[Mark correct]</span>"
-                    ).click(() => {
-                      markCorrect(qid, section_2_answer, question_type);
-                      reviewQuestions();
-                    });
-                  }
-                }
+                setAnatomyReviewAnswer(
+                  el,
+                  "incorrect",
+                  section_1_answer,
+                  question_answers
+                );
+                questions_correct[qid] = false;
               }
             } else if (question_type == "anatomy") {
               // Anatomy answers are either correct or incorrect
@@ -2490,7 +2403,7 @@ function markAnswer(qid, current_question, n) {
     $(".long-answer").attr("readonly", "true");
     $(".long-answer").addClass("long-answer-marked");
 
-    if (type == "rapid" || type == "short") {
+    if (type == "rapid") {
       option = document.getElementById("rapid-option");
       // If the current question is normal
       if (current_question.normal == true) {

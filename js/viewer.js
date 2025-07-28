@@ -680,38 +680,43 @@ export function openMainImage(current_question, t, source) {
 
     source.className = "figure-open";
 
+    console.log(current_question, figure_to_load, source);
+    let image_title = source.getElementsByClassName("figcaption")[0].textContent;
+
     $(".question").prepend(
-      `<div class= "canvas-panel">
-        <div id="viewer-title-bar">
-        <div><div>Sample Title [REPLACE]</div></div>
-        <select title="SELECT CLICK ACTION" class="dicom-select-control title-bar-button">
-        <option value="pan">pan [p]</option>
-        <option value="zoom">zoom [z]</option>
-        <option value="rotate">rotate [r]</option>
-        <option value="window">window (128 ± 127.5) [w]</option>
-        <option value="measure">measure [m]</option>
-        <option value="ellipse">ellipse [l]</option>
-        <option value="rectangle">rectangle [c]</option>
-        <option value="reset">reset [e]</option>
-        <option value="notes" disabled="true">[modality = SC]</option>
+      `<div class="canvas-panel">
+      <div id="viewer-title-bar">
+      <div style="flex: 1 1 auto;">
+        <div id="viewer-title" style="color: white;">${image_title}</div>
+      </div>
+      <select title="SELECT CLICK ACTION" class="dicom-select-control title-bar-button" style="margin-right: 8px;">
+      <option value="pan">pan [p]</option>
+      <option value="zoom">zoom [z]</option>
+      <option value="rotate">rotate [r]</option>
+      <option value="window">window (128 ± 127.5) [w]</option>
+      <option value="measure">measure [m]</option>
+      <option value="ellipse">ellipse [l]</option>
+      <option value="rectangle">rectangle [c]</option>
+      <option value="reset">reset [e]</option>
+      <option value="notes" disabled="true">[modality = SC]</option>
       </select>
-  <button id="reset-viewer-button" class="title-bar-button" title="RESET VIEW" class="reset"><span class="viewer-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-counterclockwise" viewBox="0 0 16 16">
-  <path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2z"/>
-  <path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466"/>
-</svg></span></button>
-<button id="fullscreen-viewer-button" class="title-bar-button" title="TOGGLE FULLSCREEN" class="expand"><span class="viewer-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-fullscreen" viewBox="0 0 16 16">
-  <path d="M1.5 1a.5.5 0 0 0-.5.5v4a.5.5 0 0 1-1 0v-4A1.5 1.5 0 0 1 1.5 0h4a.5.5 0 0 1 0 1zM10 .5a.5.5 0 0 1 .5-.5h4A1.5 1.5 0 0 1 16 1.5v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 1-.5-.5M.5 10a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 1 0 1h-4A1.5 1.5 0 0 1 0 14.5v-4a.5.5 0 0 1 .5-.5m15 0a.5.5 0 0 1 .5.5v4a1.5 1.5 0 0 1-1.5 1.5h-4a.5.5 0 0 1 0-1h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 1 .5-.5"/>
-</svg></span></button>
-<button style="display:none;" id="disable-fullscreen-viewer-button" class="title-bar-button" title="TOGGLE FULLSCREEN" class="expand"><span class="viewer-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-fullscreen-exit" viewBox="0 0 16 16">
-  <path d="M5.5 0a.5.5 0 0 1 .5.5v4A1.5 1.5 0 0 1 4.5 6h-4a.5.5 0 0 1 0-1h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 1 .5-.5m5 0a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 1 0 1h-4A1.5 1.5 0 0 1 10 4.5v-4a.5.5 0 0 1 .5-.5M0 10.5a.5.5 0 0 1 .5-.5h4A1.5 1.5 0 0 1 6 11.5v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 1-.5-.5m10 1a1.5 1.5 0 0 1 1.5-1.5h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 0-.5.5v4a.5.5 0 0 1-1 0z"/>
-</svg></span></button>
-<button id="close-viewer-button" class="title-bar-button" title="CLOSE VIEWER"><span class="viewer-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16">
-  <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z"/>
-</svg></span></button></div>
-      
+      <button id="reset-viewer-button" class="title-bar-button" title="RESET VIEW" class="reset" style="margin-right: 8px;"><span class="viewer-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-counterclockwise" viewBox="0 0 16 16">
+      <path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2z"/>
+      <path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466"/>
+      </svg></span></button>
+      <button id="fullscreen-viewer-button" class="title-bar-button" title="TOGGLE FULLSCREEN" class="expand" style="margin-right: 8px;"><span class="viewer-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-fullscreen" viewBox="0 0 16 16">
+      <path d="M1.5 1a.5.5 0 0 0-.5.5v4a.5.5 0 0 1-1 0v-4A1.5 1.5 0 0 1 1.5 0h4a.5.5 0 0 1 0 1zM10 .5a.5.5 0 0 1 .5-.5h4A1.5 1.5 0 0 1 16 1.5v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 1-.5-.5M.5 10a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 1 0 1h-4A1.5 1.5 0 0 1 0 14.5v-4a.5.5 0 0 1 .5-.5m15 0a.5.5 0 0 1 .5.5v4a1.5 1.5 0 0 1-1.5 1.5h-4a.5.5 0 0 1 0-1h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 1 .5-.5"/>
+      </svg></span></button>
+      <button style="display:none; margin-right: 8px;" id="disable-fullscreen-viewer-button" class="title-bar-button" title="TOGGLE FULLSCREEN" class="expand"><span class="viewer-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-fullscreen-exit" viewBox="0 0 16 16">
+      <path d="M5.5 0a.5.5 0 0 1 .5.5v4A1.5 1.5 0 0 1 4.5 6h-4a.5.5 0 0 1 0-1h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 1 .5-.5m5 0a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 1 0 1h-4A1.5 1.5 0 0 1 10 4.5v-4a.5.5 0 0 1 .5-.5M0 10.5a.5.5 0 0 1 .5-.5h4A1.5 1.5 0 0 1 6 11.5v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 1-.5-.5m10 1a1.5 1.5 0 0 1 1.5-1.5h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 0-.5.5v4a.5.5 0 0 1-1 0z"/>
+      </svg></span></button>
+      <button id="close-viewer-button" class="title-bar-button" title="CLOSE VIEWER"><span class="viewer-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16">
+      <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z"/>
+      </svg></span></button>
+      </div>
       <div id="dicom-image" data-figure="` +
-        figure_to_load +
-        '"></div></div>'
+      figure_to_load +
+      '"></div></div>'
     );
 
     let images = current_question.images[figure_to_load.split("-")[1]];
