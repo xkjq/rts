@@ -69,7 +69,7 @@ export function loadMainImage(image, stack) {
   //element.scrollIntoView(false);
   //element.scrollTo(0);
 
-  $(element).dblclick(function () {
+  $(element).dblclick(function() {
     if ($(".canvas-panel").length == 0) {
       // already fullscreen (disable it)
       disableFullscreen(this);
@@ -82,7 +82,7 @@ export function loadMainImage(image, stack) {
 
   $(".dicom-select-control")
     .get(0)
-    .addEventListener("change", function () {
+    .addEventListener("change", function() {
       changeControlSelection();
     });
 
@@ -114,10 +114,10 @@ function onImageRendered(e) {
     $("option[value=scroll").prop("hidden", false);
     $("option[value=scroll").text(
       "scroll (" +
-        (stack.currentImageIdIndex + 1) +
-        "/" +
-        stack.imageIds.length +
-        ")"
+      (stack.currentImageIdIndex + 1) +
+      "/" +
+      stack.imageIds.length +
+      ")"
     );
 
     // Temp way to enable CT window presets
@@ -566,6 +566,62 @@ export function keydown_handler(event) {
   event.preventDefault();
 }
 
+function loadAnnotation(imageId, annotation) {
+  const toolStateManager =
+    cornerstoneTools.globalImageIdSpecificToolStateManager;
+
+  if (annotation == undefined || annotation.length < 1) {
+    return;
+  }
+
+  let tool_state_no_id = JSON.parse(annotation);
+
+  let tool_state = {};
+  tool_state[imageId] = tool_state_no_id;
+
+  toolStateManager.restoreToolState(tool_state);
+}
+async function load(images, annotations) {
+  // Parallelize image preparation and annotation loading
+  const imageTasks = images.map(async (data_url, i) => {
+    const annotation = annotations[i];
+    let imageId;
+    if (data_url.startsWith("data:image")) {
+      imageId = "base64://" + data_url.split(",")[1];
+    } else if (data_url.startsWith("data:")) {
+      const dfile = await urltoFile(data_url, "dicom", "application/dicom");
+      imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(dfile);
+    } else {
+      let url = data_url;
+      if (url.endsWith("dcm")) {
+        url = "wadouri:" + url;
+      }
+      if (/(?:\/|^)[^.\/]+$/.test(url)) {
+        url = "wadouri:" + url;
+      }
+      imageId = url;
+    }
+    return {imageId, annotation};
+  });
+
+  // Wait for all image tasks to complete
+  const imageResults = await Promise.all(imageTasks);
+  const imageIds = imageResults.map(r => r.imageId);
+
+  // Display the first image as soon as possible
+  cornerstone.loadAndCacheImage(imageIds[0]).then(function(image) {
+    const stack = {
+      currentImageIdIndex: 0,
+      imageIds,
+    };
+    loadMainImage(image, stack);
+    // Restore annotations for all images after display
+    imageResults.forEach(({imageId, annotation}) => {
+      loadAnnotation(imageId, annotation);
+    });
+  });
+}
+
 /**
  * View cornstone image
  * @param {*} t
@@ -576,82 +632,7 @@ export function openMainImage(current_question, t, source) {
    * Load image
    * @param {*} images - list of images
    */
-  function loadAnnotation(imageId, annotation) {
-    const toolStateManager =
-      cornerstoneTools.globalImageIdSpecificToolStateManager;
 
-    if (annotation == undefined || annotation.length < 1) {
-      return;
-    }
-
-    let tool_state_no_id = JSON.parse(annotation);
-
-    let tool_state = {};
-    tool_state[imageId] = tool_state_no_id;
-
-    toolStateManager.restoreToolState(tool_state);
-  }
-  async function load(images, annotations) {
-    //console.debug("Load function", images)
-    const imageIds = [];
-    for (let i = 0; i < images.length; i++) {
-      const data_url = images[i];
-      const annotation = annotations[i];
-
-      // check stack type
-      if (data_url.startsWith("data:image")) {
-        const imageId = "base64://" + data_url.split(",")[1];
-
-        loadAnnotation(imageId, annotation);
-
-        imageIds.push(imageId);
-        //} else if (data_url.startsWith("data:application/dicom")) {
-      } else if (data_url.startsWith("data:")) {
-        // stack = stack.split(";")[1];
-
-        const dfile = await urltoFile(data_url, "dicom", "application/dicom");
-
-        const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(
-          dfile
-        );
-
-        loadAnnotation(imageId, annotation);
-
-        imageIds.push(imageId);
-        // cornerstone.loadImage(imageId).then(function(image) {
-        //    tempFunction(image);
-        // });
-      } else {
-        let url = data_url;
-        //if (data_url.startsWith("http")) {
-        //  url = data_url;
-        //} else {
-        //  url = window.location.href.replace(/\/\#\/?$/, "") + "/" + data_url;
-        //}
-
-        if (url.endsWith("dcm")) {
-          url = "wadouri:" + url;
-        }
-
-        // if there is no extension treat it as a dicom
-        if (/(?:\/|^)[^.\/]+$/.test(url)) {
-          url = "wadouri:" + url;
-        }
-        //console.debug(url)
-
-        loadAnnotation(url, annotation);
-
-        imageIds.push(url);
-      }
-    }
-    const stack = {
-      currentImageIdIndex: 0,
-      imageIds,
-    };
-    cornerstone.loadAndCacheImage(imageIds[0]).then(function (image) {
-      loadMainImage(image, stack);
-    });
-  }
 
   if (current_question) {
     // Check if the figure is already loaded (or if another one is)
@@ -680,44 +661,91 @@ export function openMainImage(current_question, t, source) {
 
     source.className = "figure-open";
 
-    console.log(current_question, figure_to_load, source);
     let image_title = source.getElementsByClassName("figcaption")[0].textContent;
 
-    $(".question").prepend(
-      `<div class="canvas-panel">
-      <div id="viewer-title-bar">
-      <div style="flex: 1 1 auto;">
-        <div id="viewer-title" style="color: white;">${image_title}</div>
-      </div>
-      <select title="SELECT CLICK ACTION" class="dicom-select-control title-bar-button" style="margin-right: 8px;">
-      <option value="pan">pan [p]</option>
-      <option value="zoom">zoom [z]</option>
-      <option value="rotate">rotate [r]</option>
-      <option value="window">window (128 ± 127.5) [w]</option>
-      <option value="measure">measure [m]</option>
-      <option value="ellipse">ellipse [l]</option>
-      <option value="rectangle">rectangle [c]</option>
-      <option value="reset">reset [e]</option>
-      <option value="notes" disabled="true">[modality = SC]</option>
-      </select>
-      <button id="reset-viewer-button" class="title-bar-button" title="RESET VIEW" class="reset" style="margin-right: 8px;"><span class="viewer-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-counterclockwise" viewBox="0 0 16 16">
-      <path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2z"/>
-      <path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466"/>
-      </svg></span></button>
-      <button id="fullscreen-viewer-button" class="title-bar-button" title="TOGGLE FULLSCREEN" class="expand" style="margin-right: 8px;"><span class="viewer-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-fullscreen" viewBox="0 0 16 16">
-      <path d="M1.5 1a.5.5 0 0 0-.5.5v4a.5.5 0 0 1-1 0v-4A1.5 1.5 0 0 1 1.5 0h4a.5.5 0 0 1 0 1zM10 .5a.5.5 0 0 1 .5-.5h4A1.5 1.5 0 0 1 16 1.5v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 1-.5-.5M.5 10a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 1 0 1h-4A1.5 1.5 0 0 1 0 14.5v-4a.5.5 0 0 1 .5-.5m15 0a.5.5 0 0 1 .5.5v4a1.5 1.5 0 0 1-1.5 1.5h-4a.5.5 0 0 1 0-1h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 1 .5-.5"/>
-      </svg></span></button>
-      <button style="display:none; margin-right: 8px;" id="disable-fullscreen-viewer-button" class="title-bar-button" title="TOGGLE FULLSCREEN" class="expand"><span class="viewer-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-fullscreen-exit" viewBox="0 0 16 16">
-      <path d="M5.5 0a.5.5 0 0 1 .5.5v4A1.5 1.5 0 0 1 4.5 6h-4a.5.5 0 0 1 0-1h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 1 .5-.5m5 0a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 1 0 1h-4A1.5 1.5 0 0 1 10 4.5v-4a.5.5 0 0 1 .5-.5M0 10.5a.5.5 0 0 1 .5-.5h4A1.5 1.5 0 0 1 6 11.5v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 1-.5-.5m10 1a1.5 1.5 0 0 1 1.5-1.5h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 0-.5.5v4a.5.5 0 0 1-1 0z"/>
-      </svg></span></button>
-      <button id="close-viewer-button" class="title-bar-button" title="CLOSE VIEWER"><span class="viewer-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16">
-      <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z"/>
-      </svg></span></button>
-      </div>
-      <div id="dicom-image" data-figure="` +
-      figure_to_load +
-      '"></div></div>'
-    );
+    // Native DOM creation for performance
+    const questionElem = document.querySelector('.question');
+    const canvasPanel = document.createElement('div');
+    canvasPanel.className = 'canvas-panel';
+
+    const viewerTitleBar = document.createElement('div');
+    viewerTitleBar.id = 'viewer-title-bar';
+
+    const flexDiv = document.createElement('div');
+    flexDiv.style.flex = '1 1 auto';
+
+    const viewerTitle = document.createElement('div');
+    viewerTitle.id = 'viewer-title';
+    viewerTitle.style.color = 'white';
+    viewerTitle.textContent = image_title;
+    flexDiv.appendChild(viewerTitle);
+    viewerTitleBar.appendChild(flexDiv);
+
+    // Select control
+    const select = document.createElement('select');
+    select.title = 'SELECT CLICK ACTION';
+    select.className = 'dicom-select-control title-bar-button';
+    select.style.marginRight = '8px';
+    const options = [
+      { value: 'pan', text: 'pan [p]' },
+      { value: 'zoom', text: 'zoom [z]' },
+      { value: 'rotate', text: 'rotate [r]' },
+      { value: 'window', text: 'window (128 ± 127.5) [w]' },
+      { value: 'measure', text: 'measure [m]' },
+      { value: 'ellipse', text: 'ellipse [l]' },
+      { value: 'rectangle', text: 'rectangle [c]' },
+      { value: 'reset', text: 'reset [e]' },
+      { value: 'notes', text: '[modality = SC]', disabled: true }
+    ];
+    options.forEach(opt => {
+      const o = document.createElement('option');
+      o.value = opt.value;
+      o.textContent = opt.text;
+      if (opt.disabled) o.disabled = true;
+      select.appendChild(o);
+    });
+    viewerTitleBar.appendChild(select);
+
+    // Buttons
+    function createButton(id, title, svg, style = '') {
+      const btn = document.createElement('button');
+      btn.id = id;
+      btn.className = 'title-bar-button';
+      btn.title = title;
+      btn.style.marginRight = '8px';
+      if (style) btn.style.display = style;
+      const span = document.createElement('span');
+      span.className = 'viewer-icon';
+      span.innerHTML = svg;
+      btn.appendChild(span);
+      return btn;
+    }
+    // SVGs
+    const svgReset = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-counterclockwise" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2z"/><path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466"/></svg>`;
+    const svgFullscreen = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-fullscreen" viewBox="0 0 16 16"><path d="M1.5 1a.5.5 0 0 0-.5.5v4a.5.5 0 0 1-1 0v-4A1.5 1.5 0 0 1 1.5 0h4a.5.5 0 0 1 0 1zM10 .5a.5.5 0 0 1 .5-.5h4A1.5 1.5 0 0 1 16 1.5v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 1-.5-.5M.5 10a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 1 0 1h-4A1.5 1.5 0 0 1 0 14.5v-4a.5.5 0 0 1 .5-.5m15 0a.5.5 0 0 1 .5.5v4a1.5 1.5 0 0 1-1.5 1.5h-4a.5.5 0 0 1 0-1h4a.5.5 0 0 0-.5-.5v-4a.5.5 0 0 1 .5-.5"/></svg>`;
+    const svgFullscreenExit = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-fullscreen-exit" viewBox="0 0 16 16"><path d="M5.5 0a.5.5 0 0 1 .5.5v4A1.5 1.5 0 0 1 4.5 6h-4a.5.5 0 0 1 0-1h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 1 .5-.5m5 0a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 1 0 1h-4A1.5 1.5 0 0 1 10 4.5v-4a.5.5 0 0 1 .5-.5M0 10.5a.5.5 0 0 1 .5-.5h4A1.5 1.5 0 0 1 6 11.5v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 1-.5-.5m10 1a1.5 1.5 0 0 1 1.5-1.5h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 0-.5.5v4a.5.5 0 0 1-1 0z"/></svg>`;
+    const svgClose = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z"/></svg>`;
+
+    const btnReset = createButton('reset-viewer-button', 'RESET VIEW', svgReset);
+    const btnFullscreen = createButton('fullscreen-viewer-button', 'TOGGLE FULLSCREEN', svgFullscreen);
+    const btnFullscreenExit = createButton('disable-fullscreen-viewer-button', 'TOGGLE FULLSCREEN', svgFullscreenExit, 'none');
+    const btnClose = createButton('close-viewer-button', 'CLOSE VIEWER', svgClose);
+
+    viewerTitleBar.appendChild(btnReset);
+    viewerTitleBar.appendChild(btnFullscreen);
+    viewerTitleBar.appendChild(btnFullscreenExit);
+    viewerTitleBar.appendChild(btnClose);
+
+    canvasPanel.appendChild(viewerTitleBar);
+
+    // DICOM image container
+    const dicomImageDiv = document.createElement('div');
+    dicomImageDiv.id = 'dicom-image';
+    dicomImageDiv.setAttribute('data-figure', figure_to_load);
+    canvasPanel.appendChild(dicomImageDiv);
+
+    // Prepend to question
+    questionElem.insertBefore(canvasPanel, questionElem.firstChild);
 
     let images = current_question.images[figure_to_load.split("-")[1]];
     // images = current_question.images
@@ -737,16 +765,16 @@ export function openMainImage(current_question, t, source) {
 
     const dicom_element = document.getElementById("dicom-image");
     // Bind button actions
-    $("#close-viewer-button").click(function () {
+    $("#close-viewer-button").click(function() {
       closeViewer(dicom_element);
     });
-    $("#reset-viewer-button").click(function () {
+    $("#reset-viewer-button").click(function() {
       resetViewer(dicom_element);
     });
-    $("#fullscreen-viewer-button").click(function () {
+    $("#fullscreen-viewer-button").click(function() {
       enableFullscreen(dicom_element);
     });
-    $("#disable-fullscreen-viewer-button").click(function () {
+    $("#disable-fullscreen-viewer-button").click(function() {
       disableFullscreen(dicom_element);
     });
 
@@ -755,39 +783,39 @@ export function openMainImage(current_question, t, source) {
 }
 
 function closeViewer(dicom_element) {
-      // disable fullscreen if required
-      if ($(".canvas-panel").length == 0) {
-        disableFullscreen(dicom_element);
-      }
-      if (dicom_element != undefined) {
-        // See https://github.com/cornerstonejs/cornerstoneTools/issues/1337
-        cornerstone.removeElementData(dicom_element);
-        cornerstone.disable(dicom_element);
-        $(".canvas-panel").remove();
-        $(".figure-open").removeClass("figure-open").addClass("figure");
-        $(dicom_element).remove();
-      }
+  // disable fullscreen if required
+  if ($(".canvas-panel").length == 0) {
+    disableFullscreen(dicom_element);
+  }
+  if (dicom_element != undefined) {
+    // See https://github.com/cornerstonejs/cornerstoneTools/issues/1337
+    cornerstone.removeElementData(dicom_element);
+    cornerstone.disable(dicom_element);
+    $(".canvas-panel").remove();
+    $(".figure-open").removeClass("figure-open").addClass("figure");
+    $(dicom_element).remove();
+  }
 }
 
 export function urltoFile(url, filename, mimeType) {
   return fetch(url)
-    .then(function (res) {
+    .then(function(res) {
       return res.arrayBuffer();
     })
-    .then(function (buf) {
-      return new File([buf], filename, { type: mimeType });
+    .then(function(buf) {
+      return new File([buf], filename, {type: mimeType});
     });
 }
 
 
 function enableFullscreen(dicom_element) {
-    $(".content-panel").prepend($(".canvas-panel"));
-    $(".canvas-panel").toggleClass("canvas-panel canvas-panel-fullscreen");
-    $("#dicom-image").attr("height", "100%");
-    $("#dicom-image").height("100%");
-    $("#disable-fullscreen-viewer-button").show();
-    $("#fullscreen-viewer-button").hide();
-    // $(".cornerstone-canvas").attr("height", "100%");
-    // $(".cornerstone-canvas").height("100%");
-    cornerstone.resize(dicom_element, true);
+  $(".content-panel").prepend($(".canvas-panel"));
+  $(".canvas-panel").toggleClass("canvas-panel canvas-panel-fullscreen");
+  $("#dicom-image").attr("height", "100%");
+  $("#dicom-image").height("100%");
+  $("#disable-fullscreen-viewer-button").show();
+  $("#fullscreen-viewer-button").hide();
+  // $(".cornerstone-canvas").attr("height", "100%");
+  // $(".cornerstone-canvas").height("100%");
+  cornerstone.resize(dicom_element, true);
 }
