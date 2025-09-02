@@ -707,7 +707,7 @@ export function openMainImage(current_question, t, source) {
       o.value = opt.value;
       o.textContent = opt.text;
       if (opt.disabled) o.disabled = true;
-      if (opt.hidden) o.style.display = 'none';
+      if (opt.hidden) o.hidden = true;
       select.appendChild(o);
     });
     viewerTitleBar.appendChild(select);
