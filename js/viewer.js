@@ -692,6 +692,10 @@ export function openMainImage(current_question, t, source) {
       { value: 'rotate', text: 'rotate [r]' },
       { value: 'scroll', text: 'scroll [s]' },
       { value: 'window', text: 'window (128 ± 127.5) [w]' },
+      { value: 'abdomen', text: 'window = abdomen [a]', hidden: true, disabled: true },
+      { value: 'pulmonary', text: 'window = pulmonary [p]', hidden: true, disabled: true },
+      { value: 'brain', text: 'window = brain [b]', hidden: true, disabled: true },
+      { value: 'bone', text: 'window = bone [o]', hidden: true, disabled: true },
       { value: 'measure', text: 'measure [m]' },
       { value: 'ellipse', text: 'ellipse [l]' },
       { value: 'rectangle', text: 'rectangle [c]' },
@@ -703,6 +707,7 @@ export function openMainImage(current_question, t, source) {
       o.value = opt.value;
       o.textContent = opt.text;
       if (opt.disabled) o.disabled = true;
+      if (opt.hidden) o.style.display = 'none';
       select.appendChild(o);
     });
     viewerTitleBar.appendChild(select);
