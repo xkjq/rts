@@ -690,6 +690,7 @@ export function openMainImage(current_question, t, source) {
       { value: 'pan', text: 'pan [p]' },
       { value: 'zoom', text: 'zoom [z]' },
       { value: 'rotate', text: 'rotate [r]' },
+      { value: 'scroll', text: 'scroll [s]' },
       { value: 'window', text: 'window (128 ± 127.5) [w]' },
       { value: 'measure', text: 'measure [m]' },
       { value: 'ellipse', text: 'ellipse [l]' },
