@@ -52,6 +52,23 @@ for (let url of urls_to_check) {
 log.debug("URLS")
 log.debug(URLS)
 
+// Parse URL parameters to allow enabling exam mode via GET param
+let url_exam_mode = false;
+(function() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const examParam = params.get("exam_mode");
+    if (examParam !== null) {
+      if (examParam === "1" || String(examParam).toLowerCase() === "true") {
+        url_exam_mode = true;
+        log.debug("URL parameter enabled exam mode");
+      }
+    }
+  } catch (e) {
+    log.debug("Unable to parse URL parameters", e);
+  }
+})();
+
 
 let exam_details = {
   aid: null,
@@ -63,6 +80,12 @@ let exam_details = {
   question_order: [],
   start_time: null,
 };
+
+// If URL param set exam mode earlier, apply it now (exam_details is defined)
+if (typeof url_exam_mode !== "undefined" && url_exam_mode) {
+  exam_details.exam_mode = true;
+  log.debug("Applied URL exam mode to exam_details");
+}
 
 //let packet_list = [];
 let packet_name = null;
@@ -275,6 +298,15 @@ async function retrievePacketList() {
  * @param {JSON} data - json containing available exams
  */
 async function loadExamList(data) {
+  // If exam mode was enabled via URL param, hide packets by default
+  if (typeof url_exam_mode !== "undefined" && url_exam_mode) {
+    log.debug("URL exam mode active - hiding packets list");
+    try {
+      $(".packet-wrapper").hide();
+    } catch (e) {
+      log.debug("Unable to hide packet UI elements", e);
+    }
+  }
   log.debug(`Load exam list: ${data}`)
   log.debug("Loading saved sessions")
   let sessions = await db.session.toArray().catch(function(error) {
