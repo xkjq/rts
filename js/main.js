@@ -126,6 +126,9 @@ function showCandidateDetails() {
     global_passcode = passToShow;
 
     $("#candidate-details").empty();
+    $("#candidate-details").text(`Current: CID ${global_cid} / Passcode ${global_passcode}`);
+
+    // Create logout action and place it in the actions area so we can hide actions when users disabled
     let logout = $("<span>[x]</span>");
     logout.css({ cursor: "pointer", "margin-left": "8px" });
     logout.click(() => {
@@ -139,7 +142,16 @@ function showCandidateDetails() {
       }
     });
 
-    $("#candidate-details").append(`Current: CID ${global_cid} / Passcode ${global_passcode} `).append(logout);
+    // Ensure the actions container exists and append the logout button there
+    if ($("#user-actions").length) {
+      $("#user-actions").empty().append(logout);
+      // Hide actions entirely if `allow_users` is false
+      if (!allow_users) {
+        $("#user-actions").hide();
+      } else {
+        $("#user-actions").show();
+      }
+    }
 
     // If an exam results URL is configured, update the options link to point to the candidate's results
     if (URLS.exam_results_url != "" && URLS.exam_results_url != undefined) {
@@ -203,9 +215,10 @@ question_db.version(1).stores({
 retrievePacketList();
 
 if (!allow_users) {
-  // Keep the user/candidate details visible, but disable action buttons
-  $("#btn-user-login").prop("disabled", true).attr("title", "User login disabled");
-  $("#btn-candidate-login").prop("disabled", true).attr("title", "Candidate entry disabled");
+  // Keep the user/candidate details visible, but hide the action buttons entirely
+  $("#user-actions").hide();
+} else {
+  $("#user-actions").show();
 }
 
 try {
@@ -384,12 +397,21 @@ async function loadExamList(data) {
     $("#btn-user-login").hide();
 
     let logout = $("<span>[x]</span>")
+    logout.css({ cursor: "pointer", "margin-left": "8px" });
     logout.click(() => {
       localStorage.removeItem("cid.cid");
       localStorage.removeItem("cid.passcode");
       window.location = URLS.logout_url;
     })
-    $("#user").append(logout);
+    // append logout to actions area so actions can be hidden when `allow_users` is false
+    if ($("#user-actions").length) {
+      $("#user-actions").append(logout);
+      if (!allow_users) {
+        $("#user-actions").hide();
+      }
+    } else {
+      $("#user").append(logout);
+    }
   }
 
 
