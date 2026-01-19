@@ -104,6 +104,8 @@ let global_cid = null;
 let global_passcode = null;
 let global_uid = null;
 let global_username = null;
+// Map of eid -> friendly exam name (populated when exam list is loaded)
+let examNameMap = {};
 
 /**
  * Render candidate details in the options panel if both CID and passcode are present.
@@ -445,6 +447,11 @@ async function loadExamList(data) {
     const url = exam["url"];
     const eid = exam["eid"];
     const exam_json_id = exam["exam_json_id"];
+
+    // Store friendly name for overlay display
+    try {
+      examNameMap[eid] = name;
+    } catch (e) {}
 
     let question_json_id_hash = {};
 
@@ -2964,8 +2971,8 @@ $("#btn-view-local-answers").click(async function(evt) {
 
     $("body").append(
       `<div id='view-answers-overlay'>
-          <button id='close-view-answers' class='navigation' style='position: absolute; top: 8px; right: 8px;'>Close</button>
-          <div style='padding: 16px; color: white; overflow:auto; max-height:90vh;'>
+          <button id='close-view-answers' class='navigation' style='position: absolute; top: 8px; right: 8px; z-index: 60;'>Close</button>
+          <div style='padding: 16px; padding-right: 72px; color: white; overflow:auto; max-height:90vh;'>
             <div style='display:flex; gap:12px; align-items:center; margin-bottom:12px;'>
               <label style='font-weight:600;'>Filter:</label>
               <select id='view-answers-filter'>${examOptions}</select>
@@ -3016,7 +3023,8 @@ $("#btn-view-local-answers").click(async function(evt) {
       }
 
       for (const eidKey of Object.keys(byEid)) {
-        const eidSection = $(`<div style='margin-bottom:12px;'><h3>Exam ${eidKey}</h3></div>`);
+        const friendlyName = (typeof examNameMap[eidKey] !== 'undefined' && examNameMap[eidKey]) ? examNameMap[eidKey] : `Exam ${eidKey}`;
+        const eidSection = $(`<div style='margin-bottom:12px;'><h3>${friendlyName} <small style='color:#888; font-weight:400' >[${eidKey}]</small></h3></div>`);
         for (const cidKey of Object.keys(byEid[eidKey])) {
           const answers = byEid[eidKey][cidKey];
           const table = $("<table style='width:100%; border-collapse:collapse; margin-bottom:8px; background:#111; color:#fff;'></table>");
