@@ -2948,28 +2948,104 @@ $("#btn-view-local-answers").click(async function(evt) {
   let answer_json = await db.answers.toArray();
 
   if ($("#view-answers-overlay").length < 1) {
+    // Build a nicer overlay: filter by exam (eid), formatted table, and a collapsible raw JSON + save link
+    // Collect unique eids and a mapping
+    const examsMap = {};
+    for (const a of answer_json) {
+      const eid = a.eid || "unknown";
+      if (!examsMap[eid]) examsMap[eid] = [];
+      examsMap[eid].push(a);
+    }
+
+    let examOptions = "<option value='all'>All exams</option>";
+    for (const eid of Object.keys(examsMap)) {
+      examOptions += `<option value='${eid}'>Exam ${eid} (${examsMap[eid].length} answers)</option>`;
+    }
+
     $("body").append(
       `<div id='view-answers-overlay'>
           <button id='close-view-answers' class='navigation' style='position: absolute; top: 8px; right: 8px;'>Close</button>
           <div style='padding: 16px; color: white; overflow:auto; max-height:90vh;'>
-            <pre style='white-space:pre-wrap; word-break:break-word;'>${JSON.stringify(answer_json, null, 2)}</pre>
+            <div style='display:flex; gap:12px; align-items:center; margin-bottom:12px;'>
+              <label style='font-weight:600;'>Filter:</label>
+              <select id='view-answers-filter'>${examOptions}</select>
+              <button id='view-answers-refresh' class='navigation'>Refresh</button>
+              <a id='save-failed-answers' class='navigation' style='margin-left:auto;'>Save JSON</a>
+            </div>
+            <div id='view-answers-formatted' style='margin-bottom:12px;'></div>
+            <details style='background:#222; padding:12px; border-radius:6px;'>
+              <summary style='cursor:pointer; color:#fff'>Raw JSON</summary>
+              <pre id='view-answers-raw' style='white-space:pre-wrap; word-break:break-word; color: #ddd; margin-top:8px;'>${JSON.stringify(answer_json, null, 2)}</pre>
+            </details>
           </div>
        </div>`
     );
 
     $("#view-answers-overlay").height(docHeight);
-    $("#view-answers-overlay").append("<a id='save-failed-answers'>Save</a>")
 
-    // Close button handler
+    // Close handler
     $("#close-view-answers").on("click", function() {
       $("#view-answers-overlay").remove();
     });
 
-    let file = new Blob([JSON.stringify(answer_json)], {type: "application/json"})
-
+    // Save link (raw JSON) - keep existing behaviour
+    let file = new Blob([JSON.stringify(answer_json)], {type: "application/json"});
     let link = document.getElementById("save-failed-answers");
     link.href = URL.createObjectURL(file);
     link.download = "answers.json";
+
+    // Render formatted view initially (all exams)
+    function renderFormatted(filterEid) {
+      const container = $("#view-answers-formatted");
+      container.empty();
+      const rows = [];
+      const source = (filterEid && filterEid !== 'all') ? (examsMap[filterEid] || []) : answer_json;
+      if (source.length === 0) {
+        container.append("<div>No answers available for selection.</div>");
+        return;
+      }
+
+      // Group by eid then by cid (candidate)
+      const byEid = {};
+      for (const a of source) {
+        const eid = a.eid || 'unknown';
+        const cid = a.cid || 'unknown';
+        if (!byEid[eid]) byEid[eid] = {};
+        if (!byEid[eid][cid]) byEid[eid][cid] = [];
+        byEid[eid][cid].push(a);
+      }
+
+      for (const eidKey of Object.keys(byEid)) {
+        const eidSection = $(`<div style='margin-bottom:12px;'><h3>Exam ${eidKey}</h3></div>`);
+        for (const cidKey of Object.keys(byEid[eidKey])) {
+          const answers = byEid[eidKey][cidKey];
+          const table = $("<table style='width:100%; border-collapse:collapse; margin-bottom:8px; background:#111; color:#fff;'></table>");
+          table.append("<thead><tr><th style='text-align:left; padding:6px; border-bottom:1px solid #333;'>CID</th><th style='text-align:left; padding:6px; border-bottom:1px solid #333;'>QID</th><th style='text-align:left; padding:6px; border-bottom:1px solid #333;'>Section</th><th style='text-align:left; padding:6px; border-bottom:1px solid #333;'>Answer</th></tr></thead>");
+          const tbody = $("<tbody></tbody>");
+          for (const ans of answers) {
+            const qid = ans.qid || '';
+            const qidn = ans.qidn || '';
+            const text = (typeof ans.ans === 'object') ? JSON.stringify(ans.ans) : String(ans.ans);
+            const row = $(`<tr><td style='padding:6px; border-top:1px solid #222;'>${cidKey}</td><td style='padding:6px; border-top:1px solid #222;'>${qid}</td><td style='padding:6px; border-top:1px solid #222;'>${qidn}</td><td style='padding:6px; border-top:1px solid #222;'>${$('<div>').text(text).html()}</td></tr>`);
+            tbody.append(row);
+          }
+          table.append(tbody);
+          eidSection.append($(`<div style='font-weight:600; margin-top:6px;'>Candidate ${cidKey} (${answers.length} answers)</div>`));
+          eidSection.append(table);
+        }
+        container.append(eidSection);
+      }
+    }
+
+    // Wire up filter and refresh
+    $("#view-answers-filter").on("change", function() {
+      renderFormatted($(this).val());
+    });
+    $("#view-answers-refresh").on("click", function() {
+      renderFormatted($("#view-answers-filter").val());
+    });
+
+    renderFormatted('all');
   }
 });
 
