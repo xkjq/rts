@@ -203,7 +203,9 @@ question_db.version(1).stores({
 retrievePacketList();
 
 if (!allow_users) {
-  $("#user-details").hide()
+  // Keep the user/candidate details visible, but disable action buttons
+  $("#btn-user-login").prop("disabled", true).attr("title", "User login disabled");
+  $("#btn-candidate-login").prop("disabled", true).attr("title", "Candidate entry disabled");
 }
 
 try {
