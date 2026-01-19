@@ -242,7 +242,6 @@ async function retrievePacketList() {
     // Update the candidate details display (only shows when both values exist)
     showCandidateDetails();
   } else {
-
     log.debug("Try and set CID / Passcode from current URL")
     try {
       const params = new URLSearchParams(window.location.search);
@@ -251,14 +250,18 @@ async function retrievePacketList() {
 
       // Only set if BOTH parameters exist and are non-empty
       if (cidParam !== null && passParam !== null && cidParam !== "" && passParam !== "") {
-        cid = decodeURIComponent(cidParam);
-        passcode = decodeURIComponent(passParam);
+        cid = cidParam;
+        passcode = passParam;
         log.debug("CID and passcode extracted from URL", cid, passcode);
         log.debug("adding to local db");
         localStorage.setItem("cid.cid", cid);
         localStorage.setItem("cid.passcode", passcode);
-        log.debug("reload page");
-        location.reload();
+
+        // Update globals and UI without reloading
+        global_cid = cid;
+        global_passcode = passcode;
+        showCandidateDetails();
+
       } else {
         log.debug("CID or passcode missing in URL; not setting local storage");
       }
