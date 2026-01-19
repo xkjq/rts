@@ -2949,13 +2949,21 @@ $("#btn-view-local-answers").click(async function(evt) {
 
   if ($("#view-answers-overlay").length < 1) {
     $("body").append(
-      `<div id='view-answers-overlay'><span style='color: white'><p>${JSON.stringify(
-        answer_json
-      )}</p></span></div>`
+      `<div id='view-answers-overlay'>
+          <button id='close-view-answers' class='navigation' style='position: absolute; top: 8px; right: 8px;'>Close</button>
+          <div style='padding: 16px; color: white; overflow:auto; max-height:90vh;'>
+            <pre style='white-space:pre-wrap; word-break:break-word;'>${JSON.stringify(answer_json, null, 2)}</pre>
+          </div>
+       </div>`
     );
 
     $("#view-answers-overlay").height(docHeight);
     $("#view-answers-overlay").append("<a id='save-failed-answers'>Save</a>")
+
+    // Close button handler
+    $("#close-view-answers").on("click", function() {
+      $("#view-answers-overlay").remove();
+    });
 
     let file = new Blob([JSON.stringify(answer_json)], {type: "application/json"})
 

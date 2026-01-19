@@ -140,7 +140,7 @@ export function submissionError(data, answer_json, exam_details) {
 
   if ($("#submit-error-overlay").length < 1) {
     $("body").append(
-      `<div id='submit-error-overlay'><span style='color: white'><p>An error has occurred when submitting your answers. A copy of your answers are displayed below, you may wish to <a id="save-failed-answers" href="#">save a copy</a>. Please try submitting again or refresh this page to continue (answers will be saved locally in the browser unless you clear local storage).</p><p>${html.get(0).innerHTML}</p><p>${JSON.stringify(
+      `<div id='submit-error-overlay'><span style='color: white'><p>An error has occurred when submitting your answers. A copy of your answers are displayed below, you may wish to <a id="save-failed-answers" href="#">save a copy</a> if subsequent submissions still fail. Please try submitting again or refresh this page to continue (answers will be saved locally in the browser unless you clear local storage).</p><p>${html.get(0).innerHTML}</p><p>${JSON.stringify(
         answer_json
       )}</p></span></div>`
     );
