@@ -105,6 +105,54 @@ let global_passcode = null;
 let global_uid = null;
 let global_username = null;
 
+/**
+ * Render candidate details in the options panel if both CID and passcode are present.
+ * Uses `global_cid`/`global_passcode` if set, otherwise falls back to localStorage.
+ */
+function showCandidateDetails() {
+  let cidToShow = global_cid;
+  let passToShow = global_passcode;
+
+  if ((cidToShow === null || cidToShow === undefined) || (passToShow === null || passToShow === undefined)) {
+    cidToShow = localStorage.getItem("cid.cid");
+    passToShow = localStorage.getItem("cid.passcode");
+  }
+
+  // Only show when both values exist and are non-empty
+  if (cidToShow != null && cidToShow !== "" && passToShow != null && passToShow !== "") {
+    // Ensure globals reflect what's being shown
+    global_cid = cidToShow;
+    global_passcode = passToShow;
+
+    $("#candidate-details").empty();
+    let logout = $("<span>[x]</span>");
+    logout.css({ cursor: "pointer", "margin-left": "8px" });
+    logout.click(() => {
+      localStorage.removeItem("cid.cid");
+      localStorage.removeItem("cid.passcode");
+      // If a logout URL is configured, use it; otherwise reload current page
+      if (URLS.logout_url != undefined && URLS.logout_url !== "") {
+        window.location = URLS.logout_url;
+      } else {
+        window.location = window.location.pathname;
+      }
+    });
+
+    $("#candidate-details").append(`Current: CID ${global_cid} / Passcode ${global_passcode} `).append(logout);
+
+    // If an exam results URL is configured, update the options link to point to the candidate's results
+    if (URLS.exam_results_url != "" && URLS.exam_results_url != undefined) {
+      let resultsUrl = `${URLS.exam_results_url}${global_cid}/${global_passcode}`;
+      log.debug(`Setting exam results url to ${resultsUrl}`);
+      $("#options-link")
+        .empty()
+        .append(
+          `<a href="${resultsUrl}" target="_blank"><div class="packet-button">Results and answers</div></a>`
+        );
+    }
+  }
+}
+
 let allow_self_marking = true;
 
 let timer = null;
@@ -191,27 +239,8 @@ async function retrievePacketList() {
     global_cid = cid;
     global_passcode = passcode;
 
-    let logout = $("<span>[x]</span>")
-    logout.click(() => {
-      localStorage.removeItem("cid.cid");
-      localStorage.removeItem("cid.passcode");
-      window.location = window.location.pathname;
-    })
-
-    if (URLS.exam_results_url != "" && URLS.exam_results_url != undefined) {
-      let url = `${URLS.exam_results_url}${global_cid}/${global_passcode}`;
-      log.debug(`Setting exam results url to ${url}`);
-
-      $("#options-link")
-        .empty()
-        .append(
-          `<a href="${url}" target="_blank"><div class="packet-button">Results and answers</div></a>`
-        );
-    } else {
-      log.debug("No exams results url set in config.");
-    }
-
-    $("#candidate-details").append(`Current: CID ${global_cid} / Passcode ${global_passcode} `).append(logout);
+    // Update the candidate details display (only shows when both values exist)
+    showCandidateDetails();
   } else {
 
     log.debug("Try and set CID / Passcode from current URL")
