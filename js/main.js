@@ -3,6 +3,7 @@ import * as helper from "./helpers.js";
 import * as viewer from "./viewer.js";
 import * as interact from "./interact.js";
 import * as config from "./config.js";
+import {logger} from "@cornerstonejs/core/utilities";
 // const { v4: uuidv4 } = require('uuid');
 
 log.setDefaultLevel("warn")
@@ -110,6 +111,7 @@ let global_username = null;
  * Uses `global_cid`/`global_passcode` if set, otherwise falls back to localStorage.
  */
 function showCandidateDetails() {
+  logger.debug("Show candidate details");
   let cidToShow = global_cid;
   let passToShow = global_passcode;
 
