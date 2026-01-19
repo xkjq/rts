@@ -269,6 +269,9 @@ async function retrievePacketList() {
     error: function(httpObj, textStatus) {
       console.debug(httpObj);
       if (httpObj.status == 401 || httpObj.status == 404) {
+        // First we remove any saved cid items from local storage so the url can take precedence
+        localStorage.removeItem("cid.cid");
+        localStorage.removeItem("cid.passcode");
         $.notify("Unable to login", "error");
         $("#options-panel").show();
         $("#candidate-details").addClass("invalid-login");
