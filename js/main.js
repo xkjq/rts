@@ -363,7 +363,7 @@ async function loadExamList(data) {
     }
   };
 
-  // Wouldn't we be better terminating ealier in this situation
+  // Wouldn't we be better terminating earlier in this situation
   let exam_list = [];
   if (data != null) {
     exam_list = data.exams;
