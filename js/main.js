@@ -215,26 +215,26 @@ async function retrievePacketList() {
   } else {
 
     log.debug("Try and set CID / Passcode from current URL")
-    let items = window.location.search.substr(1).split("&");
-    if (items.length == 2) {
-      for (let index = 0; index < items.length; index++) {
-        const item = items[index];
-        let s = item.split("=");
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const cidParam = params.get("cid");
+      const passParam = params.get("passcode");
 
-        if (s[0] == "cid") {
-          cid = s[1];
-        }
-        if (s[0] == "passcode") {
-          passcode = s[1];
-        }
-
-      };
-      log.debug("CID and passcode extracted from URL", cid, passcode)
-      log.debug("adding to local db")
-      localStorage.setItem("cid.cid", cid)
-      localStorage.setItem("cid.passcode", passcode)
-      log.debug("reload page")
-      location.reload();
+      // Only set if BOTH parameters exist and are non-empty
+      if (cidParam !== null && passParam !== null && cidParam !== "" && passParam !== "") {
+        cid = decodeURIComponent(cidParam);
+        passcode = decodeURIComponent(passParam);
+        log.debug("CID and passcode extracted from URL", cid, passcode);
+        log.debug("adding to local db");
+        localStorage.setItem("cid.cid", cid);
+        localStorage.setItem("cid.passcode", passcode);
+        log.debug("reload page");
+        location.reload();
+      } else {
+        log.debug("CID or passcode missing in URL; not setting local storage");
+      }
+    } catch (e) {
+      log.debug("Error parsing URL params for CID/passcode", e);
     }
 
   }
@@ -273,6 +273,10 @@ async function retrievePacketList() {
         localStorage.removeItem("cid.cid");
         localStorage.removeItem("cid.passcode");
         $.notify("Unable to login", "error");
+        $.notify("This page will now reload", "error");
+        setTimeout(() => {
+          window.location.reload();
+        }, 3000);
         $("#options-panel").show();
         $("#candidate-details").addClass("invalid-login");
       }
