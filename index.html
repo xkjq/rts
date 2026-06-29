@@ -31,7 +31,7 @@
             id="btn-submit-nav"
             class="submit-button navigation nav-right"
           >
-            <b>SUBMIT</b>
+            <b>FINISH</b>
           </button>
           <button
             id="btn-review-overlay"
@@ -45,7 +45,7 @@
             class="navigation nav-right"
             title="click to toggle fullscreen"
           >
-            fullscreen
+            FULLSCREEN
           </button>
           <div class="app-name nav-left">RTS</div>
           <div id="sync-status" class="nav-left"></div>
@@ -108,12 +108,21 @@
             </div>
           </div>
         </div>
-        <div class="logout-background">
-          <div class="logout-panel">
-            <div class="logout-title">Ready to logout?</div>
-            <div class="logout-text"></div>
-            <button class="navigation logout-cancel">continue exam</button>
-            <button class="navigation logout-okay">logout now</button>
+        <div class="logout-background" role="dialog" aria-modal="true" aria-labelledby="finish-title">
+          <div class="finish-header">
+            <div class="login-risr-box"><img class="login-risr-logo" draggable="false" alt="Logo" src="risr-assess-on-dark.png"></div>
+          </div>
+          <div class="logout-panel finish-dialog" id="finish-dialog-panel">
+            <div class="logout-title" id="finish-title">Ready to finish?</div>
+            <div class="logout-error info">
+              <p><strong>Answers are submitted automatically. You can complete the exam by clicking below.</strong></p>
+              <p class="unanswered-line">You have <span id="unanswered-count">0</span> unanswered questions</p>
+            </div>
+            <div class="logout-text">Click “Submit exam” before closing the tab or window</div>
+            <div class="logout-buttons">
+              <button class="logout-button danger" id="button-logout">Submit exam</button>
+              <button class="logout-button primary" id="button-continue">Continue exam</button>
+            </div>
           </div>
         </div>
         <div id="options-panel" class="fullscreen-overlay">

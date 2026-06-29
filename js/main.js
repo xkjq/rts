@@ -2031,7 +2031,51 @@ $("#btn-local-file-load").click(function(evt) {
 });
 
 $(".submit-button").click(function(evt) {
-  interact.submitAnswers(exam_details, db, URLS);
+  // Show a finish dialog similar to the app style
+  // Compute unanswered count from the answers DB and show the dialog
+  interact
+    .getJsonAnswers(exam_details, db)
+    .then((answers) => {
+      // Count unique question ids answered
+      const qids = new Set();
+      answers.forEach((a) => {
+        if (a && a.qid) qids.add(a.qid.toString());
+      });
+
+      const totalQuestions =
+        exam_details.number_of_questions || (exam_details.question_order && exam_details.question_order.length) || 0;
+      const answeredCount = qids.size;
+      const unanswered = Math.max(0, totalQuestions - answeredCount);
+
+      $("#unanswered-count").text(unanswered);
+
+      // Update messaging for clarity
+      if (unanswered === 0) {
+        $(".logout-error.info p.unanswered-line").text("All questions have answers.");
+      } else if (totalQuestions === 0) {
+        $(".logout-error.info p.unanswered-line").text(`You have ${unanswered} unanswered question(s)`);
+      } else {
+        $(".logout-error.info p.unanswered-line").text(`You have ${unanswered} unanswered question(s)`);
+      }
+
+      // Show dialog overlay
+      $(".logout-background").fadeIn(150);
+
+      // Wire dialog buttons
+      $("#button-logout").off("click").on("click", function() {
+        interact.submitAnswers(exam_details, db, URLS);
+        $(".logout-background").fadeOut(150);
+      });
+
+      $("#button-continue").off("click").on("click", function() {
+        $(".logout-background").fadeOut(150);
+      });
+    })
+    .catch((e) => {
+      console.debug("Error computing unanswered count", e);
+      $("#unanswered-count").text("?");
+      $(".logout-background").fadeIn(150);
+    });
 });
 
 $("#btn-review").click(function(evt) {
