@@ -3,6 +3,8 @@ import * as helper from "./helpers.js";
 import * as viewer from "./viewer.js";
 import * as interact from "./interact.js";
 import * as config from "./config.js";
+import { db, question_db } from "./db.js";
+import { initSync, triggerImmediateSync } from "./sync.js";
 // const { v4: uuidv4 } = require('uuid');
 
 log.setDefaultLevel("warn")
@@ -199,20 +201,13 @@ cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
 
 cornerstoneTools.init();
 
-// Set up database
-const db = new Dexie("answers_database");
-db.version(1).stores({
-  answers: "[aid+cid+eid+qid+qidn], [aid+cid+eid], qid, ans, eid",
-  flags: "[aid+cid+eid+qid+qidn], [aid+cid+eid], qid",
-  user_answers: "[qid+type+ans], [qid+type]",
-  session: "[eid+aid], eid, packet, aid, status, date, score, max_score, exam_time, time_left, question_order, questions_answered, total_questions",
-});
-
-const question_db = new Dexie("question_database");
-question_db.version(1).stores({
-  question_data: "&[qid+type], qid, type",
-  saved_exams: "&eid, type, exam_mode, name, order, time, exam_json_id",
-});
+function putAnswer(answer) {
+  answer.time_answered = new Date().toISOString();
+  answer.synced = false;
+  db.answers.put(answer).then(() => {
+    triggerImmediateSync(exam_details, URLS);
+  });
+}
 
 retrievePacketList();
 
@@ -1102,9 +1097,13 @@ function loadSession() {
           date_started = Date.now();
           //console.debug("new date", date_started);
         }
+        exam_details.start_time = date_started / 1000;
       }
 
       setUpQuestions(load_previous);
+      if (!review_mode) {
+        initSync(exam_details, URLS);
+      }
     });
 }
 
@@ -1454,7 +1453,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
           passcode: passcode,
           ans: evt.target.value,
         };
-        db.answers.put(answer);
+        putAnswer(answer);
 
         $(
           "#question-list-item-" +
@@ -1526,7 +1525,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
           ans: evt.target.value,
         };
 
-        db.answers.put(answer);
+        putAnswer(answer);
         console.debug("Save ", answer)
         saveSession();
         updateQuestionListPanel(answer);
@@ -1556,7 +1555,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
         };
         // db.answers.put({aid: [cid, eid, qidn], ans: evt.target.value});
         console.debug("Save ", answer)
-        db.answers.put(answer);
+        putAnswer(answer);
 
         $(
           "#question-list-item-" +
@@ -1657,7 +1656,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
           passcode: passcode,
           ans: evt.target.value,
         };
-        db.answers.put(answer);
+        putAnswer(answer);
 
         $(
           "#question-list-item-" +
@@ -1754,7 +1753,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
           ans: evt.target.value,
         };
 
-        db.answers.put(answer);
+        putAnswer(answer);
 
         $(
           "#question-list-item-" +
@@ -2813,6 +2812,7 @@ $(".start-packet-button").click(function(evt) {
   // if in exam mode
 
   exam_details.start_time = new Date().getTime() / 1000;
+  initSync(exam_details, URLS);
 
   if (timer != null) {
     timer.stop();
