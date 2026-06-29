@@ -75,9 +75,15 @@ export async function performSync(exam_details, URLS) {
 
   try {
     const response = await new Promise((resolve, reject) => {
-      $.post(URLS.exam_submit_url, json, null, "json")
-        .done(resolve)
-        .fail(reject);
+      $.ajax({
+        type: "POST",
+        url: URLS.exam_submit_url,
+        data: json,
+        dataType: "json",
+        global: false, // Prevents triggering global ajaxStart / ajaxStop spinners
+        success: resolve,
+        error: reject,
+      });
     });
 
     if (response && response.success) {

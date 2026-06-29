@@ -27,22 +27,11 @@ globalThis.Dexie = class {
   }
 };
 
-// Define mock jQuery $.post
-const mockPostDone = jest.fn();
-const mockPostFail = jest.fn();
-const mockPost = jest.fn(() => ({
-  done: (cb) => {
-    mockPostDone(cb);
-    return {
-      fail: (failCb) => {
-        mockPostFail(failCb);
-      }
-    };
-  }
-}));
+// Define mock jQuery $.ajax
+const mockAjax = jest.fn();
 
 globalThis.$ = {
-  post: mockPost,
+  ajax: mockAjax,
 };
 
 // Mock DOM elements
@@ -100,8 +89,10 @@ describe("RTS Sync Unit Tests", () => {
       })
     });
 
-    mockPostDone.mockImplementation((cb) => {
-      cb({ success: true });
+    mockAjax.mockImplementation((options) => {
+      if (options.success) {
+        options.success({ success: true });
+      }
     });
 
     mockTransaction.mockImplementation(async (mode, tables, cb) => {
@@ -115,13 +106,16 @@ describe("RTS Sync Unit Tests", () => {
       cid: examDetails.cid,
       eid: examDetails.eid,
     });
-    expect(mockPost).toHaveBeenCalledWith(
-      URLS.exam_submit_url,
+    expect(mockAjax).toHaveBeenCalledWith(
       expect.objectContaining({
-        in_progress: "true",
-      }),
-      null,
-      "json"
+        type: "POST",
+        url: URLS.exam_submit_url,
+        dataType: "json",
+        global: false,
+        data: expect.objectContaining({
+          in_progress: "true",
+        }),
+      })
     );
   });
 });
