@@ -28,17 +28,20 @@ if (config.allow_users != "" && config.allow_users != undefined) {
 
 
 // Generate urls base on base_url
-if (config.base_url != "" && config.base_url != undefined) {
-  URLS.base_url = config.base_url;
-  URLS.exam_query_url = config.base_url + "exam/json";
-  URLS.exam_submit_url = config.base_url + "exam/submit";
-  URLS.exam_results_url = config.base_url + "cid/";
-  URLS.exam_user_results_url = config.base_url + "user/scores";
-  URLS.question_feedback_url = config.base_url + "feedback/";
-  URLS.question_answer_submit_url = config.base_url + "feedback/answer";
-  URLS.login_url = config.base_url + "accounts/login/?next=/rts";
-  URLS.logout_url = config.base_url + "accounts/logout/?next=/rts";
+let baseUrl = config.base_url;
+if (!baseUrl || baseUrl.includes("localhost") || baseUrl === "/") {
+  // Dynamically use current origin in browser to prevent Host/Port/CORS mismatches
+  baseUrl = window.location.origin + "/";
 }
+URLS.base_url = baseUrl;
+URLS.exam_query_url = baseUrl + "exam/json";
+URLS.exam_submit_url = baseUrl + "exam/submit";
+URLS.exam_results_url = baseUrl + "cid/";
+URLS.exam_user_results_url = baseUrl + "user/scores";
+URLS.question_feedback_url = baseUrl + "feedback/";
+URLS.question_answer_submit_url = baseUrl + "feedback/answer";
+URLS.login_url = baseUrl + "accounts/login/?next=/rts";
+URLS.logout_url = baseUrl + "accounts/logout/?next=/rts";
 
 // Override individual urls
 let urls_to_check = ["exam_query_url",  "exam_submit_url", 
