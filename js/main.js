@@ -4,7 +4,7 @@ import * as viewer from "./viewer.js";
 import * as interact from "./interact.js";
 import * as config from "./config.js";
 import { db, question_db } from "./db.js";
-import { initSync, triggerImmediateSync } from "./sync.js";
+import { initSync, triggerImmediateSync, updateSyncUI } from "./sync.js";
 // const { v4: uuidv4 } = require('uuid');
 
 log.setDefaultLevel("warn")
@@ -207,6 +207,7 @@ cornerstoneTools.init();
 function putAnswer(answer) {
   answer.time_answered = new Date().toISOString();
   answer.synced = false;
+  updateSyncUI("syncing");
   db.answers.put(answer).then(() => {
     triggerImmediateSync(exam_details, URLS);
   });

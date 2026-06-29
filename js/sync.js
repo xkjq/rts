@@ -119,8 +119,26 @@ export function initSync(exam_details, URLS) {
     clearInterval(syncInterval);
   }
 
-  // Set initial state
-  updateSyncUI("saved");
+  // Check if there are unsynced answers at startup
+  db.answers
+    .where({
+      aid: exam_details.aid,
+      cid: exam_details.cid,
+      eid: exam_details.eid,
+    })
+    .filter(ans => ans.synced === false)
+    .toArray()
+    .then(unsynced => {
+      if (unsynced && unsynced.length > 0) {
+        updateSyncUI("failed"); // Unsynced answers exist; they aren't accepted by server yet
+        performSync(exam_details, URLS);
+      } else {
+        updateSyncUI("saved");
+      }
+    })
+    .catch(() => {
+      updateSyncUI("saved");
+    });
 
   // Run periodic sync every 15 seconds
   syncInterval = setInterval(() => {
