@@ -4,6 +4,10 @@ import * as config from "./config.js";
  * Submits answers
  */
 export function submitAnswers(exam_details, db, URLS) {
+  if (!exam_details || !exam_details.exam_mode) {
+    alert("Answers can only be submitted when the exam is in exam mode.");
+    return;
+  }
   getJsonAnswers(exam_details, db)
     .then((a) => {
       let json = {

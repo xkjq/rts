@@ -1290,6 +1290,11 @@ h2:has(+ #exam-list:empty),  h2:has(+ #packet-list:empty){
     animation: pulse-failed 1s infinite alternate;
 }
 
+.sync-dot.practice {
+    background-color: #2196F3;
+    box-shadow: 0 0 8px #2196F3;
+}
+
 .sync-text {
     letter-spacing: 0.2px;
 }

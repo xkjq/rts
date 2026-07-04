@@ -74,6 +74,7 @@ describe("RTS Sync Unit Tests", () => {
       cid: "9999",
       eid: "rapid/1",
       start_time: 1234567,
+      exam_mode: true,
     };
     const URLS = {
       exam_submit_url: "/submit-url",

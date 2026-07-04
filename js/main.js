@@ -109,6 +109,43 @@ let global_cid = null;
 let global_passcode = null;
 let global_uid = null;
 let global_username = null;
+let userInfoSet = false;
+
+/**
+ * Set user info in the UI independently of packets/exams.
+ */
+function setUserInfo(data) {
+  if (userInfoSet || !data || !data.user) return;
+  userInfoSet = true;
+
+  $("#user").empty().append(`User: ${data.user}`);
+  global_uid = data.user_id;
+  global_username = data.user;
+
+  if (global_cid == null) {
+    global_cid = "u-" + global_uid;
+  }
+
+  $("#btn-user-login").hide();
+
+  let logout = $("<span>[x]</span>");
+  logout.css({ cursor: "pointer", "margin-left": "8px" });
+  logout.click(() => {
+    localStorage.removeItem("cid.cid");
+    localStorage.removeItem("cid.passcode");
+    window.location = URLS.logout_url;
+  });
+
+  if ($("#user-actions").length) {
+    $("#user-actions").empty().append(logout);
+    if (!allow_users) {
+      $("#user-actions").hide();
+    }
+  } else {
+    $("#user").append(logout);
+  }
+}
+
 // Map of eid -> friendly exam name (populated when exam list is loaded)
 let examNameMap = {};
 
@@ -304,47 +341,92 @@ async function retrievePacketList() {
     log.debug("this will default to packets/packets.json")
   }
 
-  $.ajax({
-    dataType: "json",
-    cache: false,
-    url: url,
-    success: function(data) {
-      if (data.hasOwnProperty("exams")) {
-        loadExamList(data);
+  if (url && (url.includes("exam/json") || url.endsWith("exam/json"))) {
+    const types = ["anatomy", "rapid", "short", "long"];
+    $("#packet-list").empty();
+    $("#exam-list").empty();
+    $("#cache-details summary").empty();
+    $("#cache-details ul").empty();
+
+    types.forEach(type => {
+      let typeUrl = url;
+      if (url.includes("exam/json/unbased")) {
+        typeUrl = url.replace("exam/json/unbased", `exam/json/${type}/unbased`);
       } else {
-        loadPacketList(data);
+        typeUrl = url.replace("exam/json", `exam/json/${type}`);
       }
-    },
-    error: function(httpObj, textStatus) {
-      console.debug(httpObj);
-      if (httpObj.status == 401 || httpObj.status == 404) {
-        // First we remove any saved cid items from local storage so the url can take precedence
-        localStorage.removeItem("cid.cid");
-        localStorage.removeItem("cid.passcode");
-        $.notify("Unable to login", "error");
-        $.notify("This page will now reload", "error");
-        setTimeout(() => {
-          window.location.reload();
-        }, 3000);
-        $("#options-panel").show();
-        $("#candidate-details").addClass("invalid-login");
-      }
-    },
-  })
-    .done(function() {})
-    .fail(function() {
-      log.debug("Unable to load packets / exams, try loading '/packets' (legacy)")
-      $.getJSON("packets", function(data) {
+
+      $.ajax({
+        dataType: "json",
+        cache: false,
+        url: typeUrl,
+        success: function(data) {
+          if (data.hasOwnProperty("exams")) {
+            setUserInfo(data);
+
+            loadExamList(data, false);
+          } else {
+            loadPacketList(data);
+          }
+        },
+        error: function(httpObj) {
+          console.debug(httpObj);
+          if (httpObj.status == 401 || httpObj.status == 404) {
+            localStorage.removeItem("cid.cid");
+            localStorage.removeItem("cid.passcode");
+            $.notify("Unable to login", "error");
+            $.notify("This page will now reload", "error");
+            setTimeout(() => {
+              window.location.reload();
+            }, 3000);
+            $("#options-panel").show();
+            $("#candidate-details").addClass("invalid-login");
+          }
+        }
+      });
+    });
+  } else {
+    $.ajax({
+      dataType: "json",
+      cache: false,
+      url: url,
+      success: function(data) {
         if (data.hasOwnProperty("exams")) {
-          loadExamList(data);
+          loadExamList(data, true);
         } else {
           loadPacketList(data);
         }
-      }).fail(function(jqXHR, textStatus, errorThrown) {
-        console.warn("No packet list available");
-      });
+      },
+      error: function(httpObj, textStatus) {
+        console.debug(httpObj);
+        if (httpObj.status == 401 || httpObj.status == 404) {
+          localStorage.removeItem("cid.cid");
+          localStorage.removeItem("cid.passcode");
+          $.notify("Unable to login", "error");
+          $.notify("This page will now reload", "error");
+          setTimeout(() => {
+            window.location.reload();
+          }, 3000);
+          $("#options-panel").show();
+          $("#candidate-details").addClass("invalid-login");
+        }
+      },
     })
-    .always(function() {});
+      .done(function() {})
+      .fail(function() {
+        log.debug("Unable to load packets / exams, try loading '/packets' (legacy)")
+        $.getJSON("packets", function(data) {
+          if (data.hasOwnProperty("exams")) {
+            loadExamList(data, true);
+          } else {
+            loadPacketList(data);
+          }
+        }).fail(function(jqXHR, textStatus, errorThrown) {
+          console.warn("No packet list available");
+        });
+      })
+      .always(function() {});
+  }
 }
 
 /**
@@ -353,7 +435,7 @@ async function retrievePacketList() {
  *
  * @param {JSON} data - json containing available exams
  */
-async function loadExamList(data) {
+async function loadExamList(data, clearExistingList = true) {
   // If exam mode was enabled via URL param, hide packets by default
   if (typeof url_exam_mode !== "undefined" && url_exam_mode) {
     log.debug("URL exam mode active - hiding packets list");
@@ -384,36 +466,7 @@ async function loadExamList(data) {
   //Display user info if it exists
   // If a user is loggged into the server it any exam responses
   // should have the details embedded
-  if (data.hasOwnProperty("user") && data.user) {
-    $("#user").append(`User: ${data.user}`);
-    //$(".exam-wrapper").show();
-    global_uid = data.user_id;
-    global_username = data.user;
-
-
-    if (global_cid == null) {
-      global_cid = "u-" + global_uid;
-    }
-
-    $("#btn-user-login").hide();
-
-    let logout = $("<span>[x]</span>")
-    logout.css({ cursor: "pointer", "margin-left": "8px" });
-    logout.click(() => {
-      localStorage.removeItem("cid.cid");
-      localStorage.removeItem("cid.passcode");
-      window.location = URLS.logout_url;
-    })
-    // append logout to actions area so actions can be hidden when `allow_users` is false
-    if ($("#user-actions").length) {
-      $("#user-actions").append(logout);
-      if (!allow_users) {
-        $("#user-actions").hide();
-      }
-    } else {
-      $("#user").append(logout);
-    }
-  }
+  setUserInfo(data);
 
 
   let exams_started = [];
@@ -437,7 +490,12 @@ async function loadExamList(data) {
   // exam_generated_map stores the exam and its json ID to
   // enable invalidation when the question is updated on the server
   let exam_generated_map = {};
-  $("#packet-list").empty();
+  if (clearExistingList) {
+    $("#packet-list").empty();
+    $("#exam-list").empty();
+    $("#cache-details summary").empty();
+    $("#cache-details ul").empty();
+  }
   
   log.debug("Loop available exams")
   for (const exam of exam_list) {
@@ -515,18 +573,22 @@ async function loadExamList(data) {
   // Check the database for exams that have been saved
   question_db.saved_exams.toArray().then((saved_exams) => {
     if (saved_exams.length < 1) {
-      $("#cache-details summary").append("<span>No cached exams / questions</span>");
+      if ($("#cache-details summary span").length === 0) {
+        $("#cache-details summary").append("<span>No cached exams / questions</span>");
+      }
     } else {
-      $("#cache-details summary").append("<span>Cached exams / questions:</span>");
+      if ($("#cache-details summary span").length === 0 || $("#cache-details summary span").text().includes("No cached")) {
+        $("#cache-details summary").empty().append("<span>Cached exams / questions:</span>");
+      }
     }
     console.debug("Loop through saved exams");
     saved_exams.forEach(async (saved_exam, n) => {
       console.debug("Check", saved_exam);
-      $("#cache-details ul").append(
-        `<li class="cache-item" data-eid=${saved_exam.eid}>Exam: ${saved_exam.exam_name} [${saved_exam.eid}]: ${saved_exam.exam_json_id}`
-      );
       //Compared saved exams to those available
       if (exam_generated_map.hasOwnProperty(saved_exam.eid)) {
+        $("#cache-details ul").append(
+          `<li class="cache-item" data-eid=${saved_exam.eid}>Exam: ${saved_exam.exam_name} [${saved_exam.eid}]: ${saved_exam.exam_json_id}`
+        );
         // If the json_id s differ delete and force a refresh
         const exam_json_id = exam_generated_map[saved_exam.eid][0];
         const question_json_id_hash = exam_generated_map[saved_exam.eid][1];

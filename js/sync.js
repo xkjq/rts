@@ -4,11 +4,11 @@ import { db } from "./db.js";
 
 let syncInterval = null;
 let debounceTimeout = null;
-let currentStatus = "saved"; // "saved", "syncing", "failed"
+let currentStatus = "saved"; // "saved", "syncing", "failed", "practice"
 
 /**
  * Update the sync UI state
- * @param {string} status - "saved", "syncing", "failed"
+ * @param {string} status - "saved", "syncing", "failed", "practice"
  */
 export function updateSyncUI(status) {
   currentStatus = status;
@@ -17,6 +17,12 @@ export function updateSyncUI(status) {
 
   let html = "";
   switch (status) {
+    case "practice":
+      html = `
+        <span class="sync-dot practice"></span>
+        <span class="sync-text">Practice mode (local only)</span>
+      `;
+      break;
     case "syncing":
       html = `
         <span class="sync-dot syncing"></span>
@@ -44,7 +50,7 @@ export function updateSyncUI(status) {
  * Perform background synchronization of unsynced answers
  */
 export async function performSync(exam_details, URLS) {
-  if (!exam_details || !exam_details.eid) return;
+  if (!exam_details || !exam_details.exam_mode || !exam_details.eid) return;
 
   // Find all unsynced answers for this exam/cid/aid
   const unsynced = await db.answers
@@ -108,6 +114,8 @@ export async function performSync(exam_details, URLS) {
  * Trigger an immediate, debounced sync (2s delay after last change)
  */
 export function triggerImmediateSync(exam_details, URLS) {
+  if (!exam_details || !exam_details.exam_mode) return;
+
   if (debounceTimeout) {
     clearTimeout(debounceTimeout);
   }
@@ -123,6 +131,39 @@ export function initSync(exam_details, URLS) {
   // Clear any existing sync process
   if (syncInterval) {
     clearInterval(syncInterval);
+  }
+
+  // Setup click redirect to remote user answers on the server if in exam mode
+  const container = document.getElementById("sync-status");
+  if (container) {
+    if (exam_details && exam_details.exam_mode) {
+      $(container).css("cursor", "pointer");
+      $(container).off("click").on("click", () => {
+        let url = URLS.exam_results_url;
+        if (url) {
+          if (exam_details.cid) {
+            if (exam_details.cid.startsWith("u-")) {
+              url = URLS.exam_user_results_url || url;
+            } else {
+              url = `${url}${exam_details.cid}`;
+              const passcode = localStorage.getItem("cid.passcode");
+              if (passcode) {
+                url = `${url}/${passcode}`;
+              }
+            }
+          }
+          window.open(url, "_blank");
+        }
+      });
+    } else {
+      $(container).css("cursor", "default");
+      $(container).off("click");
+    }
+  }
+
+  if (!exam_details || !exam_details.exam_mode) {
+    updateSyncUI("practice");
+    return;
   }
 
   // Check if there are unsynced answers at startup
