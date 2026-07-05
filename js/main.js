@@ -1321,7 +1321,8 @@ function setUpQuestions(load_previous) {
     exam_details.passcode = global_passcode;
 
     if (global_uid != null) {
-      $("#exam-candidate-number").append(`User: ${global_username} / ${global_uid}`);
+      $("#exam-candidate-number").append(`<div>User: ${global_username} / ${global_uid}</div>`);
+      $("#candidate-number2").hide();
     }
     $("#exam-candidate-number").show();
 
