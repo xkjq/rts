@@ -44,6 +44,36 @@ function initLogging() {
 
 initLogging();
 
+function checkForceReset() {
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("reset") === "1" || urlParams.get("reset") === "true") {
+      log.info("Force reset parameter detected. Resetting all local data...");
+      
+      // Clear databases
+      try {
+        window.indexedDB.deleteDatabase("answers_database");
+        window.indexedDB.deleteDatabase("questions_database");
+      } catch (dbErr) {
+        log.error("Failed to delete indexedDB databases:", dbErr);
+      }
+      
+      // Clear storage
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // Clean query parameter from URL to prevent infinite loops, notify and reload
+      const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+      alert("The application has been completely reset. All local data, storage, and databases have been cleared. Click OK to reload.");
+      window.location.href = cleanUrl;
+    }
+  } catch (e) {
+    log.error("Error during force reset:", e);
+  }
+}
+
+checkForceReset();
+
 
 let URLS = {};
 

@@ -210,16 +210,16 @@
             </span>
           </div>
           <div id="options-link"></div>
-          <div id="storage-details"></div>
+          <div id="storage-details" style="font-family: sans-serif; font-size: 13px; color: #aaa; margin: 15px 0 10px 0; padding-left: 5px;"></div>
           <div id="cache-details">
-            <details>
-              <summary></summary>
-              <ul></ul>
+            <details class="cache-details-box">
+              <summary>Cached Exams / Questions</summary>
+              <ul style="margin: 10px 0 0 15px; padding: 0; font-size: 13px; color: #ccc;"></ul>
             </details>
           </div>
-          <details>
+          <details class="options-details">
             <summary>Options</summary>
-            <div id="database-buttons">
+            <div id="database-buttons" class="database-btn-group">
               <input
                 type="button"
                 id="btn-delete-answer-databases"
@@ -236,28 +236,28 @@
                 value="Clear all local data"
               />
             </div>
-            <div id="local-fileloader">
+            <div id="local-fileloader" class="local-loader-field">
               <form
                 id="jsonFile"
                 name="jsonFile"
                 enctype="multipart/form-data"
                 method="post"
               >
-                <fieldset>
+                <fieldset style="border: none; padding: 0; margin: 0;">
                   <h2>Load local question set</h2>
                   <input type="file" id="fileinput" />
                   <input type="button" id="btn-local-file-load" value="Load" />
                 </fieldset>
               </form>
             </div>
-            <p>
-              <button id="btn-view-local-answers">
+            <p style="margin: 15px 0;">
+              <button id="btn-view-local-answers" class="view-answers-btn">
                 View local saved answers
               </button>
             </p>
-            <div id="logging-controls" style="margin-top: 15px; border-top: 1px solid #444; padding-top: 10px; font-family: sans-serif; font-size: 13px;">
-              <label for="select-log-level" style="font-weight: bold; color: #fff;">Logging Level:</label>
-              <select id="select-log-level" style="background:#222; color:#fff; border:1px solid #555; padding: 2px 5px; border-radius: 3px; font-size: 13px; margin-left: 5px; cursor: pointer;">
+            <div id="logging-controls" style="margin-top: 15px; border-top: 1px solid #333; padding-top: 15px; font-family: sans-serif; font-size: 13px;">
+              <label for="select-log-level" style="font-weight: bold; color: #ccc;">Logging Level:</label>
+              <select id="select-log-level" style="background:#222; color:#fff; border:1px solid #555; padding: 4px 8px; border-radius: 4px; font-size: 13px; margin-left: 5px; cursor: pointer; outline: none;">
                 <option value="silent">Disabled (Silent)</option>
                 <option value="error">Error</option>
                 <option value="warn">Warn</option>

@@ -1433,3 +1433,137 @@ h2:has(+ #exam-list:empty),  h2:has(+ #packet-list:empty){
     cursor: pointer;
     z-index: 10000;
 }
+
+/* Options and Cache Tidy Up */
+.options-details, .cache-details-box {
+    background: #181818;
+    border: 1px solid #333;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    padding: 12px 18px;
+    font-family: sans-serif;
+}
+
+.options-details summary, .cache-details-box summary {
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 15px;
+    outline: none;
+    color: #e0e0e0;
+}
+
+.options-details summary:hover, .cache-details-box summary:hover {
+    color: #fff;
+}
+
+.options-details[open], .cache-details-box[open] {
+    border-color: #444;
+}
+
+.options-details[open] summary, .cache-details-box[open] summary {
+    border-bottom: 1px solid #333;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+}
+
+.database-btn-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.database-btn-group input[type="button"] {
+    background: #2a2a2a;
+    color: #eee;
+    border: 1px solid #444;
+    padding: 8px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: bold;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.database-btn-group input[type="button"]:hover {
+    background: #3a3a3a;
+    border-color: #666;
+}
+
+.database-btn-group input#btn-delete-answer-databases {
+    background: #5f0909;
+    border-color: #8c0d0d;
+    color: #ffcdd2;
+}
+
+.database-btn-group input#btn-delete-answer-databases:hover {
+    background: #8c0d0d;
+    border-color: #b71c1c;
+}
+
+.database-btn-group input#btn-reset-local {
+    background: #5d2e00;
+    border-color: #8c4600;
+    color: #ffe0b2;
+}
+
+.database-btn-group input#btn-reset-local:hover {
+    background: #8c4600;
+    border-color: #e65100;
+}
+
+.local-loader-field {
+    border: 1px solid #333;
+    padding: 15px;
+    border-radius: 6px;
+    background: #111;
+    margin-bottom: 15px;
+}
+
+.local-loader-field h2 {
+    margin-top: 0;
+    font-size: 14px;
+    color: #ccc;
+    margin-bottom: 10px;
+}
+
+.local-loader-field input[type="file"] {
+    background: #222;
+    border: 1px solid #333;
+    color: #eee;
+    padding: 4px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.local-loader-field input[type="button"] {
+    background: #311B92;
+    color: #fff;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 12px;
+    margin-left: 5px;
+}
+
+.local-loader-field input[type="button"]:hover {
+    background: #4527A0;
+}
+
+.view-answers-btn {
+    background: #2e7d32;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.view-answers-btn:hover {
+    background: #388e3c;
+}
