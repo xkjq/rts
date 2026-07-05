@@ -235,6 +235,18 @@
                 id="btn-reset-local"
                 value="Clear all local data"
               />
+              <details style="width: 100%; margin-top: 10px; font-size: 12px; border: 1px solid #444; border-radius: 4px; padding: 10px; background: #111; font-family: sans-serif;">
+                <summary style="cursor: pointer; font-weight: bold; color: #aaa; outline: none; user-select: none;">Manual Reset Instructions</summary>
+                <div style="margin-top: 8px; color: #bbb; line-height: 1.5;">
+                  <p style="margin: 0 0 8px 0;">If the automatic reset parameter fails, perform a manual reset in your browser:</p>
+                  <ol style="margin: 0; padding-left: 18px;">
+                    <li style="margin-bottom: 4px;">Open Developer Tools by pressing <strong>F12</strong> or <strong>Ctrl+Shift+I</strong> (Cmd+Option+I on Mac).</li>
+                    <li style="margin-bottom: 4px;">Navigate to the <strong>Application</strong> tab (Chrome/Edge) or <strong>Storage</strong> tab (Firefox).</li>
+                    <li style="margin-bottom: 4px;">Locate storage items and select <strong>Clear Site Data</strong> or delete entries under <em>IndexedDB</em>, <em>Local Storage</em>, and <em>Session Storage</em>.</li>
+                    <li>Reload the page.</li>
+                  </ol>
+                </div>
+              </details>
             </div>
             <div id="local-fileloader" class="local-loader-field">
               <form
