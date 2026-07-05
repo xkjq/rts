@@ -1322,3 +1322,29 @@ h2:has(+ #exam-list:empty),  h2:has(+ #packet-list:empty){
         box-shadow: 0 0 12px #F44336;
     }
 }
+
+.refresh-button {
+    background-color: transparent;
+    border: 1px solid #555;
+    border-radius: 3px;
+    color: #bbb;
+    padding: 1px 6px;
+    font-size: 10px;
+    cursor: pointer;
+    margin-left: 10px;
+    vertical-align: middle;
+    transition: all 0.2s;
+}
+
+.refresh-button:hover {
+    background-color: #333;
+    border-color: #888;
+    color: #fff;
+}
+
+.global-refresh-container {
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}

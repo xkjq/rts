@@ -273,12 +273,29 @@ catch {
  *
  * if exam_query_url is defined in config.js this will be used in preference
  */
-async function retrievePacketList() {
-  let url = "packets/packets.json";
+function showLoadingState($btn, $targetContainer) {
+  if (!$btn || !$btn.length) return null;
+  let oldText = $btn.text();
+  $btn.prop("disabled", true).text("...");
+  if ($targetContainer && $targetContainer.length) {
+    $targetContainer.css({
+      "opacity": "0.4",
+      "transition": "opacity 0.2s"
+    });
+  }
+  return function restore(success = true) {
+    $btn.prop("disabled", false).text(oldText);
+    if ($targetContainer && $targetContainer.length) {
+      $targetContainer.css("opacity", "1");
+      if (success) {
+        $targetContainer.fadeOut(100).fadeIn(100);
+      }
+    }
+  };
+}
 
+async function retrievePacketList(target = "all", onComplete = null) {
   log.debug(`Load users from database...`)
-  //let users = await user_db.user.toArray();
-  //log.debug(`available users "${users}"`)
   let cid = localStorage.getItem("cid.cid")
   let passcode = localStorage.getItem("cid.passcode")
 
@@ -322,110 +339,147 @@ async function retrievePacketList() {
     } catch (e) {
       log.debug("Error parsing URL params for CID/passcode", e);
     }
-
   }
 
-  try {
-    log.debug("Try to set exam query url")
-    if (URLS.exam_query_url != undefined) {
-
-      if (global_cid == null) {
-        url = URLS.exam_query_url;
-      } else {
-        url = `${URLS.exam_query_url}/${global_cid}/${global_passcode}`;
-      }
-    }
-    log.debug(`url: ${url}`)
-  } catch (e) {
-    log.debug("Unable to set exam query url", e)
-    log.debug("this will default to packets/packets.json")
-  }
-
-  if (url && (url.includes("exam/json") || url.endsWith("exam/json"))) {
-    const types = ["anatomy", "rapid", "short", "long"];
+  // Clear UI elements depending on target
+  if (target === "all") {
     $("#packet-list").empty();
     $("#exam-list").empty();
     $("#cache-details summary").empty();
     $("#cache-details ul").empty();
+  } else if (target === "exams") {
+    $("#exam-list").empty();
+  } else if (target === "packets") {
+    $("#packet-list").empty();
+  } else if (["anatomy", "rapid", "short", "long"].includes(target)) {
+    $(`.exam-list.${target}`).find(".packet-button").remove();
+    $(`.packet-list.${target}`).find(".packet-button").remove();
+  }
 
-    types.forEach(type => {
-      let typeUrl = url;
-      if (url.includes("exam/json/unbased")) {
-        typeUrl = url.replace("exam/json/unbased", `exam/json/${type}/unbased`);
-      } else {
-        typeUrl = url.replace("exam/json", `exam/json/${type}`);
-      }
+  let promises = [];
 
-      $.ajax({
-        dataType: "json",
-        cache: false,
-        url: typeUrl,
-        success: function(data) {
-          if (data.hasOwnProperty("exams")) {
-            setUserInfo(data);
-
-            loadExamList(data, false);
-          } else {
-            loadPacketList(data);
-          }
-        },
-        error: function(httpObj) {
-          console.debug(httpObj);
-          if (httpObj.status == 401 || httpObj.status == 404) {
-            localStorage.removeItem("cid.cid");
-            localStorage.removeItem("cid.passcode");
-            $.notify("Unable to login", "error");
-            $.notify("This page will now reload", "error");
-            setTimeout(() => {
-              window.location.reload();
-            }, 3000);
-            $("#options-panel").show();
-            $("#candidate-details").addClass("invalid-login");
-          }
-        }
-      });
-    });
-  } else {
-    $.ajax({
+  // 1. Fetch packets if target is "all" or "packets"
+  if (target === "all" || target === "packets") {
+    let packetsUrl = "packets/packets.json";
+    let p = $.ajax({
       dataType: "json",
       cache: false,
-      url: url,
+      url: packetsUrl,
       success: function(data) {
-        if (data.hasOwnProperty("exams")) {
-          loadExamList(data, true);
-        } else {
+        if (!data.hasOwnProperty("exams")) {
           loadPacketList(data);
         }
       },
-      error: function(httpObj, textStatus) {
-        console.debug(httpObj);
-        if (httpObj.status == 401 || httpObj.status == 404) {
-          localStorage.removeItem("cid.cid");
-          localStorage.removeItem("cid.passcode");
-          $.notify("Unable to login", "error");
-          $.notify("This page will now reload", "error");
-          setTimeout(() => {
-            window.location.reload();
-          }, 3000);
-          $("#options-panel").show();
-          $("#candidate-details").addClass("invalid-login");
-        }
-      },
-    })
-      .done(function() {})
-      .fail(function() {
-        log.debug("Unable to load packets / exams, try loading '/packets' (legacy)")
+      error: function(jqXHR, textStatus, errorThrown) {
+        log.debug("Unable to load packets, trying legacy '/packets'");
         $.getJSON("packets", function(data) {
-          if (data.hasOwnProperty("exams")) {
-            loadExamList(data, true);
-          } else {
+          if (!data.hasOwnProperty("exams")) {
             loadPacketList(data);
           }
         }).fail(function(jqXHR, textStatus, errorThrown) {
           console.warn("No packet list available");
         });
+      }
+    });
+    promises.push(p);
+  }
+
+  // 2. Fetch exams if target is "all" or "exams" or one of the types
+  if (target === "all" || target === "exams" || ["anatomy", "rapid", "short", "long"].includes(target)) {
+    let examUrl = null;
+    try {
+      if (URLS.exam_query_url != undefined) {
+        if (global_cid == null || String(global_cid).startsWith("u-")) {
+          examUrl = URLS.exam_query_url;
+        } else {
+          examUrl = `${URLS.exam_query_url}/${global_cid}/${global_passcode}`;
+        }
+      }
+    } catch (e) {
+      log.debug("Unable to set exam query url", e);
+    }
+
+    if (examUrl) {
+      if (examUrl.includes("exam/json") || examUrl.endsWith("exam/json")) {
+        const types = ["anatomy", "rapid", "short", "long"];
+        const typesToFetch = types.includes(target) ? [target] : types;
+        
+        typesToFetch.forEach(type => {
+          let typeUrl = examUrl;
+          if (examUrl.includes("exam/json/unbased")) {
+            typeUrl = examUrl.replace("exam/json/unbased", `exam/json/${type}/unbased`);
+          } else {
+            typeUrl = examUrl.replace("exam/json", `exam/json/${type}`);
+          }
+
+          let p = $.ajax({
+            dataType: "json",
+            cache: false,
+            url: typeUrl,
+            success: function(data) {
+              if (data.hasOwnProperty("exams")) {
+                setUserInfo(data);
+                loadExamList(data, false, target);
+              }
+            },
+            error: function(httpObj) {
+              console.debug(httpObj);
+              if ((httpObj.status == 401 || httpObj.status == 404) && global_cid !== null && !String(global_cid).startsWith("u-")) {
+                localStorage.removeItem("cid.cid");
+                localStorage.removeItem("cid.passcode");
+                $.notify("Unable to login", "error");
+                $.notify("This page will now reload", "error");
+                setTimeout(() => {
+                  window.location.reload();
+                }, 3000);
+                $("#options-panel").show();
+                $("#candidate-details").addClass("invalid-login");
+              }
+            }
+          });
+          promises.push(p);
+        });
+      } else {
+        let p = $.ajax({
+          dataType: "json",
+          cache: false,
+          url: examUrl,
+          success: function(data) {
+            if (data.hasOwnProperty("exams")) {
+              loadExamList(data, true, target);
+            }
+          },
+          error: function(httpObj, textStatus) {
+            console.debug(httpObj);
+            if ((httpObj.status == 401 || httpObj.status == 404) && global_cid !== null && !String(global_cid).startsWith("u-")) {
+              localStorage.removeItem("cid.cid");
+              localStorage.removeItem("cid.passcode");
+              $.notify("Unable to login", "error");
+              $.notify("This page will now reload", "error");
+              setTimeout(() => {
+                window.location.reload();
+              }, 3000);
+              $("#options-panel").show();
+              $("#candidate-details").addClass("invalid-login");
+            }
+          }
+        });
+        promises.push(p);
+      }
+    }
+  }
+
+  if (promises.length) {
+    Promise.all(promises)
+      .then(() => {
+        if (onComplete) onComplete(true);
       })
-      .always(function() {});
+      .catch((err) => {
+        console.warn("One or more requests failed", err);
+        if (onComplete) onComplete(false);
+      });
+  } else {
+    if (onComplete) onComplete(true);
   }
 }
 
@@ -435,7 +489,7 @@ async function retrievePacketList() {
  *
  * @param {JSON} data - json containing available exams
  */
-async function loadExamList(data, clearExistingList = true) {
+async function loadExamList(data, clearExistingList = true, target = "all") {
   // If exam mode was enabled via URL param, hide packets by default
   if (typeof url_exam_mode !== "undefined" && url_exam_mode) {
     log.debug("URL exam mode active - hiding packets list");
@@ -491,8 +545,12 @@ async function loadExamList(data, clearExistingList = true) {
   // enable invalidation when the question is updated on the server
   let exam_generated_map = {};
   if (clearExistingList) {
-    $("#packet-list").empty();
-    $("#exam-list").empty();
+    if (target === "all" || target === "packets") {
+      $("#packet-list").empty();
+    }
+    if (target === "all" || target === "exams") {
+      $("#exam-list").empty();
+    }
     $("#cache-details summary").empty();
     $("#cache-details ul").empty();
   }
@@ -547,7 +605,11 @@ async function loadExamList(data, clearExistingList = true) {
         list = $(`.${target_list}.${exam.type}`);
       // or create and add it
       } else {
-        list = $(`<div class='${target_list} ${exam.type}'><span class='packet-list-title'>${exam.type}</span><br/></div>`);
+        let refreshBtnHtml = "";
+        if (target_list === "exam-list") {
+          refreshBtnHtml = ` <button class="refresh-button type-refresh-button" data-type="${exam.type}" title="Refresh ${exam.type} exams">Refresh</button>`;
+        }
+        list = $(`<div class='${target_list} ${exam.type}'><span class='packet-list-title'>${exam.type}${refreshBtnHtml}</span><br/></div>`);
         $(`#${target_list}`).append(list);
 
       }
@@ -2902,6 +2964,26 @@ $("#btn-candidate-login").click(function(evt) {
 $("#btn-user-login").click(function(evt) {
   window.location = URLS.login_url;
   //$(".exam-wrapper").toggle();
+});
+
+$("#btn-refresh-all").on("click", function(e) {
+  e.stopPropagation();
+  let restore = showLoadingState($(this), $("#packets"));
+  retrievePacketList("all", restore);
+});
+$("#btn-refresh-packets").on("click", function(e) {
+  e.stopPropagation();
+  let restore = showLoadingState($(this), $("#packet-list"));
+  retrievePacketList("packets", restore);
+});
+
+// Delegate click handlers for the dynamic per-exam-type refresh buttons
+$("#exam-list").on("click", ".type-refresh-button", function(e) {
+  e.stopPropagation();
+  let type = $(this).data("type");
+  let $categoryContainers = $(`.exam-list.${type}, .packet-list.${type}`);
+  let restore = showLoadingState($(this), $categoryContainers);
+  retrievePacketList(type, restore);
 });
 
 

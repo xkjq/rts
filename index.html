@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html
   xmlns="http://www.w3.org/1999/xhtml"
   xml:lang="en"
@@ -26,7 +26,9 @@
     <div id="content">
       <div class="content-panel">
         <div class="nav-bar">
-          <button id="btn-review" class="navigation nav-right"><b>☰</b><br/>OVERVIEW</button>
+          <button id="btn-review" class="navigation nav-right">
+            <b>☰</b><br />OVERVIEW
+          </button>
           <button
             id="btn-submit-nav"
             class="submit-button navigation nav-right"
@@ -51,7 +53,9 @@
           <div id="sync-status" class="nav-left"></div>
           <div id="timer" title="click to pause"></div>
           <div class="exam-name" title="currently loaded packet"></div>
-          <button class="navigation nav-left" disabled="disabled"
+          <button
+            class="navigation nav-left"
+            disabled="disabled"
             data-nav="previous"
           >
             <svg
@@ -70,9 +74,7 @@
             <br />
             <span>PREVIOUS</span>
           </button>
-          <button class="navigation nav-left"
-            data-nav="next"
-          >
+          <button class="navigation nav-left" data-nav="next">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="16"
@@ -108,20 +110,46 @@
             </div>
           </div>
         </div>
-        <div class="logout-background" role="dialog" aria-modal="true" aria-labelledby="finish-title">
+        <div
+          class="logout-background"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="finish-title"
+        >
           <div class="finish-header">
-            <div class="login-risr-box"><img class="login-risr-logo" draggable="false" alt="Logo" src="risr-assess-on-dark.png"></div>
+            <div class="login-risr-box">
+              <img
+                class="login-risr-logo"
+                draggable="false"
+                alt="Logo"
+                src="risr-assess-on-dark.png"
+              />
+            </div>
           </div>
           <div class="logout-panel finish-dialog" id="finish-dialog-panel">
             <div class="logout-title" id="finish-title">Ready to finish?</div>
             <div class="logout-error info">
-              <p><strong>Answers are submitted automatically. You can complete the exam by clicking below.</strong></p>
-              <p class="unanswered-line">You have <span id="unanswered-count">0</span> unanswered questions</p>
+              <p>
+                <strong
+                  >Answers are submitted automatically. You can complete the
+                  exam by clicking below.</strong
+                >
+              </p>
+              <p class="unanswered-line">
+                You have <span id="unanswered-count">0</span> unanswered
+                questions
+              </p>
             </div>
-            <div class="logout-text">Click “Submit exam” before closing the tab or window</div>
+            <div class="logout-text">
+              Click “Submit exam” before closing the tab or window
+            </div>
             <div class="logout-buttons">
-              <button class="logout-button danger" id="button-logout">Submit exam</button>
-              <button class="logout-button primary" id="button-continue">Continue exam</button>
+              <button class="logout-button danger" id="button-logout">
+                Submit exam
+              </button>
+              <button class="logout-button primary" id="button-continue">
+                Continue exam
+              </button>
             </div>
           </div>
         </div>
@@ -137,7 +165,7 @@
                 id="btn-candidate-login"
                 class="login-button"
                 value="Enter candidate details"
-                onclick="void(0)"
+                onclick="void 0"
               />
               <input
                 type="button"
@@ -150,14 +178,34 @@
             <div id="user" class="user-text"></div>
           </span>
           <div id="packets">
-            <p>Click buttons below to load an exam / packet</p>
+            <div class="global-refresh-container">
+              <span id="load-exam-packet-instructions">
+                <span>Click buttons below to load an exam / packet</span>
+              </span>
+              <button
+                id="btn-refresh-all"
+                class="refresh-button"
+                title="Refresh all exams and packets"
+              >
+                Refresh All
+              </button>
+            </div>
             <span class="exam-wrapper">
               <h2>Exams:</h2>
               <span id="exam-list"></span>
             </span>
 
             <span class="packet-wrapper">
-              <h2>Packets:</h2>
+              <h2>
+                Packets:
+                <button
+                  id="btn-refresh-packets"
+                  class="refresh-button"
+                  title="Refresh packets"
+                >
+                  Refresh
+                </button>
+              </h2>
               <span id="packet-list"></span>
             </span>
           </div>
