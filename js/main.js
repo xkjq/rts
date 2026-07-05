@@ -7,8 +7,42 @@ import { db, question_db } from "./db.js";
 import { initSync, triggerImmediateSync, updateSyncUI } from "./sync.js";
 // const { v4: uuidv4 } = require('uuid');
 
-log.setDefaultLevel("warn")
-log.setDefaultLevel("debug")
+function initLogging() {
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    let logLevel = urlParams.get("log");
+    
+    if (logLevel !== null) {
+      if (logLevel === "1" || logLevel === "true") {
+        logLevel = "debug";
+      } else if (logLevel === "0" || logLevel === "false") {
+        logLevel = "silent";
+      }
+      localStorage.setItem("rts.logLevel", logLevel);
+    } else {
+      logLevel = localStorage.getItem("rts.logLevel");
+    }
+    
+    if (!logLevel || !["silent", "error", "warn", "info", "debug"].includes(logLevel)) {
+      logLevel = "warn";
+    }
+    
+    log.setLevel(logLevel);
+    
+    // Redirect console methods through loglevel so they can be silenced consistently
+    console.debug = log.debug.bind(log);
+    console.log = log.info.bind(log);
+    console.warn = log.warn.bind(log);
+    console.error = log.error.bind(log);
+    
+    log.info(`RTS logging level initialized to: ${logLevel}`);
+  } catch (e) {
+    log.setLevel("warn");
+    console.warn("Failed to initialize custom log level, falling back to warn:", e);
+  }
+}
+
+initLogging();
 
 
 let URLS = {};
@@ -309,7 +343,7 @@ function showLoadingState($btn, $targetContainer) {
 }
 
 async function retrievePacketList(target = "all", onComplete = null) {
-  log.debug(`Load users from database...`)
+  log.info(`Load users from database...`)
   let cid = localStorage.getItem("cid.cid")
   let passcode = localStorage.getItem("cid.passcode")
 
@@ -327,7 +361,7 @@ async function retrievePacketList(target = "all", onComplete = null) {
     // Update the candidate details display (only shows when both values exist)
     showCandidateDetails();
   } else {
-    log.debug("Try and set CID / Passcode from current URL")
+    log.info("Try and set CID / Passcode from current URL")
     try {
       const params = new URLSearchParams(window.location.search);
       const cidParam = params.get("cid");
@@ -337,8 +371,8 @@ async function retrievePacketList(target = "all", onComplete = null) {
       if (cidParam !== null && passParam !== null && cidParam !== "" && passParam !== "") {
         cid = cidParam;
         passcode = passParam;
-        log.debug("CID and passcode extracted from URL", cid, passcode);
-        log.debug("adding to local db");
+        log.info("CID and passcode extracted from URL", cid, passcode);
+        log.info("adding to local db");
         localStorage.setItem("cid.cid", cid);
         localStorage.setItem("cid.passcode", passcode);
 
@@ -348,10 +382,10 @@ async function retrievePacketList(target = "all", onComplete = null) {
         showCandidateDetails();
 
       } else {
-        log.debug("CID or passcode missing in URL; not setting local storage");
+        log.info("CID or passcode missing in URL; not setting local storage");
       }
     } catch (e) {
-      log.debug("Error parsing URL params for CID/passcode", e);
+      log.error("Error parsing URL params for CID/passcode", e);
     }
   }
 
@@ -385,7 +419,7 @@ async function retrievePacketList(target = "all", onComplete = null) {
         }
       },
       error: function(jqXHR, textStatus, errorThrown) {
-        log.debug("Unable to load packets, trying legacy '/packets'");
+        log.info("Unable to load packets, trying legacy '/packets'");
         $.getJSON("packets", function(data) {
           if (!data.hasOwnProperty("exams")) {
             loadPacketList(data);
@@ -410,7 +444,7 @@ async function retrievePacketList(target = "all", onComplete = null) {
         }
       }
     } catch (e) {
-      log.debug("Unable to set exam query url", e);
+      log.warn("Unable to set exam query url", e);
     }
 
     if (examUrl) {
@@ -506,17 +540,17 @@ async function retrievePacketList(target = "all", onComplete = null) {
 async function loadExamList(data, clearExistingList = true, target = "all") {
   // If exam mode was enabled via URL param, hide packets by default
   if (typeof url_exam_mode !== "undefined" && url_exam_mode) {
-    log.debug("URL exam mode active - hiding packets list");
+    log.info("URL exam mode active - hiding packets list");
     try {
       $(".packet-wrapper").hide();
     } catch (e) {
-      log.debug("Unable to hide packet UI elements", e);
+      log.warn("Unable to hide packet UI elements", e);
     }
   }
-  log.debug(`Load exam list: ${data}`)
-  log.debug("Loading saved sessions")
+  log.info(`Load exam list: ${data}`)
+  log.info("Loading saved sessions")
   let sessions = await db.session.toArray().catch(function(error) {
-    log.debug("Error loading session", error);
+    log.error("Error loading session", error);
     $("#database-error").text(
       "Error loading the database, schema has probably changed and needs updating. You will probably need to delete the local database."
     );
@@ -539,7 +573,7 @@ async function loadExamList(data, clearExistingList = true, target = "all") {
 
   let exams_started = [];
   let exams_completed = [];
-  log.debug("Check status of saved exams")
+  log.info("Check status of saved exams")
   for (const s of sessions) {
     log.debug(`checking status of`, s)
     if (s.status == "active") {
@@ -569,7 +603,7 @@ async function loadExamList(data, clearExistingList = true, target = "all") {
     $("#cache-details ul").empty();
   }
   
-  log.debug("Loop available exams")
+  log.info("Loop available exams")
   for (const exam of exam_list) {
     log.debug(exam)
     const name = exam["name"];
@@ -804,10 +838,10 @@ async function loadExamList(data, clearExistingList = true, target = "all") {
 async function loadPacketList(data) {
   // NOTE: currently the packet id is not available prior ot downloading the packet
   // this severly limits what we can do with it (but to require would limit the utility)
-  log.debug(`loadPacketList`);
-  log.debug("Loading saved sessions")
+  log.info(`loadPacketList`);
+  log.info("Loading saved sessions")
   let sessions = await db.session.toArray().catch(function(error) {
-    log.debug(`Error loading session ${error}`);
+    log.error(`Error loading session ${error}`);
     $("#database-error").text(
       "Error loading the database, schema has probably changed and needs updating. You will probably need to delete the local database."
     );
@@ -826,7 +860,7 @@ async function loadPacketList(data) {
   //   .equals()
   let packets_started = [];
   let packets_completed = [];
-  log.debug("Check status of saved packets")
+  log.info("Check status of saved packets")
   sessions.forEach((s) => {
     log.debug(`checking status of`, s)
     if (s.status == "active") {
@@ -836,16 +870,16 @@ async function loadPacketList(data) {
     }
   });
 
-  log.debug("Packets started")
+  log.info("Packets started")
   log.debug(packets_started)
-  log.debug("Packets completed")
+  log.info("Packets completed")
   log.debug(packets_completed)
 
   let packet_list = [];
   if (data != null) {
     packet_list = data.packets;
   } else {
-    log.debug("data == null")
+    log.warn("data == null")
   }
 
   log.debug(packet_list)
@@ -1146,40 +1180,38 @@ function setUpPacket(data, path) {
 }
 
 function loadSession() {
-  console.debug("load session", exam_details, db.session);
+  log.info("load session", exam_details, db.session);
   // Either continue session or create a new one
   db.session
-    // .where("status")
-    // .equals("active")
     .where("[eid+aid]")
     .between([exam_details.eid, Dexie.minKey], [exam_details.eid, Dexie.maxKey])
     .toArray()
     .then((sessions) => {
-      //console.debug("sessions", sessions);
-
-      // let active_sessions = [];
-
-      // sessions.forEach((s) => {
-      //   if (s.status == "active") {
-      //     active_sessions.push(s);
-      //   }
-      // });
-
-      let load_previous = false;
-
-      // Start new session if no session found
       if (sessions.length < 1) {
         exam_details.aid = uuidv4();
         date_started = Date.now();
-      } else {
-        let text = "Select session to continue (leave blank to create new):";
-        if (exam_details.exam_mode) {
-          text = "Session will be continued";
+        exam_details.start_time = date_started / 1000;
+        setUpQuestions(false);
+        if (!review_mode) {
+          initSync(exam_details, URLS);
         }
-        //console.debug(sessions.date);
+      } else {
+        // Show resume dialog
+        $("#resume-sessions-list").empty();
+        
+        let textPrompt = "Select a session to continue:";
+        if (exam_details.exam_mode) {
+          textPrompt = "An exam session is already in progress. You must continue the existing session:";
+          $("#btn-resume-start-new").hide();
+        } else {
+          $("#btn-resume-start-new").show();
+        }
+        
+        $("#resume-text").text(textPrompt);
 
-        for (let i = 0; i < sessions.length; i++) {
-          let d = new Date(sessions[i].date);
+        // Populate session items
+        sessions.forEach((session, i) => {
+          let d = new Date(session.date);
           let formatted_date =
             d.getFullYear() +
             "-" +
@@ -1193,58 +1225,83 @@ function loadSession() {
             ":" +
             d.getSeconds();
 
-          if (sessions[i].status == "active") {
-            text = text + `\r${i}: ${formatted_date} [In progress]`;
+          let label = `${formatted_date}`;
+          if (session.status == "active") {
+            label += " [In progress]";
           } else {
             if (!exam_details.exam_mode) {
-              text =
-                text +
-                `\r${i}: ${formatted_date} [Complete - score ${sessions[i].score}/${sessions[i].max_score}]`;
+              label += ` [Complete - score ${session.score}/${session.max_score}]`;
             } else {
-              text =
-                text +
-                `\r${i}: ${formatted_date} [Complete]`;
+              label += " [Complete]";
             }
           }
-        }
 
-        // If in exam mode we don't want to allow multiple sessions
-        let s;
+          let $item = $(`
+            <div class="resume-session-item" data-index="${i}" style="padding: 8px; margin: 4px 0; border: 1px solid #444; border-radius: 4px; cursor: pointer; background: #222; color: #eee; display: flex; align-items: center; gap: 10px;">
+              <input type="radio" name="resume-session-select" id="session-opt-${i}" value="${i}" style="cursor: pointer; margin: 0;">
+              <label for="session-opt-${i}" style="cursor: pointer; display: inline; font-size: 13px; margin: 0; color: #ccc;">${label}</label>
+            </div>
+          `);
+          
+          $item.on("click", function() {
+            $(this).find("input[type=radio]").prop("checked", true);
+            $(".resume-session-item").css("border-color", "#444");
+            $(this).css("border-color", "#311B92");
+            $("#btn-resume-continue").prop("disabled", false);
+          });
+
+          $("#resume-sessions-list").append($item);
+        });
+
+        // Auto-select the first one by default if exam_mode is active
         if (exam_details.exam_mode) {
-          s = "0";
-          alert(text);
+          $(".resume-session-item").first().click();
         } else {
-          s = prompt(text, "0");
+          $("#btn-resume-continue").prop("disabled", true);
         }
 
-        if (s != null && s != "") {
-          load_previous = true;
+        // Open the dialog
+        $("#resume-dialog").modal({
+          escapeClose: false,
+          clickClose: false,
+          showClose: false
+        });
 
-          exam_details.aid = sessions[parseInt(s)].aid;
-          exam_details.cid = sessions[parseInt(s)].cid;
-          date_started = sessions[parseInt(s)].date;
-
-          let time_left = sessions[parseInt(s)].time_left;
-
-          exam_time = time_left;
-
-          exam_details.question_order = sessions[parseInt(s)].question_order;
-
-          if (sessions[parseInt(s)].status == "complete") {
-            review_mode = true;
-          }
-        } else {
-          // If cancel is pressed or input is blank
+        // Unbind previous click events to prevent duplicates
+        $("#btn-resume-start-new").off("click").on("click", function() {
+          $.modal.close();
           exam_details.aid = uuidv4();
           date_started = Date.now();
-          //console.debug("new date", date_started);
-        }
-        exam_details.start_time = date_started / 1000;
-      }
+          exam_details.start_time = date_started / 1000;
+          setUpQuestions(false);
+          if (!review_mode) {
+            initSync(exam_details, URLS);
+          }
+        });
 
-      setUpQuestions(load_previous);
-      if (!review_mode) {
-        initSync(exam_details, URLS);
+        $("#btn-resume-continue").off("click").on("click", function() {
+          let selectedIdx = parseInt($("input[name=resume-session-select]:checked").val());
+          if (isNaN(selectedIdx)) return;
+          
+          $.modal.close();
+          let selectedSession = sessions[selectedIdx];
+          
+          exam_details.aid = selectedSession.aid;
+          exam_details.cid = selectedSession.cid;
+          date_started = selectedSession.date;
+          exam_time = selectedSession.time_left;
+          exam_details.question_order = selectedSession.question_order;
+
+          if (selectedSession.status == "complete") {
+            review_mode = true;
+          }
+          
+          exam_details.start_time = date_started / 1000;
+          setUpQuestions(true);
+          if (!review_mode) {
+            initSync(exam_details, URLS);
+          }
+        });
       }
     });
 }
@@ -3287,6 +3344,15 @@ $("#btn-reset-local").click(function(evt) {
     localStorage.removeItem("cid.passcode")
   } else {}
 });
+// Initialize logging controls
+$("#select-log-level").val(localStorage.getItem("rts.logLevel") || "warn");
+$("#select-log-level").on("change", function() {
+  let level = $(this).val();
+  log.setLevel(level);
+  localStorage.setItem("rts.logLevel", level);
+  log.info(`Log level changed to: ${level}`);
+});
+
 
 $("#btn-delete-current").click(function(evt) {
   if (exam_details.question_order.length < 1) {

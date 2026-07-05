@@ -255,6 +255,16 @@
                 View local saved answers
               </button>
             </p>
+            <div id="logging-controls" style="margin-top: 15px; border-top: 1px solid #444; padding-top: 10px; font-family: sans-serif; font-size: 13px;">
+              <label for="select-log-level" style="font-weight: bold; color: #fff;">Logging Level:</label>
+              <select id="select-log-level" style="background:#222; color:#fff; border:1px solid #555; padding: 2px 5px; border-radius: 3px; font-size: 13px; margin-left: 5px; cursor: pointer;">
+                <option value="silent">Disabled (Silent)</option>
+                <option value="error">Error</option>
+                <option value="warn">Warn</option>
+                <option value="info">Info</option>
+                <option value="debug">Debug</option>
+              </select>
+            </div>
           </details>
         </div>
         <div id="review-overlay" class="fullscreen-overlay">
@@ -356,6 +366,20 @@
         /><br />
       </div>
       <button id="btn-login" class="navigation dialog-yes">Login</button>
+    </div>
+
+    <div id="resume-dialog" class="dialog modal noclose">
+      <h3 class="dialog-title">Resume Session?</h3>
+      <div class="dialog-text">
+        <p id="resume-text">Choose a previous session to continue, or start a new one:</p>
+        <div id="resume-sessions-list" style="margin: 15px 0; max-height: 200px; overflow-y: auto;">
+          <!-- Session options list -->
+        </div>
+      </div>
+      <div class="dialog-buttons" style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 15px;">
+        <button id="btn-resume-start-new" class="navigation dialog-no" style="margin: 0;">Start New</button>
+        <button id="btn-resume-continue" class="navigation dialog-yes" style="margin: 0;" disabled>Continue</button>
+      </div>
     </div>
 
     <div id="loading" class="fullscreen-overlay">

@@ -91,74 +91,97 @@ export function postAnswers(ans, URLS, exam_details) {
           alert(`Answers sucessfully submitted.`);
         }
       } else {
-        submissionError(data, ans, exam_details);
+        submissionError(data, ans, exam_details, URLS);
       }
     })
     .fail((e) => {
       // Will occur with server error such as 500
       console.debug("error", e);
-      submissionError(e, ans, exam_details);
+      submissionError(e, ans, exam_details, URLS);
     });
   // $.post( "http://localhost:8000/submit_answers", JSON.stringify(ans));
 }
 
-export function submissionError(data, answer_json, exam_details) {
-  // error will not be defined with server errors
-  if (data.error != undefined) {
-    alert(`Error submitting answers: ${data.error}`);
-  } else {
-    alert(`Error submitting answers`);
-  }
-  var docHeight = $(document).height();
+export function submissionError(data, answer_json, exam_details, URLS) {
+  // Clear any existing overlay
+  $("#submit-error-overlay").remove();
 
-  let answers = JSON.parse(answer_json.answers)
+  let answers = JSON.parse(answer_json.answers);
+  let answer_map = {};
 
-  let answer_map = {}
-
-  answers.forEach((ans, n) => {
+  answers.forEach((ans) => {
     if (!answer_map.hasOwnProperty(ans.qid)) {
       answer_map[ans.qid] = [];
     }
-
     answer_map[ans.qid].push(ans);
-
   });
 
-  let html = $("<ul></ul>");
-
-  exam_details.question_order.forEach((i, j) => {
-    console.debug(i, answer_map)
-    if (i in answer_map) {
-      console.debug("YES", i, answer_map)
-      let ans_array = answer_map[i];
-      ans_array.forEach((x, y) => {
-        $(html).append(`<li><b>Question ${j+1}.${y}:</b> ${x.ans}</li>`);
+  let $list = $("<ol style='margin-left: 20px; font-size: 13px; max-height: 150px; overflow-y: auto; color: #ccc;'></ol>");
+  exam_details.question_order.forEach((qid, idx) => {
+    if (qid in answer_map) {
+      let ans_array = answer_map[qid];
+      ans_array.forEach((ans_obj, sub_idx) => {
+        $list.append(`<li><strong>Question ${idx + 1}.${sub_idx + 1}:</strong> ${ans_obj.ans}</li>`);
       });
     }
+  });
 
-  })
+  let rawJsonStr = JSON.stringify(answer_json, null, 2);
 
-  console.debug(exam_details.question_order);
-  console.debug(answer_map);
-  console.debug(html);
-
-  if ($("#submit-error-overlay").length < 1) {
-    $("body").append(
-      `<div id='submit-error-overlay'><span style='color: white'><p>An error has occurred when submitting your answers. A copy of your answers are displayed below, you may wish to <a id="save-failed-answers" href="#">save a copy</a> if subsequent submissions still fail. Please try submitting again or refresh this page to continue (answers will be saved locally in the browser unless you clear local storage).</p><p>${html.get(0).innerHTML}</p><p>${JSON.stringify(
-        answer_json
-      )}</p></span></div>`
-    );
-
-    $("#btn-submit-nav").prependTo("#submit-error-overlay");
-
-    $("#submit-error-overlay").height(docHeight);
-
-    let file = new Blob([JSON.stringify(answer_json)], {type: "application/json"})
-
-    let link = document.getElementById("save-failed-answers");
-    link.href = URL.createObjectURL(file);
-    link.download = "answers.json";
+  let errorMsg = "An error occurred while submitting your answers.";
+  if (data && data.error) {
+    errorMsg = `Server returned error: ${data.error}`;
+  } else if (data && data.statusText) {
+    errorMsg = `Network error: ${data.statusText} (${data.status})`;
   }
+
+  let $overlay = $(`
+    <div id="submit-error-overlay">
+      <div class="error-card">
+        <h3>Submission Failed</h3>
+        <p style="margin-bottom: 15px; color: #ef5350; font-weight: bold;">${errorMsg}</p>
+        <p style="font-size: 13px; color: #bbb; line-height: 1.4;">
+          Your answers are saved locally in the browser's database and will not be lost unless you clear your local data.
+          Please try to submit again, or save a backup file of your answers and contact support.
+        </p>
+        
+        <div style="margin: 15px 0;">
+          <h4 style="margin: 0 0 5px 0; font-size: 14px; color: #eee;">Submitted Answers:</h4>
+          <div style="background: #111; border: 1px solid #333; padding: 10px; border-radius: 4px;">
+            ${$list.prop("outerHTML")}
+          </div>
+        </div>
+
+        <details style="margin: 15px 0; font-size: 12px; cursor: pointer; color: #aaa;">
+          <summary style="font-weight: bold; margin-bottom: 5px;">View Raw Submission JSON</summary>
+          <pre style="background: #111; border: 1px solid #333; padding: 10px; overflow: auto; max-height: 150px; text-align: left; font-family: monospace; white-space: pre-wrap; margin: 0; color: #a5d6a7;">${rawJsonStr}</pre>
+        </details>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+          <button id="btn-err-close" class="btn-secondary">Close</button>
+          <a id="btn-err-backup" class="button" style="text-decoration: none;"><button class="btn-secondary">Save Backup</button></a>
+          <button id="btn-err-retry">Retry Submit</button>
+        </div>
+      </div>
+    </div>
+  `);
+
+  $("body").append($overlay);
+
+  // Setup download backup link
+  let fileBlob = new Blob([JSON.stringify(answer_json)], {type: "application/json"});
+  let backupUrl = URL.createObjectURL(fileBlob);
+  $overlay.find("#btn-err-backup").attr("href", backupUrl).attr("download", `answers_backup_${exam_details.eid.replace(/\//g, "_")}.json`);
+
+  // Close handler
+  $overlay.find("#btn-err-close").on("click", function() {
+    $("#submit-error-overlay").remove();
+  });
+
+  // Retry handler
+  $overlay.find("#btn-err-retry").on("click", function() {
+    postAnswers(answer_json, URLS, exam_details);
+  });
 }
 
 export function getQuestion(url, question_number, question_total) {
