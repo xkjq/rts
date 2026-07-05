@@ -1348,3 +1348,16 @@ h2:has(+ #exam-list:empty),  h2:has(+ #packet-list:empty){
     align-items: center;
     gap: 15px;
 }
+
+.exit-exam-mode {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: #b71c1c;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    z-index: 10000;
+}

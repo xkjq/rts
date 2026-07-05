@@ -66,6 +66,20 @@ let url_exam_mode = false;
     if (examParam !== null) {
       if (examParam === "1" || String(examParam).toLowerCase() === "true") {
         url_exam_mode = true;
+        let el = $("#load-exam-packet-instructions")
+        el.html("You are in exam mode.");
+        
+        let button = $("<button class='exit-exam-mode'>Exit Exam Mode</button>");
+
+        button.click(() => { 
+            // Remove exam_mode param from URL and reload page
+            params.delete("exam_mode");
+            const newUrl = `${window.location.pathname}?${params.toString()}`;
+            window.location.href = newUrl;
+        })
+        el.append(button);
+        el.append("<br/>Click on exam below to load it.");
+        
         log.debug("URL parameter enabled exam mode");
       }
     }
