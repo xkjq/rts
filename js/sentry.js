@@ -10,6 +10,8 @@ export function initSentry() {
     const dsn = window.SENTRY_DSN || window.RTS_SENTRY_DSN || metaDsn || defaultDsn;
 
     if (!dsn) {
+      window.SENTRY_STATUS = { loaded: false, reason: "No DSN configured" };
+      console.warn("[Sentry] ❌ Error monitoring disabled (No DSN provided)");
       return;
     }
 
@@ -50,6 +52,24 @@ export function initSentry() {
       ],
     };
 
+    const onInitialized = () => {
+      window.SENTRY_STATUS = { loaded: true, dsn: dsn, environment: config.environment };
+      console.info(`[Sentry] ✅ Error monitoring initialized (Env: ${config.environment})`);
+
+      // Expose a convenient window.testSentry() function for testing from browser console
+      window.testSentry = function(msg = "RTS Sentry Test Event") {
+        if (window.Sentry && typeof window.Sentry.captureException === "function") {
+          const testErr = new Error(msg);
+          window.Sentry.captureException(testErr);
+          console.info("[Sentry] 🚀 Sent test error event to Sentry:", testErr);
+          return "Sentry test event sent!";
+        } else {
+          console.error("[Sentry] ❌ Sentry is not available to send test event");
+          return "Failed to send event";
+        }
+      };
+    };
+
     if (window.Sentry) {
       window.Sentry.init({
         ...config,
@@ -57,7 +77,7 @@ export function initSentry() {
           window.Sentry.browserTracingIntegration ? window.Sentry.browserTracingIntegration() : null,
         ].filter(Boolean),
       });
-      console.log("[RTS] Sentry error monitoring initialized");
+      onInitialized();
     } else {
       const script = document.createElement("script");
       script.src = "https://browser.sentry-cdn.com/8.48.0/bundle.min.js";
@@ -65,12 +85,17 @@ export function initSentry() {
       script.onload = () => {
         if (window.Sentry) {
           window.Sentry.init(config);
-          console.log("[RTS] Sentry error monitoring initialized via dynamic load");
+          onInitialized();
         }
+      };
+      script.onerror = () => {
+        window.SENTRY_STATUS = { loaded: false, reason: "Failed to load Sentry CDN script" };
+        console.warn("[Sentry] ❌ Failed to load Sentry CDN script");
       };
       document.head.appendChild(script);
     }
   } catch (err) {
-    console.warn("[RTS] Sentry initialization failed:", err);
+    window.SENTRY_STATUS = { loaded: false, error: err };
+    console.warn("[Sentry] ❌ Initialization failed:", err);
   }
 }

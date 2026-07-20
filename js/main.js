@@ -453,18 +453,19 @@ async function retrievePacketList(target = "all", onComplete = null) {
         }
       },
       error: function(jqXHR, textStatus, errorThrown) {
-        log.info("Unable to load packets, trying legacy '/packets'");
+        log.info("No static packets.json found, checking legacy '/packets' endpoint");
         $.getJSON("packets", function(data) {
           if (!data.hasOwnProperty("exams")) {
             loadPacketList(data);
           }
-        }).fail(function(jqXHR, textStatus, errorThrown) {
-          console.warn("No packet list available");
+        }).fail(function() {
+          log.info("No static local packets available, using remote exam list");
         });
       }
-    });
+    }).catch(() => null);
     promises.push(p);
   }
+
 
   // 2. Fetch exams if target is "all" or "exams" or one of the types
   if (target === "all" || target === "exams" || ["anatomy", "rapid", "short", "long"].includes(target)) {
@@ -557,9 +558,10 @@ async function retrievePacketList(target = "all", onComplete = null) {
         if (onComplete) onComplete(true);
       })
       .catch((err) => {
-        console.warn("One or more requests failed", err);
+        log.info("Exam or packet loading completed with fallback", err);
         if (onComplete) onComplete(false);
       });
+
   } else {
     if (onComplete) onComplete(true);
   }
