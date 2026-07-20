@@ -5,6 +5,10 @@ import * as interact from "./interact.js";
 import * as config from "./config.js";
 import { db, question_db } from "./db.js";
 import { initSync, triggerImmediateSync, updateSyncUI } from "./sync.js";
+import { initSentry } from "./sentry.js";
+
+initSentry();
+
 // const { v4: uuidv4 } = require('uuid');
 
 function initLogging() {
