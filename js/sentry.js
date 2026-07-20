@@ -5,8 +5,9 @@
 
 export function initSentry() {
   try {
+    const defaultDsn = "https://a5a64d2190093ce4b8972dd9a6907828@o4511766757244928.ingest.de.sentry.io/4511766900310096";
     const metaDsn = document.querySelector('meta[name="sentry-dsn"]')?.getAttribute('content');
-    const dsn = window.SENTRY_DSN || window.RTS_SENTRY_DSN || metaDsn;
+    const dsn = window.SENTRY_DSN || window.RTS_SENTRY_DSN || metaDsn || defaultDsn;
 
     if (!dsn) {
       return;
