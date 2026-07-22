@@ -56,7 +56,6 @@ export function initSentry() {
       window.SENTRY_STATUS = { loaded: true, dsn: dsn, environment: config.environment };
       console.info(`[Sentry] ✅ Error monitoring initialized (Env: ${config.environment})`);
 
-      // Expose a convenient window.testSentry() function for testing from browser console
       window.testSentry = function(msg = "RTS Sentry Test Event") {
         if (window.Sentry && typeof window.Sentry.captureException === "function") {
           const testErr = new Error(msg);
