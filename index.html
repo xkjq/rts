@@ -131,8 +131,7 @@
             <div class="logout-error info">
               <p>
                 <strong
-                  >Answers are submitted automatically. You can complete the
-                  exam by clicking below.</strong
+                  >Complete the exam by clicking below.</strong
                 >
               </p>
               <p class="unanswered-line">
@@ -307,6 +306,31 @@
         <button id="finish-cancel" class="navigation dialog-cancel">
           Continue exam
         </button>
+      </div>
+    </div>
+
+    <div id="exam-finished-modal" class="dialog modal">
+      <h3 class="dialog-title">Exam Submitted</h3>
+      <div class="dialog-text" style="text-align: center;">
+        <p style="margin-bottom: 1.5rem; font-size: 1.1rem; font-weight: bold;">
+          Answers successfully submitted.
+        </p>
+        <div id="finished-modal-results-container" style="margin-bottom: 1.5rem;">
+          <a
+            id="finished-modal-results-link"
+            href="#"
+            target="_blank"
+            class="navigation dialog-review"
+            style="display: inline-block; text-decoration: none; text-align: center; width: auto !important; padding: 0.8rem 1.6rem !important;"
+          >
+            View Results on Main Site
+          </a>
+        </div>
+        <div>
+          <button id="btn-finished-modal-close" class="navigation dialog-cancel">
+            OK
+          </button>
+        </div>
       </div>
     </div>
 

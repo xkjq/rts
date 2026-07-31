@@ -58,37 +58,51 @@ export function postAnswers(ans, URLS, exam_details) {
       console.debug("returned data", data);
       if (data.success) {
         $("#submit-error-overlay").remove();
-        if (data.question_count == exam_details.number_of_questions) {
-          let ret = confirm(
-            // `${data.question_count} answers successfully submitted. Click OK to finish the exam.`
-            `Answers successfully submitted. Click OK to finish the exam.`
-          );
+        $(document).trigger("saveSessionEvent", [true]);
 
-          if (ret) {
-            $(document).trigger("saveSessionEvent", [true]);
-            if (URLS.exam_results_url != "") {
-              let url = URLS.exam_results_url;
-
-              if (exam_details.cid != "") {
-                url = `${url}${exam_details.cid}`;
-                if (localStorage.getItem("cid.passcode") != null) {
-                  url = `${url}/${localStorage.getItem("cid.passcode")}`;
-                  }
-                if (exam_details.cid.startsWith("u-")) {
-                  url = URLS.exam_user_results_url;
-              }
-              }
-              $("#options-link")
-                .empty()
-                .append(
-                  `<a href="${url}" target="_blank"><div class="packet-button">Results and answers</div></a>`
-                );
+        let url = "";
+        if (URLS.exam_results_url != "" && URLS.exam_results_url != undefined) {
+          url = URLS.exam_results_url;
+          if (exam_details && exam_details.cid != "" && exam_details.cid != undefined) {
+            url = `${url}${exam_details.cid}`;
+            if (localStorage.getItem("cid.passcode") != null) {
+              url = `${url}/${localStorage.getItem("cid.passcode")}`;
             }
-            $("#options-panel").show();
-          } else {}
+            if (exam_details.cid.startsWith("u-")) {
+              url = URLS.exam_user_results_url || url;
+            }
+          }
+          $("#options-link")
+            .empty()
+            .append(
+              `<a href="${url}" target="_blank"><div class="packet-button">Results and answers</div></a>`
+            );
+        }
+
+        if (url) {
+          $("#finished-modal-results-link")
+            .attr("href", url)
+            .off("click")
+            .on("click", function(e) {
+              e.preventDefault();
+              window.open(url, "_blank", "width=1024,height=768,scrollbars=yes,resizable=yes");
+            });
+          $("#finished-modal-results-container").show();
         } else {
-          //alert(`${data.question_count} answers sucessfully submitted.`);
-          alert(`Answers sucessfully submitted.`);
+          $("#finished-modal-results-container").hide();
+        }
+
+        $("#btn-finished-modal-close")
+          .off("click")
+          .on("click", function() {
+            $.modal.close();
+            $("#options-panel").show();
+          });
+
+        if (typeof $.fn.modal === "function") {
+          $("#exam-finished-modal").modal();
+        } else {
+          $("#options-panel").show();
         }
       } else {
         submissionError(data, ans, exam_details, URLS);

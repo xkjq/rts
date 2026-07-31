@@ -18,29 +18,17 @@ export function updateSyncUI(status) {
   let html = "";
   switch (status) {
     case "practice":
-      html = `
-        <span class="sync-dot practice"></span>
-        <span class="sync-text">Practice mode (local only)</span>
-      `;
+      html = `<span class="sync-dot practice" title="Practice mode (local only)"></span>`;
       break;
     case "syncing":
-      html = `
-        <span class="sync-dot syncing"></span>
-        <span class="sync-text">Saving to server...</span>
-      `;
+      html = `<span class="sync-dot syncing" title="Saving to server..."></span>`;
       break;
     case "failed":
-      html = `
-        <span class="sync-dot failed"></span>
-        <span class="sync-text">Offline - Save failed</span>
-      `;
+      html = `<span class="sync-dot failed" title="Offline - Save failed"></span>`;
       break;
     case "saved":
     default:
-      html = `
-        <span class="sync-dot saved"></span>
-        <span class="sync-text">Saved to server</span>
-      `;
+      html = `<span class="sync-dot saved" title="Saved to server"></span>`;
       break;
   }
   container.innerHTML = html;

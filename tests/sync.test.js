@@ -60,7 +60,7 @@ describe("RTS Sync Unit Tests", () => {
   test("updateSyncUI updates the DOM container", () => {
     updateSyncUI("syncing");
     expect(globalThis.document.getElementById).toHaveBeenCalledWith("sync-status");
-    expect(mockHtml).toHaveBeenCalledWith(expect.stringContaining("Saving to server..."));
+    expect(mockHtml).toHaveBeenCalledWith(expect.stringContaining('sync-dot syncing'));
   });
 
   test("performSync does nothing if exam details are missing", async () => {
