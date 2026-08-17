@@ -91,10 +91,15 @@ export function loadMainImage(image, stack) {
   cornerstoneTools.addToolForElement(element, RotateTool);
   cornerstoneTools.addToolForElement(element, AngleTool);
   cornerstoneTools.addToolForElement(element, CobbAngleTool);
+  const isStack = stack && stack.imageIds && stack.imageIds.length > 1;
+  const defaultTool = isStack ? "StackScroll" : "Pan";
+  const scrollSpeed = isStack ? (staticBarHeight / stack.imageIds.length) : undefined;
+
   cornerstoneTools.addToolForElement(element, StackScrollTool, {
     configuration: {
       loop: true,
       allowSkipping: true,
+      stackScrollSpeed: scrollSpeed,
     },
   });
   if (StackScrollMouseWheelTool) {
@@ -122,13 +127,12 @@ export function loadMainImage(image, stack) {
     },
   });
 
-  const isStack = stack && stack.imageIds && stack.imageIds.length > 1;
-  const defaultTool = isStack ? "StackScroll" : "Pan";
-
   cornerstoneTools.setToolActiveForElement(element, defaultTool, {
     mouseButtonMask: 1,
     configuration: {
       loop: true,
+      allowSkipping: true,
+      stackScrollSpeed: scrollSpeed,
     },
   });
   cornerstoneTools.setToolEnabledForElement(element, "ArrowAnnotate");
@@ -186,7 +190,7 @@ export function loadMainImage(image, stack) {
       const current = stack.currentImageIdIndex + 1;
       const percent = total > 1 ? (current - 1) / (total - 1) : 0;
 
-      staticBarHeight = Math.min(500, Math.max(350, rect.height * 0.7));
+      staticBarHeight = 420;
       staticBarTop = mouseY - percent * staticBarHeight;
       staticBarLeft = mouseX - 20;
 
@@ -211,7 +215,7 @@ export function loadMainImage(image, stack) {
       const total = stack.imageIds.length;
       const current = stack.currentImageIdIndex + 1;
       const percent = total > 1 ? (current - 1) / (total - 1) : 0;
-      staticBarHeight = Math.min(500, Math.max(350, rect.height * 0.7));
+      staticBarHeight = 420;
       staticBarTop = mouseY - percent * staticBarHeight;
       staticBarLeft = mouseX - 20;
 
@@ -496,10 +500,22 @@ export function changeControlSelection() {
       break;
     }
     case "scroll": {
+      let speed = undefined;
+      try {
+        const c = cornerstone.getEnabledElement(dicom_element);
+        if (c && c.toolStateManager && c.toolStateManager.toolState && c.toolStateManager.toolState.stack) {
+          const stackData = c.toolStateManager.toolState.stack.data[0];
+          if (stackData && stackData.imageIds && stackData.imageIds.length > 1) {
+            speed = staticBarHeight / stackData.imageIds.length;
+          }
+        }
+      } catch (err) {}
       cornerstoneTools.setToolActiveForElement(dicom_element, "StackScroll", {
         mouseButtonMask: 1,
         configuration: {
           loop: true,
+          allowSkipping: true,
+          stackScrollSpeed: speed,
         },
       });
       break;
