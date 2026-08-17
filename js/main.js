@@ -104,6 +104,7 @@ if (!baseUrl || baseUrl.includes("localhost") || baseUrl === "/") {
 URLS.base_url = baseUrl;
 URLS.exam_query_url = baseUrl + "exam/json";
 URLS.exam_submit_url = baseUrl + "exam/submit";
+URLS.exam_status_url = baseUrl + "exam/status";
 URLS.exam_results_url = baseUrl + "cid/";
 URLS.exam_user_results_url = baseUrl + "user/scores";
 URLS.question_feedback_url = baseUrl + "feedback/";
@@ -112,7 +113,7 @@ URLS.login_url = baseUrl + "accounts/login/?next=/rts";
 URLS.logout_url = baseUrl + "accounts/logout/?next=/rts";
 
 // Override individual urls
-let urls_to_check = ["exam_query_url",  "exam_submit_url", 
+let urls_to_check = ["exam_query_url",  "exam_submit_url", "exam_status_url", 
   "exam_results_url", "question_feedback_url", 
   "question_answer_submit_url", "login_url", "logout_url"]
 
@@ -124,6 +125,39 @@ for (let url of urls_to_check) {
 
 log.debug("URLS")
 log.debug(URLS)
+
+export function sendExamStatus(status, extra = "") {
+  if (!exam_details || !exam_details.eid) return;
+
+  const activeCid = (typeof global_cid !== "undefined" && global_cid) ? String(global_cid) : (exam_details.cid ? String(exam_details.cid) : (localStorage.getItem("cid.cid") || ""));
+  const activePasscode = (typeof global_passcode !== "undefined" && global_passcode) ? global_passcode : (exam_details.passcode || localStorage.getItem("cid.passcode") || "");
+
+  if (!activeCid) return;
+
+  const payload = {
+    eid: exam_details.eid,
+    cid: activeCid,
+    passcode: activePasscode,
+    status: status,
+    start_time: exam_details.start_time || (Date.now() / 1000),
+    extra: extra || "",
+  };
+
+  $.ajax({
+    type: "POST",
+    url: URLS.exam_status_url,
+    data: payload,
+    dataType: "json",
+    global: false,
+    success: function(res) {
+      log.debug("Exam status logged:", status, res);
+    },
+    error: function(err) {
+      log.warn("Failed to log exam status:", status, err);
+    }
+  });
+}
+
 
 // Parse URL parameters to allow enabling exam mode via GET param
 let url_exam_mode = false;
@@ -1309,6 +1343,9 @@ function loadSession() {
           exam_details.aid = uuidv4();
           date_started = Date.now();
           exam_details.start_time = date_started / 1000;
+          if (exam_details.exam_mode) {
+            sendExamStatus("restarted", "Started new attempt from resume dialog");
+          }
           setUpQuestions(false);
           if (!review_mode) {
             initSync(exam_details, URLS);
@@ -1333,6 +1370,9 @@ function loadSession() {
           }
           
           exam_details.start_time = date_started / 1000;
+          if (exam_details.exam_mode && !review_mode) {
+            sendExamStatus("resumed", "Resumed attempt from resume dialog");
+          }
           setUpQuestions(true);
           if (!review_mode) {
             initSync(exam_details, URLS);
@@ -3148,10 +3188,10 @@ $("#btn-login").click(function(evt) {
 
 $(".start-packet-button").click(function(evt) {
 
-  // TODO: send packet to server to indicated that we have started the exam
-  // if in exam mode
-
   exam_details.start_time = new Date().getTime() / 1000;
+  if (exam_details.exam_mode) {
+    sendExamStatus("started", "Candidate clicked Start Exam");
+  }
   initSync(exam_details, URLS);
 
   if (timer != null) {
@@ -3453,6 +3493,9 @@ $("#btn-delete-current").click(function(evt) {
     .anyOf(exam_details.question_order)
     .delete()
     .then(function(deleteCount) {
+      if (exam_details.exam_mode) {
+        sendExamStatus("restarted", "Candidate reset packet answers");
+      }
       $.notify("Packet successfully reset", "success");
       loadQuestion(0, 0, true);
       // $.notify("The page will now reload", "warn");
