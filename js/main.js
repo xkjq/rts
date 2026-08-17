@@ -1477,6 +1477,9 @@ async function loadQuestion(n, section = 1, force_reload = false) {
 
   loaded_question = n;
 
+  $(".question-review").attr("aria-selected", "false");
+  $(`.question-review[data-qid='${n}']`).attr("aria-selected", "true");
+
   // Set up question navigation
   $(".navigation[data-nav='next']").off();
   $(".navigation[data-nav='previous']").off();
@@ -1502,20 +1505,34 @@ async function loadQuestion(n, section = 1, force_reload = false) {
 
   const display_n = n + 1;
 
-  if (question_data.title) {
-    $(".question .title").get(0).innerHTML =
-      '<span style="font-weight:700;">' +
-      display_n +
-      "</span> " +
-      question_data.title;
-  } else {
+  if (question_type === "long") {
     $(".question .title").get(0).innerHTML =
       '<span style="font-weight:700;">' + display_n + "</span>";
-  }
-  if (question_data.history) {
-    $(".question .stem").text(question_data.history);
+    let stemContent = "";
+    if (question_data.title && question_data.history) {
+      stemContent = question_data.title + " - " + question_data.history;
+    } else if (question_data.history) {
+      stemContent = question_data.history;
+    } else if (question_data.title) {
+      stemContent = question_data.title;
+    }
+    $(".question .stem").text(stemContent);
   } else {
-    $(".question .stem").empty();
+    if (question_data.title) {
+      $(".question .title").get(0).innerHTML =
+        '<span style="font-weight:700;">' +
+        display_n +
+        "</span> " +
+        question_data.title;
+    } else {
+      $(".question .title").get(0).innerHTML =
+        '<span style="font-weight:700;">' + display_n + "</span>";
+    }
+    if (question_data.history) {
+      $(".question .stem").text(question_data.history);
+    } else {
+      $(".question .stem").empty();
+    }
   }
 
   // Close any open figures
@@ -1928,41 +1945,50 @@ async function loadQuestion(n, section = 1, force_reload = false) {
     }
 
     case "long": {
-      ap.append(
-        '<div class="answer-item"><div class="answer-label-outer"><p class="answer-label-inner"><span class="answer-label-number">' +
-        display_n +
-        '.1</span><span style="flex:1">Observations</span><button class="flag" data-qid="' +
-        n +
-        '" data-qidn=1 style="margin-right:0">⚐</button></p></div><textarea class="long-answer" data-qidn=1 data-answer-section-qidn=1 name="Observations" style="overflow-x: hidden; overflow-wrap: break-word; height: 80px;"></textarea></div>'
-      );
-      ap.append(
-        '<div class="answer-item"><div class="answer-label-outer"><p class="answer-label-inner"><span class="answer-label-number">' +
-        display_n +
-        '.2</span><span style="flex:1">Interpretation</span><button class="flag" data-qid="' +
-        n +
-        '" data-qidn=2 style="margin-right:0">⚐</button></p></div><textarea class="long-answer" data-qidn=2 data-answer-section-qidn=2 name="Interpretation" style="overflow-x: hidden; overflow-wrap: break-word; , trueheight: 80px;"></textarea></div>'
-      );
-      ap.append(
-        '<div class="answer-item"><div class="answer-label-outer"><p class="answer-label-inner"><span class="answer-label-number">' +
-        display_n +
-        '.3</span><span style="flex:1">Principal Diagnosis</span><button class="flag" data-qid="' +
-        n +
-        '" data-qidn=3 style="margin-right:0">⚐</button></p></div><textarea class="long-answer" data-qidn=3 data-answer-section-qidn=3 name="Principal Diagnosis" style="overflow-x: hidden; overflow-wrap: break-word; height: 80px;"></textarea></div>'
-      );
-      ap.append(
-        '<div class="answer-item"><div class="answer-label-outer"><p class="answer-label-inner"><span class="answer-label-number">' +
-        display_n +
-        '.4</span><span style="flex:1">Differential Diagnosis</span><button class="flag" data-qid="' +
-        n +
-        '" data-qidn=4 style="margin-right:0">⚐</button></p></div><textarea class="long-answer" data-qidn=4 data-answer-section-qidn=4 name="Differential Diagnosis" style="overflow-x: hidden; overflow-wrap: break-word; height: 80px;"></textarea></div>'
-      );
-      ap.append(
-        '<div class="answer-item"><div class="answer-label-outer"><p class="answer-label-inner"><span class="answer-label-number">' +
-        display_n +
-        '.5</span><span style="flex:1">Management (if appropriate)</span><button class="flag" data-qid="' +
-        n +
-        '" data-qidn=5 style="margin-right:0">⚐</button></p></div><textarea class="long-answer" data-qidn=5 data-answer-section-qidn=5 name="Management (if appropriate)" style="overflow-x: hidden; overflow-wrap: break-word; height: 80px;"></textarea></div>'
-      );
+      const sections = [
+        { did: "a)", name: "Observations", title: "Observations" },
+        { did: "b)", name: "Interpretation", title: "Interpretation" },
+        { did: "c)", name: "Principal Diagnosis", title: "Principal Diagnosis" },
+        { did: "d)", name: "Differential Diagnosis", title: "Differential Diagnosis" },
+        { did: "e)", name: "Management (if appropriate)", title: "Management (if appropriate)" },
+      ];
+
+      function calculateWordCount(text) {
+        if (!text || !text.trim()) return 0;
+        return text.trim().split(/\s+/).filter(Boolean).length;
+      }
+
+      function updateWordCountDisplay(textarea) {
+        const qidn = $(textarea).attr("data-qidn");
+        const count = calculateWordCount($(textarea).val());
+        const countText = count === 1 ? "1 word" : count + " words";
+        $(`#wordcount-${n}-${qidn}`).text(countText);
+      }
+
+      sections.forEach((sec, idx) => {
+        const qidn = (idx + 1).toString();
+        const bgClass = idx % 2 === 0 ? "config-user000-bg" : "config-user100-bg";
+        ap.append(
+          `<div class="answer-label-row ${bgClass}" data-did="${sec.did}" data-qid="${n}" data-qidn="${qidn}">` +
+            `<div class="answer-label-id">${sec.did}</div>` +
+            `<div class="answer-label-col">` +
+              `<div class="answer-label-panel">` +
+                `<button class="flag" data-qid="${n}" data-qidn="${qidn}" title="Flag this question">⚑</button>` +
+                `<span class="answer-label-text">${sec.title}</span>` +
+              `</div>` +
+              `<div class="answer-item">` +
+                `<textarea class="long-answer" rows="1" data-qidn="${qidn}" data-answer-section-qidn="${qidn}" name="${sec.name}" autocorrect="off" autocapitalize="off" spellcheck="false" style="overflow-x: hidden; overflow-wrap: break-word;"></textarea>` +
+                `<div class="wordcount" id="wordcount-${n}-${qidn}">0 words</div>` +
+              `</div>` +
+            `</div>` +
+          `</div>`
+        );
+      });
+
+      // Update word count on typing
+      $(".long-answer").on("input", function() {
+        updateWordCountDisplay(this);
+      });
 
       // Save long answers on textchange
       $(".long-answer").change(function(evt) {
@@ -2003,8 +2029,6 @@ async function loadQuestion(n, section = 1, force_reload = false) {
 
       // Loop through the 5 text areas and retrieve from db
       // could all be retrieved at once with an addition key index
-      //
-
       for (let qidn_count = 1; qidn_count < 6; qidn_count++) {
         let obj = {
           aid: aid,
@@ -2016,10 +2040,10 @@ async function loadQuestion(n, section = 1, force_reload = false) {
         db.answers
           .get(obj)
           .then(function(answer) {
-            if (answer != undefined) {
-              $(".long-answer")
-                .eq(parseInt(answer.qidn) - 1)
-                .text(answer.ans);
+            if (answer != undefined && answer.ans != undefined) {
+              const textarea = $(".long-answer").eq(parseInt(answer.qidn) - 1);
+              textarea.val(answer.ans);
+              updateWordCountDisplay(textarea);
             }
             // We only want to mark once...
             if (qidn_count == 5) {
@@ -2138,9 +2162,15 @@ function rebuildQuestionListPanel() {
     .toArray()
     .then(function(answers) {
       // Reset all classes (of question-list-item s)
-      $(".question-list-panel div")
+      $(".question-list-panel > div, .question-list-panel > button")
         .slice(1)
-        .attr("class", "question-list-item");
+        .each(function() {
+          if (question_type === "long") {
+            $(this).attr("class", "question-list-item question-review config-user000-bg");
+          } else {
+            $(this).attr("class", "question-list-item");
+          }
+        });
 
       // Loop through each saved answer
       answers.forEach(function(answer, n) {
@@ -2194,8 +2224,9 @@ function rebuildQuestionListPanel() {
  */
 function createQuestionListPanel() {
   $(".question-list-panel").empty();
+  const headingText = question_type === "long" ? "Overview" : "Questions";
   $(".question-list-panel").append(
-    '<div class="review-heading">Questions</div>'
+    `<div class="review-heading">${headingText}</div>`
   );
 
   /**
@@ -2206,8 +2237,17 @@ function createQuestionListPanel() {
    */
   function appendQuestionListItem(n, qidn) {
     const qn = n - 1;
+    let labelHtml = n + "." + qidn;
+    let extraClass = "";
+    const letterMap = { "1": "a)", "2": "b)", "3": "c)", "4": "d)", "5": "e)" };
+    if (question_type === "long") {
+      const letter = letterMap[qidn] || (qidn + ")");
+      labelHtml = `<span>${n}&nbsp;&nbsp;${letter}</span>`;
+      extraClass = " question-review config-user000-bg";
+    }
+    const isCurrent = (qn === loaded_question);
     const el = $(
-      '<div id="question-list-item-' +
+      '<button id="question-list-item-' +
       qn +
       "-" +
       qidn +
@@ -2215,11 +2255,11 @@ function createQuestionListPanel() {
       qn +
       ' data-qidn="' +
       qidn +
-      '" class="question-list-item">' +
-      n +
-      "." +
-      qidn +
-      '<span class="question-list-flag">⚑</span></div>'
+      '" class="question-list-item' +
+      extraClass +
+      '" aria-selected="' + (isCurrent ? 'true' : 'false') + '">' +
+      labelHtml +
+      '<span class="question-list-flag" style="visibility: hidden;">⚑</span></button>'
     );
     $(".question-list-panel").append(el);
     // return the new element so it can be hidden if necessary
