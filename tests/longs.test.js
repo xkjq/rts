@@ -37,4 +37,26 @@ describe("RTS Longs Cases Unit Tests", () => {
     expect(letterMap["1"]).toBe("a)");
     expect(letterMap["5"]).toBe("e)");
   });
+
+  test("DICOM default tool selection based on stack length", () => {
+    function getDefaultTool(stack) {
+      const isStack = stack && stack.imageIds && stack.imageIds.length > 1;
+      return isStack ? "StackScroll" : "Pan";
+    }
+
+    expect(getDefaultTool({ imageIds: ["img1.dcm"] })).toBe("Pan");
+    expect(getDefaultTool({ imageIds: ["img1.dcm", "img2.dcm"] })).toBe("StackScroll");
+    expect(getDefaultTool({ imageIds: Array.from({ length: 97 }, (_, i) => `slice_${i}.dcm`) })).toBe("StackScroll");
+  });
+
+  test("scroll progress indicator thumb calculation", () => {
+    function getThumbPercent(current, total) {
+      if (total <= 1) return 0;
+      return ((current - 1) / (total - 1)) * 100;
+    }
+
+    expect(getThumbPercent(1, 97)).toBe(0);
+    expect(getThumbPercent(49, 97)).toBe(50);
+    expect(getThumbPercent(97, 97)).toBe(100);
+  });
 });

@@ -4,12 +4,67 @@
  * @param {*} image -
  * @param {*} stack -
  */
+let isMouseScrolling = false;
+let wheelScrollTimeout = null;
+let staticBarTop = 0;
+let staticBarLeft = 0;
+let staticBarHeight = 420;
+
+export function updateScrollIndicator(current, total, fraction) {
+  const indicator = document.getElementById("dicom-scroll-indicator");
+  if (!indicator) return;
+
+  if (total <= 1) {
+    indicator.style.display = "none";
+    return;
+  }
+
+  const topLabel = indicator.querySelector(".dicom-scroll-top");
+  const bottomLabel = indicator.querySelector(".dicom-scroll-bottom");
+  const currentLabel = indicator.querySelector(".dicom-scroll-current");
+  const currentWrap = indicator.querySelector(".dicom-scroll-current-wrap");
+
+  if (topLabel) topLabel.textContent = "1";
+  if (bottomLabel) bottomLabel.textContent = total.toString();
+  if (currentLabel) currentLabel.textContent = current.toString();
+
+  const percent = fraction !== undefined ? fraction * 100 : (total > 1 ? ((current - 1) / (total - 1)) * 100 : 0);
+  if (currentWrap) {
+    currentWrap.style.top = `${percent}%`;
+  }
+}
+
+export function positionScrollIndicator(left, top, height) {
+  const indicator = document.getElementById("dicom-scroll-indicator");
+  if (!indicator) return;
+  indicator.style.left = `${left}px`;
+  indicator.style.top = `${top}px`;
+  if (height) {
+    indicator.style.height = `${height}px`;
+  }
+}
+
+export function showScrollIndicator() {
+  const indicator = document.getElementById("dicom-scroll-indicator");
+  if (indicator) {
+    indicator.style.display = "block";
+  }
+}
+
+export function hideScrollIndicator() {
+  const indicator = document.getElementById("dicom-scroll-indicator");
+  if (indicator) {
+    indicator.style.display = "none";
+  }
+}
+
 export function loadMainImage(image, stack) {
   const PanTool = cornerstoneTools.PanTool;
   const ZoomTool = cornerstoneTools.ZoomTool;
   const WwwcTool = cornerstoneTools.WwwcTool;
   const RotateTool = cornerstoneTools.RotateTool;
   const StackScrollTool = cornerstoneTools.StackScrollTool;
+  const StackScrollMouseWheelTool = cornerstoneTools.StackScrollMouseWheelTool;
   const ArrowAnnotateTool = cornerstoneTools.ArrowAnnotateTool;
   const LengthTool = cornerstoneTools.LengthTool;
   const RectangleRoiTool = cornerstoneTools.RectangleRoiTool;
@@ -36,7 +91,21 @@ export function loadMainImage(image, stack) {
   cornerstoneTools.addToolForElement(element, RotateTool);
   cornerstoneTools.addToolForElement(element, AngleTool);
   cornerstoneTools.addToolForElement(element, CobbAngleTool);
-  cornerstoneTools.addToolForElement(element, StackScrollTool);
+  cornerstoneTools.addToolForElement(element, StackScrollTool, {
+    configuration: {
+      loop: true,
+      allowSkipping: true,
+    },
+  });
+  if (StackScrollMouseWheelTool) {
+    cornerstoneTools.addToolForElement(element, StackScrollMouseWheelTool, {
+      configuration: {
+        loop: true,
+        allowSkipping: true,
+      },
+    });
+    cornerstoneTools.setToolActiveForElement(element, "StackScrollMouseWheel", {});
+  }
   cornerstoneTools.addToolForElement(element, EraserTool);
   cornerstoneTools.addToolForElement(element, LengthTool);
   cornerstoneTools.addToolForElement(element, RectangleRoiTool);
@@ -53,10 +122,30 @@ export function loadMainImage(image, stack) {
     },
   });
 
-  cornerstoneTools.setToolActiveForElement(element, "Pan", {
+  const isStack = stack && stack.imageIds && stack.imageIds.length > 1;
+  const defaultTool = isStack ? "StackScroll" : "Pan";
+
+  cornerstoneTools.setToolActiveForElement(element, defaultTool, {
     mouseButtonMask: 1,
+    configuration: {
+      loop: true,
+    },
   });
   cornerstoneTools.setToolEnabledForElement(element, "ArrowAnnotate");
+
+  // Sync select control with default tool
+  const sel = $(".dicom-select-control").get(0);
+  if (sel) {
+    const optValue = isStack ? "scroll" : "pan";
+    const optIdx = find_option(sel, optValue);
+    if (optIdx !== undefined) {
+      sel.selectedIndex = optIdx;
+    }
+  }
+
+  if (isStack && cornerstoneTools.stackPrefetch) {
+    cornerstoneTools.stackPrefetch.enable(element);
+  }
 
   //cornerstoneTools.keyboardInput.enable(element);
 
@@ -80,6 +169,65 @@ export function loadMainImage(image, stack) {
 
   element.removeEventListener("wheel", element.wheelEventHandler);
 
+  // Mouse event listeners for scroll indicator
+  $(element).off("mousedown.scroll wheel.scroll");
+  $(document).off("mouseup.scroll");
+
+  $(element).on("mousedown.scroll", function(evt) {
+    if (evt.button !== 0) return; // Only primary left-click
+    const selControl = $(".dicom-select-control").get(0);
+    const isScrollActive = selControl && selControl.options[selControl.selectedIndex] && selControl.options[selControl.selectedIndex].value === "scroll";
+    if (isScrollActive && stack && stack.imageIds && stack.imageIds.length > 1) {
+      isMouseScrolling = true;
+      const rect = element.getBoundingClientRect();
+      const mouseX = evt.clientX - rect.left;
+      const mouseY = evt.clientY - rect.top;
+      const total = stack.imageIds.length;
+      const current = stack.currentImageIdIndex + 1;
+      const percent = total > 1 ? (current - 1) / (total - 1) : 0;
+
+      staticBarHeight = Math.min(500, Math.max(350, rect.height * 0.7));
+      staticBarTop = mouseY - percent * staticBarHeight;
+      staticBarLeft = mouseX - 20;
+
+      positionScrollIndicator(staticBarLeft, staticBarTop, staticBarHeight);
+      updateScrollIndicator(current, total);
+      showScrollIndicator();
+    }
+  });
+
+  $(document).on("mouseup.scroll", function() {
+    if (isMouseScrolling) {
+      isMouseScrolling = false;
+      hideScrollIndicator();
+    }
+  });
+
+  $(element).on("wheel.scroll", function(evt) {
+    if (stack && stack.imageIds && stack.imageIds.length > 1) {
+      const rect = element.getBoundingClientRect();
+      const mouseX = evt.clientX - rect.left;
+      const mouseY = evt.clientY - rect.top;
+      const total = stack.imageIds.length;
+      const current = stack.currentImageIdIndex + 1;
+      const percent = total > 1 ? (current - 1) / (total - 1) : 0;
+      staticBarHeight = Math.min(500, Math.max(350, rect.height * 0.7));
+      staticBarTop = mouseY - percent * staticBarHeight;
+      staticBarLeft = mouseX - 20;
+
+      positionScrollIndicator(staticBarLeft, staticBarTop, staticBarHeight);
+      updateScrollIndicator(current, total);
+      showScrollIndicator();
+
+      if (wheelScrollTimeout) clearTimeout(wheelScrollTimeout);
+      wheelScrollTimeout = setTimeout(() => {
+        if (!isMouseScrolling) {
+          hideScrollIndicator();
+        }
+      }, 600);
+    }
+  });
+
   $(".dicom-select-control")
     .get(0)
     .addEventListener("change", function() {
@@ -99,17 +247,22 @@ function onImageRendered(e) {
 
   // Update ww/wl
   const sel = $(".dicom-select-control").get(0);
-  sel.options[find_option(sel, "window")].firstChild.textContent =
-    "window (" +
-    Math.round(eventData.viewport.voi.windowCenter) +
-    " \u00b1 " +
-    Math.round(eventData.viewport.voi.windowWidth) +
-    ")";
+  if (sel) {
+    const windowOpt = find_option(sel, "window");
+    if (windowOpt !== undefined && sel.options[windowOpt]) {
+      sel.options[windowOpt].firstChild.textContent =
+        "window (" +
+        Math.round(eventData.viewport.voi.windowCenter) +
+        " \u00b1 " +
+        Math.round(eventData.viewport.voi.windowWidth) +
+        ")";
+    }
+  }
 
   // update stack data
   const stack =
     eventData.enabledElement.toolStateManager.toolState.stack.data[0];
-  if (stack.imageIds.length > 1) {
+  if (stack && stack.imageIds.length > 1) {
     $("option[value=scroll").prop("disabled", false);
     $("option[value=scroll").prop("hidden", false);
     $("option[value=scroll").text(
@@ -119,6 +272,10 @@ function onImageRendered(e) {
       stack.imageIds.length +
       ")"
     );
+
+    if (isMouseScrolling || wheelScrollTimeout) {
+      updateScrollIndicator(stack.currentImageIdIndex + 1, stack.imageIds.length);
+    }
 
     // Temp way to enable CT window presets
     // Enable for all stacked images...
@@ -234,10 +391,18 @@ export function manualScrollDicom(n) {
   }
 
   c.toolStateManager.toolState.stack.data[0].currentImageIdIndex = new_index;
-  let id = c.toolStateManager.toolState.stack.data[0].imageIds[new_index];
-  cornerstone.loadImage(id).then((b) => {
-    cornerstone.displayImage(dicom_element, b);
-  });
+  const scrollToIndex = cornerstoneTools.importInternal ? cornerstoneTools.importInternal('util/scrollToIndex') : null;
+  if (scrollToIndex) {
+    scrollToIndex(dicom_element, new_index);
+  } else {
+    let id = c.toolStateManager.toolState.stack.data[0].imageIds[new_index];
+    cornerstone.loadAndCacheImage(id).then((b) => {
+      if (c.toolStateManager.toolState.stack.data[0].currentImageIdIndex === new_index) {
+        cornerstone.displayImage(dicom_element, b);
+      }
+    });
+  }
+  updateScrollIndicator(new_index + 1, max);
   // c = cornerstone.getEnabledElement(dicom_element)
 }
 
@@ -333,9 +498,10 @@ export function changeControlSelection() {
     case "scroll": {
       cornerstoneTools.setToolActiveForElement(dicom_element, "StackScroll", {
         mouseButtonMask: 1,
+        configuration: {
+          loop: true,
+        },
       });
-      // _this.left.onstart = _this.scroll_start;
-      // _this.selected_control = t.selectedIndex;
       break;
     }
     case "window": {
@@ -749,6 +915,22 @@ export function openMainImage(current_question, t, source) {
     dicomImageDiv.id = 'dicom-image';
     dicomImageDiv.setAttribute('data-figure', figure_to_load);
     canvasPanel.appendChild(dicomImageDiv);
+
+    // Scroll indicator element inside canvasPanel
+    const scrollIndicator = document.createElement('div');
+    scrollIndicator.id = 'dicom-scroll-indicator';
+    scrollIndicator.className = 'dicom-scroll-indicator';
+    scrollIndicator.innerHTML = `
+      <div class="dicom-scroll-line">
+        <span class="dicom-scroll-num dicom-scroll-top">1</span>
+        <div class="dicom-scroll-current-wrap">
+          <div class="dicom-scroll-tick"></div>
+          <span class="dicom-scroll-num dicom-scroll-current">1</span>
+        </div>
+        <span class="dicom-scroll-num dicom-scroll-bottom">1</span>
+      </div>
+    `;
+    canvasPanel.appendChild(scrollIndicator);
 
     // Prepend to question
     questionElem.insertBefore(canvasPanel, questionElem.firstChild);

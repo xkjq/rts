@@ -567,9 +567,10 @@ td {
 
 .wordcount {
     font-size: 1.2rem;
-    color: #666666;
+    font-style: italic;
+    color: #555555;
     margin-top: 0.4rem;
-    text-align: left;
+    text-align: right;
 }
 
 /* Question Review / Overview Panel Styles */
@@ -922,6 +923,70 @@ textarea.incorrect {
 .canvas-panel {
     position: relative;
     background-color: black;
+}
+
+/* DICOM Scroll Progress Bar */
+.dicom-scroll-indicator {
+    position: absolute;
+    display: none;
+    z-index: 999;
+    pointer-events: none;
+    user-select: none;
+    height: 420px;
+    width: 60px;
+}
+
+.dicom-scroll-line {
+    position: relative;
+    width: 2px;
+    height: 100%;
+    background-color: #0288d1;
+    margin-left: 20px;
+}
+
+.dicom-scroll-num {
+    position: absolute;
+    left: 8px;
+    color: #0288d1;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    line-height: 1;
+    white-space: nowrap;
+    text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
+}
+
+.dicom-scroll-top {
+    top: 0;
+    transform: translateY(-50%);
+}
+
+.dicom-scroll-bottom {
+    bottom: 0;
+    transform: translateY(50%);
+}
+
+.dicom-scroll-current-wrap {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    display: flex;
+    align-items: center;
+    transform: translateY(-50%);
+}
+
+.dicom-scroll-tick {
+    position: absolute;
+    left: -5px;
+    width: 12px;
+    height: 2px;
+    background-color: #0288d1;
+}
+
+.dicom-scroll-current {
+    position: relative;
+    left: 12px;
+    color: #0288d1;
 }
 
 .canvas-panel-fullscreen {
