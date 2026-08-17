@@ -685,21 +685,6 @@ img {
     text-align: center;
 }
 
-/* Finish dialog styling */
-.finish-header {
-    display: flex;
-    justify-content: center;
-    padding-top: 6vh;
-    pointer-events: none;
-}
-.login-risr-box {
-    display: inline-block;
-}
-.login-risr-logo {
-    height: 64px;
-    width: auto;
-    user-drag: none;
-}
 .finish-dialog {
     display: inline-block;
     background-color: #1b1b1b;
