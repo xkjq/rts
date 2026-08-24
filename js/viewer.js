@@ -875,7 +875,7 @@ export function openMainImage(current_question, t, source) {
       { value: 'scroll', text: 'scroll [s]' },
       { value: 'window', text: 'window (128 ± 127.5) [w]' },
       { value: 'abdomen', text: 'window = abdomen [a]', hidden: true, disabled: true },
-      { value: 'pulmonary', text: 'window = pulmonary [p]', hidden: true, disabled: true },
+      { value: 'pulmonary', text: 'window = pulmonary [u]', hidden: true, disabled: true },
       { value: 'brain', text: 'window = brain [b]', hidden: true, disabled: true },
       { value: 'bone', text: 'window = bone [o]', hidden: true, disabled: true },
       { value: 'measure', text: 'measure [m]' },
