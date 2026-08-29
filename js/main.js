@@ -1517,8 +1517,8 @@ async function loadQuestion(n, section = 1, force_reload = false) {
 
   loaded_question = n;
 
-  $(".question-review").attr("aria-selected", "false");
-  $(`.question-review[data-qid='${n}']`).attr("aria-selected", "true");
+  $(".question-list-item").attr("aria-selected", "false");
+  $(`.question-list-item[data-qid='${n}']`).attr("aria-selected", "true");
 
   // Set up question navigation
   $(".navigation[data-nav='next']").off();
@@ -2170,7 +2170,7 @@ function deleteQuestionListPanelFlags(answer) {
     exam_details.question_order.indexOf(answer.qid) +
     "-" +
     answer.qidn +
-    " span"
+    " .question-list-flag"
   ).css("visibility", "hidden");
 }
 
@@ -2180,7 +2180,7 @@ function updateQuestionListPanelFlags(answer) {
     exam_details.question_order.indexOf(answer.qid) +
     "-" +
     answer.qidn +
-    " span"
+    " .question-list-flag"
   ).css("visibility", "visible");
 }
 /**
@@ -2277,7 +2277,7 @@ function createQuestionListPanel() {
    */
   function appendQuestionListItem(n, qidn) {
     const qn = n - 1;
-    let labelHtml = n + "." + qidn;
+    let labelHtml = `<span>${n}.${qidn}</span>`;
     let extraClass = "";
     const letterMap = { "1": "a)", "2": "b)", "3": "c)", "4": "d)", "5": "e)" };
     if (question_type === "long") {

@@ -38,6 +38,22 @@ describe("RTS Longs Cases Unit Tests", () => {
     expect(letterMap["5"]).toBe("e)");
   });
 
+  test("question list item label formatting across exam types", () => {
+    function getLabelHtml(questionType, n, qidn) {
+      const letterMap = { "1": "a)", "2": "b)", "3": "c)", "4": "d)", "5": "e)" };
+      if (questionType === "long") {
+        const letter = letterMap[qidn] || (qidn + ")");
+        return `<span>${n}&nbsp;&nbsp;${letter}</span>`;
+      }
+      return `<span>${n}.${qidn}</span>`;
+    }
+
+    expect(getLabelHtml("long", 1, "1")).toBe("<span>1&nbsp;&nbsp;a)</span>");
+    expect(getLabelHtml("rapid", 1, "1")).toBe("<span>1.1</span>");
+    expect(getLabelHtml("anatomy", 87, "1")).toBe("<span>87.1</span>");
+    expect(getLabelHtml("short", 5, "1")).toBe("<span>5.1</span>");
+  });
+
   test("DICOM default tool selection based on stack length", () => {
     function getDefaultTool(stack) {
       const isStack = stack && stack.imageIds && stack.imageIds.length > 1;
