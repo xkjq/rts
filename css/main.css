@@ -254,6 +254,13 @@ td {
     flex-grow: 1;
 }
 
+.app-version {
+    font-size: 1rem;
+    color: #888;
+    font-weight: normal;
+    vertical-align: middle;
+}
+
 .navigation {
     background-color: #311B92;
     border-color: white;

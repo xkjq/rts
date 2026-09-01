@@ -1,9 +1,11 @@
 /**
  * Sentry Error Monitoring initializer for RTS.
  * Optimized for Free Tier with beforeSend noise filtering.
+ *
+ * @param {string} [release] - App version used as the Sentry release tag.
  */
 
-export function initSentry() {
+export function initSentry(release) {
   try {
     const defaultDsn = "https://017b4494d7038e3e789fe38378b53fb2@o4511766757244928.ingest.de.sentry.io/4511766894477392";
     const metaDsn = document.querySelector('meta[name="sentry-dsn"]')?.getAttribute('content');
@@ -41,6 +43,7 @@ export function initSentry() {
     const config = {
       dsn: dsn,
       environment: window.SENTRY_ENVIRONMENT || "production",
+      release: release || undefined,
       tracesSampleRate: parseFloat(window.SENTRY_TRACES_SAMPLE_RATE || "0.02"),
       beforeSend: beforeSend,
       ignoreErrors: [
@@ -53,8 +56,8 @@ export function initSentry() {
     };
 
     const onInitialized = () => {
-      window.SENTRY_STATUS = { loaded: true, dsn: dsn, environment: config.environment };
-      console.info(`[Sentry] ✅ Error monitoring initialized (Env: ${config.environment})`);
+      window.SENTRY_STATUS = { loaded: true, dsn: dsn, environment: config.environment, release: release || null };
+      console.info(`[Sentry] ✅ Error monitoring initialized (Env: ${config.environment}${release ? `, Release: ${release}` : ""})`);
 
       window.testSentry = function(msg = "RTS Sentry Test Event") {
         if (window.Sentry && typeof window.Sentry.captureException === "function") {

@@ -6,8 +6,9 @@ import * as config from "./config.js";
 import { db, question_db } from "./db.js";
 import { initSync, triggerImmediateSync, updateSyncUI } from "./sync.js";
 import { initSentry } from "./sentry.js";
+import { VERSION, BUILD, startUpdateChecker } from "./version.js";
 
-initSentry();
+initSentry(VERSION);
 
 // const { v4: uuidv4 } = require('uuid');
 
@@ -47,6 +48,32 @@ function initLogging() {
 }
 
 initLogging();
+
+// Version display + update detection (runs early so it works even if exam loading fails)
+function initVersionSystem() {
+  log.info(`RTS v${VERSION} (${BUILD})`);
+
+  const versionEl = document.getElementById("app-version");
+  if (versionEl) {
+    versionEl.textContent = ` v${VERSION}`;
+    versionEl.title = `RTS v${VERSION} (${BUILD})`;
+  }
+
+  // Detect a newly deployed version and prompt a reload so users stay current.
+  const onUpdate = (newVersion) => {
+    // Only prompt once per new version (remembered in localStorage).
+    if (localStorage.getItem("rts.dismissedVersion") === newVersion) {
+      return;
+    }
+    if (!confirm(`A new version of RTS is available (v${newVersion}).\n\nClick OK to reload and get the latest version.`)) {
+      localStorage.setItem("rts.dismissedVersion", newVersion);
+      return;
+    }
+    localStorage.removeItem("rts.dismissedVersion");
+    window.location.reload();
+  };
+  startUpdateChecker(onUpdate);
+}
 
 function checkForceReset() {
   try {
@@ -367,6 +394,8 @@ function putAnswer(answer) {
 }
 
 retrievePacketList();
+
+initVersionSystem();
 
 if (!allow_users) {
   // Keep the user/candidate details visible, but hide the action buttons entirely
