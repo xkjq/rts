@@ -1360,7 +1360,7 @@ function loadSession() {
           let selectedSession = sessions[selectedIdx];
           
           exam_details.aid = selectedSession.aid;
-          exam_details.cid = selectedSession.cid;
+          exam_details.cid = selectedSession.cid != null ? String(selectedSession.cid) : selectedSession.cid;
           date_started = selectedSession.date;
           exam_time = selectedSession.time_left;
           exam_details.question_order = selectedSession.question_order;
@@ -1449,7 +1449,7 @@ function setUpQuestions(load_previous) {
     //    exam_details.cid = parseInt($("#candidate-number2").val());
     //  });
     console.debug("OTNUHOTNU", global_cid)
-    exam_details.cid = global_cid;
+    exam_details.cid = global_cid != null ? String(global_cid) : global_cid;
     $("#candidate-number2").val(global_cid)
     exam_details.passcode = global_passcode;
 
@@ -3177,8 +3177,8 @@ $("#exam-list").on("click", ".type-refresh-button", function(e) {
 
 
 $("#btn-login").click(function(evt) {
-  global_cid = parseInt($("#candidate-number").val());
-  global_passcode = $("#passcode").val();
+  global_cid = $("#candidate-number").val().trim();
+  global_passcode = $("#passcode").val().trim();
 
   localStorage.setItem("cid.cid", global_cid)
   localStorage.setItem("cid.passcode", global_passcode)
