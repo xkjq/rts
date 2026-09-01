@@ -59,6 +59,15 @@ function initVersionSystem() {
     versionEl.title = `RTS v${VERSION} (${BUILD})`;
   }
 
+  const versionFullEl = document.getElementById("app-version-full");
+  if (versionFullEl) {
+    versionFullEl.textContent = `RTS v${VERSION}`;
+  }
+  const versionBuildEl = document.getElementById("app-version-build");
+  if (versionBuildEl) {
+    versionBuildEl.textContent = `Build: ${BUILD}`;
+  }
+
   // Detect a newly deployed version and prompt a reload so users stay current.
   const onUpdate = (newVersion) => {
     // Only prompt once per new version (remembered in localStorage).
