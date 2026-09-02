@@ -1611,7 +1611,7 @@ function loadSession() {
           exam_details.aid = selectedSession.aid;
           exam_details.cid = selectedSession.cid != null ? String(selectedSession.cid) : selectedSession.cid;
           date_started = selectedSession.date;
-          exam_time = selectedSession.time_left;
+          exam_time = Math.ceil((selectedSession.time_left || 0) / 60) * 60;
           exam_details.question_order = selectedSession.question_order;
 
           if (selectedSession.status == "complete") {
