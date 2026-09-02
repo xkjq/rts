@@ -1,12 +1,12 @@
 /* global Dexie, cornerstone, cornerstoneTools, cornerstoneBase64ImageLoader, cornerstoneWebImageLoader, cornerstoneWADOImageLoader */
-import * as helper from "./helpers.js?v=1.0.9";
-import * as viewer from "./viewer.js?v=1.0.9";
-import * as interact from "./interact.js?v=1.0.9";
+import * as helper from "./helpers.js?v=1.0.10";
+import * as viewer from "./viewer.js?v=1.0.10";
+import * as interact from "./interact.js?v=1.0.10";
 import * as config from "./config.js";
-import { db, question_db } from "./db.js?v=1.0.9";
-import { initSync, triggerImmediateSync, updateSyncUI } from "./sync.js?v=1.0.9";
-import { initSentry } from "./sentry.js?v=1.0.9";
-import { VERSION, BUILD, startUpdateChecker } from "./version.js?v=1.0.9";
+import { db, question_db } from "./db.js?v=1.0.10";
+import { initSync, triggerImmediateSync, updateSyncUI } from "./sync.js?v=1.0.10";
+import { initSentry } from "./sentry.js?v=1.0.10";
+import { VERSION, BUILD, startUpdateChecker } from "./version.js?v=1.0.10";
 
 initSentry(VERSION);
 
@@ -1217,8 +1217,6 @@ function loadPacketFromAjax(path, eid, exam_json_id) {
   }
 
   function ajaxRequestionPacket(force_refresh) {
-    //console.debug("loading packet from " + path);
-    // TODO: check where path comes from ??????
     $("#progress").html(`Requesting packet: ${path}`);
 
     let browser_cache = true;
@@ -1226,9 +1224,14 @@ function loadPacketFromAjax(path, eid, exam_json_id) {
       browser_cache = false;
     }
 
+    let requestUrl = path;
+    if (exam_json_id != null) {
+      requestUrl += (requestUrl.includes("?") ? "&" : "?") + `v=${exam_json_id}`;
+    }
+
     $.ajax({
       dataType: "json",
-      url: path,
+      url: requestUrl,
       cache: browser_cache,
       progress: function(e) {
         if (e.lengthComputable) {
@@ -1241,7 +1244,7 @@ function loadPacketFromAjax(path, eid, exam_json_id) {
       },
     })
       .done(function(data) {
-        setUpPacket(data, path);
+        setUpPacket(data, path, exam_json_id, eid);
         $("#options-panel").hide();
       })
       .fail(function() {
@@ -1255,7 +1258,7 @@ function loadPacketFromAjax(path, eid, exam_json_id) {
  * Will then call setUpQuestions() to load the packet
  * @param {JSON} data
  */
-function setUpPacket(data, path) {
+function setUpPacket(data, path, expected_exam_json_id, expected_eid) {
   session_questions_fallback = null;
   packet_name = path;
   // Load the exam name from the json packet (if it exists)
@@ -1266,6 +1269,8 @@ function setUpPacket(data, path) {
 
   if (data.hasOwnProperty("eid")) {
     exam_details.eid = data.eid;
+  } else if (expected_eid) {
+    exam_details.eid = expected_eid;
   } else {
     exam_details.eid = packet_name;
   }
@@ -1276,8 +1281,10 @@ function setUpPacket(data, path) {
     question_type = data.type;
   }
 
-  if (data.hasOwnProperty("exam_json_id")) {
+  if (data.hasOwnProperty("exam_json_id") && data.exam_json_id != null) {
     packet_json_id = data.exam_json_id;
+  } else if (expected_exam_json_id != null) {
+    packet_json_id = expected_exam_json_id;
   }
 
   if (data.hasOwnProperty("exam_mode")) {
@@ -1356,7 +1363,7 @@ function setUpPacket(data, path) {
       exam_name: packet_name,
       type: question_type,
       exam_type: question_type,
-      exam_json_id: packet_json_id || data.exam_json_id || null,
+      exam_json_id: packet_json_id || data.exam_json_id || expected_exam_json_id || null,
       exam_mode: exam_details.exam_mode || false,
       order: exam_details.question_order,
       exam_order: exam_details.question_order,
@@ -1546,16 +1553,19 @@ function loadSession() {
           }
 
           let $item = $(`
-            <div class="resume-session-item" data-index="${i}" style="padding: 8px; margin: 4px 0; border: 1px solid #444; border-radius: 4px; cursor: pointer; background: #222; color: #eee; display: flex; align-items: center; gap: 10px;">
+            <div class="resume-session-item" data-index="${i}">
               <input type="radio" name="resume-session-select" id="session-opt-${i}" value="${i}" style="cursor: pointer; margin: 0;">
-              <label for="session-opt-${i}" style="cursor: pointer; display: inline; font-size: 13px; margin: 0; color: #ccc;">${label}</label>
+              <label for="session-opt-${i}" style="cursor: pointer; display: inline; font-size: 13px; margin: 0; flex: 1;">${label}</label>
+              <span class="resume-session-check" style="display: none; font-size: 13px; font-weight: bold; color: #5cdb7a;">✓ Selected</span>
             </div>
           `);
           
           $item.on("click", function() {
+            $(".resume-session-item").removeClass("selected");
+            $(".resume-session-item .resume-session-check").hide();
+            $(this).addClass("selected");
             $(this).find("input[type=radio]").prop("checked", true);
-            $(".resume-session-item").css("border-color", "#444");
-            $(this).css("border-color", "#311B92");
+            $(this).find(".resume-session-check").show();
             $("#btn-resume-continue").prop("disabled", false);
           });
 
@@ -3433,6 +3443,12 @@ $("#btn-candidate-login").click(function(evt) {
 
 $("#btn-login-cancel").click(function(evt) {
   $.modal.close();
+});
+
+$("#link-main-site-login").on("click", function(e) {
+  e.preventDefault();
+  $.modal.close();
+  window.location = URLS.login_url;
 });
 
 $("#btn-user-login").click(function(evt) {

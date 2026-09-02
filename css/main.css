@@ -1162,6 +1162,37 @@ select option:disabled {
     color: white;
 }
 
+.resume-session-item {
+    padding: 10px 14px;
+    margin: 6px 0;
+    border: 2px solid #555;
+    border-radius: 6px;
+    cursor: pointer;
+    background: #1e1e1e;
+    color: #ccc;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.2s ease;
+}
+
+.resume-session-item:hover {
+    border-color: #888;
+    background: #2a2a2a;
+}
+
+.resume-session-item.selected {
+    border-color: #28a745 !important;
+    background: #14381d !important;
+    color: #fff !important;
+    box-shadow: 0 0 8px rgba(40, 167, 69, 0.4);
+}
+
+.resume-session-item.selected label {
+    color: #fff !important;
+    font-weight: bold;
+}
+
 .packet-button {
     display: inline-block;
     padding: 0.35em 1.2em;
