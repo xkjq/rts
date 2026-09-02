@@ -211,6 +211,7 @@ if (typeof url_exam_mode !== "undefined" && url_exam_mode) {
 //let packet_list = [];
 let packet_name = null;
 let questions = null;
+let session_questions_fallback = null;
 let questions_correct = {};
 let question_type = null;
 let loaded_question = null;
@@ -764,6 +765,26 @@ async function loadExamList(data, clearExistingList = true, target = "all") {
     console.debug("Loop through saved exams");
     saved_exams.forEach(async (saved_exam, n) => {
       console.debug("Check", saved_exam);
+      // Sanitize legacy bloated saved_exam records if they contain question data to free storage/heap
+      if ((saved_exam.questions && typeof saved_exam.questions === "object") || Object.keys(saved_exam).length > 15) {
+        const cleanExam = {
+          eid: saved_exam.eid,
+          name: saved_exam.name || saved_exam.exam_name,
+          exam_name: saved_exam.exam_name || saved_exam.name,
+          type: saved_exam.type || saved_exam.exam_type,
+          exam_type: saved_exam.exam_type || saved_exam.type,
+          exam_json_id: saved_exam.exam_json_id,
+          exam_mode: saved_exam.exam_mode,
+          order: saved_exam.order || saved_exam.exam_order,
+          exam_order: saved_exam.exam_order || saved_exam.order,
+          time: saved_exam.time || saved_exam.exam_time,
+          exam_time: saved_exam.exam_time || saved_exam.time,
+          questions: "cached",
+        };
+        if (saved_exam.question_requests) cleanExam.question_requests = saved_exam.question_requests;
+        if (saved_exam.multi_question_json) cleanExam.multi_question_json = saved_exam.multi_question_json;
+        question_db.saved_exams.put(cleanExam).catch(() => {});
+      }
       //Compared saved exams to those available
       if (exam_generated_map.hasOwnProperty(saved_exam.eid)) {
         $("#cache-details ul").append(
@@ -1078,6 +1099,7 @@ function loadPacketFromAjax(path, eid, exam_json_id) {
  * @param {JSON} data
  */
 function setUpPacket(data, path) {
+  session_questions_fallback = null;
   packet_name = path;
   // Load the exam name from the json packet (if it exists)
   if (data.hasOwnProperty("exam_name")) {
@@ -1088,11 +1110,13 @@ function setUpPacket(data, path) {
   if (data.hasOwnProperty("eid")) {
     exam_details.eid = data.eid;
   } else {
-    exam_details.eid = packet_name
+    exam_details.eid = packet_name;
   }
 
   if (data.hasOwnProperty("exam_type")) {
     question_type = data.exam_type;
+  } else if (data.hasOwnProperty("type")) {
+    question_type = data.type;
   }
 
   if (data.hasOwnProperty("exam_json_id")) {
@@ -1109,18 +1133,37 @@ function setUpPacket(data, path) {
     questions = data;
   }
 
+  // Infer question_type if missing from root data
+  if (!question_type && typeof questions === "object" && questions !== null) {
+    const firstKey = Object.keys(questions)[0];
+    if (firstKey && questions[firstKey] && questions[firstKey].type) {
+      question_type = questions[firstKey].type;
+    }
+  }
+  if (!question_type && packet_name) {
+    const lowerName = String(packet_name).toLowerCase();
+    if (lowerName.includes("long")) question_type = "long";
+    else if (lowerName.includes("rapid")) question_type = "rapid";
+    else if (lowerName.includes("short")) question_type = "short";
+    else if (lowerName.includes("anatomy")) question_type = "anatomy";
+  }
+
   if (data.hasOwnProperty("exam_order")) {
     exam_details.question_order = data.exam_order;
   } else {
     exam_details.question_order = [];
-    Object.keys(questions).forEach(function(e) {
-      exam_details.question_order.push(e);
+    if (typeof questions === "object" && questions !== null) {
+      Object.keys(questions).forEach(function(e) {
+        if (questions[e] && typeof questions[e] === "object") {
+          exam_details.question_order.push(String(e));
 
-      // Make sure answers are arrays
-      if (!Array.isArray(questions[e]["answers"])) {
-        questions[e]["answers"] = [questions[e]["answers"]];
-      }
-    });
+          // Make sure answers are arrays
+          if (questions[e].hasOwnProperty("answers") && !Array.isArray(questions[e]["answers"])) {
+            questions[e]["answers"] = [questions[e]["answers"]];
+          }
+        }
+      });
+    }
 
     let randomise_order = true;
     if (config.randomise_order != undefined) {
@@ -1149,13 +1192,30 @@ function setUpPacket(data, path) {
   //}
 
   if (!use_local_question_cache) {
-    // Save the details to the question database
-    var clone_data = Object.assign({}, data, {
+    // Save only lightweight exam metadata to saved_exams to prevent DataCloneError out of memory
+    var saved_exam_record = {
+      eid: exam_details.eid,
+      name: packet_name,
+      exam_name: packet_name,
+      type: question_type,
+      exam_type: question_type,
+      exam_json_id: packet_json_id || data.exam_json_id || null,
+      exam_mode: exam_details.exam_mode || false,
+      order: exam_details.question_order,
+      exam_order: exam_details.question_order,
+      time: exam_time,
+      exam_time: exam_time,
       questions: "cached"
+    };
+    if (data.question_requests) {
+      saved_exam_record.question_requests = data.question_requests;
+    }
+    if (data.multi_question_json) {
+      saved_exam_record.multi_question_json = data.multi_question_json;
+    }
+    question_db.saved_exams.put(saved_exam_record).catch((err) => {
+      console.warn("Failed to cache exam metadata in saved_exams:", err);
     });
-    console.debug(clone_data)
-    //clone_data["cached_questions"] = Object.keys(data["questions"]);
-    question_db.saved_exams.put(clone_data);
   }
 
   // If question_requests is set we need to do a request for each question
@@ -1227,14 +1287,23 @@ function setUpPacket(data, path) {
         //data["questions"][n] = question_json;
 
         // Store question data into dexie
+        let qType = question_json.type || question_type || "unknown";
         let d = {
           //eid: exam_details.eid,
           qid: n,
           data: question_json,
-          type: question_json.type,
+          type: qType,
         };
 
-        question_db.question_data.put(d);
+        try {
+          await question_db.question_data.put(d);
+        } catch (putErr) {
+          console.warn(`Failed to put question ${n} into question_data:`, putErr);
+          if (!session_questions_fallback) {
+            session_questions_fallback = {};
+          }
+          session_questions_fallback[n] = question_json;
+        }
       }
       // Once all questions have been downloaded we carry on loading
       use_local_question_cache = true;
@@ -1385,23 +1454,31 @@ function loadSession() {
 /**
  * Build the currently loaded quiz
  */
-function setUpQuestions(load_previous) {
-  if (questions == undefined) {
-    //return;
-  } else {
+async function setUpQuestions(load_previous) {
+  if (typeof questions === "object" && questions !== null) {
     if (!use_local_question_cache) {
-      Object.keys(questions).forEach(function(e) {
-        // Store question data into dexie
-        let d = {
-          //eid: exam_details.eid,
+      const targetKeys = (exam_details.question_order && exam_details.question_order.length > 0)
+        ? exam_details.question_order
+        : Object.keys(questions);
+      for (const e of targetKeys) {
+        if (!questions[e] || typeof questions[e] !== "object") continue;
+        const qType = questions[e].type || question_type || "unknown";
+        questions[e].type = qType;
+        const d = {
           qid: String(e),
-          type: questions[e].type,
+          type: qType,
           data: questions[e],
-          //timestamp: questions[e]["exam_json_id"],
         };
-
-        question_db.question_data.put(d);
-      });
+        try {
+          await question_db.question_data.put(d);
+        } catch (err) {
+          console.warn(`Failed to put question ${e} into question_data:`, err);
+          if (!session_questions_fallback) {
+            session_questions_fallback = {};
+          }
+          session_questions_fallback[String(e)] = questions[e];
+        }
+      }
     }
 
     // Set an order for the questions
@@ -1503,16 +1580,45 @@ async function loadQuestion(n, section = 1, force_reload = false) {
   console.debug(exam_details, n);
   const qid = exam_details.question_order[n];
 
-  console.debug("qid", qid)
+  console.debug("qid", qid);
   let q = {
     qid: String(qid),
     type: question_type
   };
-  console.debug(q)
-  console.debug(question_db.question_data)
+  console.debug(q);
+  console.debug(question_db.question_data);
 
-  let return_data = await question_db.question_data.get(q);
-  const question_data = return_data.data;
+  let return_data = null;
+  try {
+    return_data = await question_db.question_data.get(q);
+  } catch (err) {
+    console.warn(`Error getting question ${qid} with type ${question_type}:`, err);
+  }
+
+  // Fallback 1: If not found, try matching by qid alone (resolves compound key type mismatch)
+  if (!return_data) {
+    try {
+      return_data = await question_db.question_data.where("qid").equals(String(qid)).first();
+    } catch (err) {
+      console.warn(`Error getting question ${qid} by qid:`, err);
+    }
+  }
+
+  let question_data = return_data ? return_data.data : null;
+
+  // Fallback 2: Check session fallback if IndexedDB failed to save or retrieve
+  if (!question_data && session_questions_fallback && session_questions_fallback[String(qid)]) {
+    console.warn(`Using session fallback for question ${qid}`);
+    question_data = session_questions_fallback[String(qid)];
+  }
+
+  // Guard against undefined question_data
+  if (!question_data) {
+    console.error(`Question data for qid=${qid} (index=${n}) could not be loaded.`);
+    $("#question-loading").hide();
+    $.notify(`Could not load question ${n + 1}. Please try refreshing.`, "error");
+    return;
+  }
   return_data = null;
 
   loaded_question = n;
@@ -1591,6 +1697,17 @@ async function loadQuestion(n, section = 1, force_reload = false) {
 
   cornerstone.imageCache.purgeCache();
   cornerstoneWADOImageLoader.default.wadouri.dataSetCacheManager.purge();
+  try {
+    if (typeof cornerstoneWADOImageLoader !== "undefined") {
+      if (cornerstoneWADOImageLoader.wadouri && cornerstoneWADOImageLoader.wadouri.fileManager) {
+        cornerstoneWADOImageLoader.wadouri.fileManager.purge();
+      } else if (cornerstoneWADOImageLoader.default && cornerstoneWADOImageLoader.default.wadouri && cornerstoneWADOImageLoader.default.wadouri.fileManager) {
+        cornerstoneWADOImageLoader.default.wadouri.fileManager.purge();
+      }
+    }
+  } catch (e) {
+    console.debug("Error purging fileManager", e);
+  }
 
   // Remove feedback images
   $(".feedback-image").remove();

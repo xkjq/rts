@@ -764,30 +764,36 @@ function loadAnnotation(imageId, annotation) {
   toolStateManager.restoreToolState(tool_state);
 }
 async function load(images, annotations) {
-  // Parallelize image preparation and annotation loading
-  const imageTasks = images.map(async (data_url, i) => {
-    const annotation = annotations[i];
-    let imageId;
-    if (data_url.startsWith("data:image")) {
-      imageId = "base64://" + data_url.split(",")[1];
-    } else if (data_url.startsWith("data:")) {
-      const dfile = await urltoFile(data_url, "dicom", "application/dicom");
-      imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(dfile);
-    } else {
-      let url = data_url;
-      if (url.endsWith("dcm")) {
-        url = "wadouri:" + url;
+  // Batch image preparation and annotation loading to avoid massive memory spikes
+  const imageResults = [];
+  const batchSize = 10;
+  for (let b = 0; b < images.length; b += batchSize) {
+    const batch = images.slice(b, b + batchSize);
+    const batchTasks = batch.map(async (data_url, idx) => {
+      const i = b + idx;
+      const annotation = annotations ? annotations[i] : undefined;
+      let imageId;
+      if (data_url.startsWith("data:image")) {
+        imageId = "base64://" + data_url.split(",")[1];
+      } else if (data_url.startsWith("data:")) {
+        const dfile = await urltoFile(data_url, "dicom", "application/dicom");
+        imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(dfile);
+      } else {
+        let url = data_url;
+        if (url.endsWith("dcm")) {
+          url = "wadouri:" + url;
+        }
+        if (/(?:\/|^)[^.\/]+$/.test(url)) {
+          url = "wadouri:" + url;
+        }
+        imageId = url;
       }
-      if (/(?:\/|^)[^.\/]+$/.test(url)) {
-        url = "wadouri:" + url;
-      }
-      imageId = url;
-    }
-    return {imageId, annotation};
-  });
+      return {imageId, annotation};
+    });
+    const batchDone = await Promise.all(batchTasks);
+    imageResults.push(...batchDone);
+  }
 
-  // Wait for all image tasks to complete
-  const imageResults = await Promise.all(imageTasks);
   const imageIds = imageResults.map(r => r.imageId);
 
   // Display the first image as soon as possible
@@ -998,6 +1004,13 @@ function closeViewer(dicom_element) {
     $(".canvas-panel").remove();
     $(".figure-open").removeClass("figure-open").addClass("figure");
     $(dicom_element).remove();
+    try {
+      if (typeof cornerstone !== "undefined" && cornerstone.imageCache) {
+        cornerstone.imageCache.purgeCache();
+      }
+    } catch (e) {
+      console.debug("Error purging cornerstone imageCache on closeViewer", e);
+    }
   }
 }
 
