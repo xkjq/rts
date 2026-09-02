@@ -374,11 +374,11 @@ export function manualScrollDicom(n) {
     new_index = new_index + max;
   }
 
-  c.toolStateManager.toolState.stack.data[0].currentImageIdIndex = new_index;
   const scrollToIndex = cornerstoneTools.importInternal ? cornerstoneTools.importInternal('util/scrollToIndex') : null;
   if (scrollToIndex) {
     scrollToIndex(dicom_element, new_index);
   } else {
+    c.toolStateManager.toolState.stack.data[0].currentImageIdIndex = new_index;
     let id = c.toolStateManager.toolState.stack.data[0].imageIds[new_index];
     cornerstone.loadAndCacheImage(id).then((b) => {
       if (c.toolStateManager.toolState.stack.data[0].currentImageIdIndex === new_index) {
