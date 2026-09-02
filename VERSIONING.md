@@ -1,6 +1,6 @@
 # Versioning, Release & Debugging
 
-RTS ships as a **static site** (GitHub Pages / Jekyll). There is no app server and
+RTS ships as a **static site**. There is no app server and
 no bundler, so "always run the latest version" is handled with **cache-busting
 URLs** plus a **client-side update check**.
 
