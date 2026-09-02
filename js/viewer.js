@@ -5,7 +5,6 @@
  * @param {*} stack -
  */
 let isMouseScrolling = false;
-let wheelScrollTimeout = null;
 let staticBarTop = 0;
 let staticBarLeft = 0;
 let staticBarHeight = 420;
@@ -213,36 +212,31 @@ export function loadMainImage(image, stack) {
     }
   });
 
-  $(element).on("wheel.scroll", function(evt) {
-    if (stack && stack.imageIds && stack.imageIds.length > 1) {
-      const rect = element.getBoundingClientRect();
-      const mouseX = evt.clientX - rect.left;
-      const mouseY = evt.clientY - rect.top;
-      const total = stack.imageIds.length;
-      const current = stack.currentImageIdIndex + 1;
-      const percent = total > 1 ? (current - 1) / (total - 1) : 0;
-      staticBarHeight = 420;
-      staticBarTop = mouseY - percent * staticBarHeight;
-      staticBarLeft = mouseX - 20;
-
-      positionScrollIndicator(staticBarLeft, staticBarTop, staticBarHeight);
-      updateScrollIndicator(current, total);
-      showScrollIndicator();
-
-      if (wheelScrollTimeout) clearTimeout(wheelScrollTimeout);
-      wheelScrollTimeout = setTimeout(() => {
-        if (!isMouseScrolling) {
-          hideScrollIndicator();
-        }
-      }, 600);
-    }
-  });
-
   $(".dicom-select-control")
     .get(0)
     .addEventListener("change", function() {
       changeControlSelection();
     });
+
+  // Make the viewer focusable so arrow keys scroll the stack when it has focus
+  element.setAttribute("tabindex", "0");
+
+  element.addEventListener("mousedown", function() {
+    element.focus();
+  });
+
+  element.addEventListener("keydown", function(evt) {
+    let n = null;
+    if (evt.code === "ArrowUp" || evt.code === "ArrowLeft") {
+      n = -1;
+    } else if (evt.code === "ArrowDown" || evt.code === "ArrowRight") {
+      n = 1;
+    }
+    if (n === null) return;
+    manualScrollDicom(n);
+    evt.preventDefault();
+    evt.stopPropagation();
+  });
 
   // Register Key Event Listener
   document.addEventListener("keydown", keydown_handler);
@@ -283,7 +277,7 @@ function onImageRendered(e) {
       ")"
     );
 
-    if (isMouseScrolling || wheelScrollTimeout) {
+    if (isMouseScrolling) {
       updateScrollIndicator(stack.currentImageIdIndex + 1, stack.imageIds.length);
     }
 
