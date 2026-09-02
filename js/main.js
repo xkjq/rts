@@ -1,12 +1,12 @@
 /* global Dexie, cornerstone, cornerstoneTools, cornerstoneBase64ImageLoader, cornerstoneWebImageLoader, cornerstoneWADOImageLoader */
-import * as helper from "./helpers.js?v=1.0.5";
-import * as viewer from "./viewer.js?v=1.0.5";
-import * as interact from "./interact.js?v=1.0.5";
+import * as helper from "./helpers.js?v=1.0.6";
+import * as viewer from "./viewer.js?v=1.0.6";
+import * as interact from "./interact.js?v=1.0.6";
 import * as config from "./config.js";
-import { db, question_db } from "./db.js?v=1.0.5";
-import { initSync, triggerImmediateSync, updateSyncUI } from "./sync.js?v=1.0.5";
-import { initSentry } from "./sentry.js?v=1.0.5";
-import { VERSION, BUILD, startUpdateChecker } from "./version.js?v=1.0.5";
+import { db, question_db } from "./db.js?v=1.0.6";
+import { initSync, triggerImmediateSync, updateSyncUI } from "./sync.js?v=1.0.6";
+import { initSentry } from "./sentry.js?v=1.0.6";
+import { VERSION, BUILD, startUpdateChecker } from "./version.js?v=1.0.6";
 
 initSentry(VERSION);
 
@@ -1276,15 +1276,26 @@ function setUpPacket(data, path) {
         question_number++;
         n = String(n);
 
-        let obj = {
-          qid: n,
-          type: question_type
-        };
-        let question_in_db = await question_db.question_data.get(obj);
+        // Fast index count check without pulling multi-megabyte question data into RAM
+        let count = 0;
+        try {
+          count = await question_db.question_data
+            .where(["qid", "type"])
+            .equals([n, question_type])
+            .count();
 
-        // If the question is in the db we can load
-        // invalid questions should have already been removed
-        if (question_in_db != undefined) {
+          if (count === 0) {
+            count = await question_db.question_data
+              .where("qid")
+              .equals(n)
+              .count();
+          }
+        } catch (e) {
+          console.debug("Error checking question existence:", e);
+        }
+
+        // If the question is in the db we can skip downloading it
+        if (count > 0) {
           continue;
         }
 
@@ -1334,6 +1345,8 @@ function setUpPacket(data, path) {
           }
           session_questions_fallback[n] = question_json;
         }
+        question_json = null;
+        d = null;
       }
       // Once all questions have been downloaded we carry on loading
       use_local_question_cache = true;
@@ -1508,6 +1521,7 @@ async function setUpQuestions(load_previous) {
           }
           session_questions_fallback[String(e)] = questions[e];
         }
+        delete questions[e];
       }
     }
 
@@ -1720,8 +1734,12 @@ async function loadQuestion(n, section = 1, force_reload = false) {
   // disable any further enabled elements
   let enabled_elements = cornerstone.getEnabledElements();
   for (var i = enabled_elements.length - 1; i >= 0; i--) {
-    //console.debug("disable, ", enabled_elements[i]);
-    cornerstone.disable(enabled_elements[i].element);
+    try {
+      cornerstone.removeElementData(enabled_elements[i].element);
+    } catch (e) {}
+    try {
+      cornerstone.disable(enabled_elements[i].element);
+    } catch (e) {}
   }
   $(".canvas-panel").remove();
 
