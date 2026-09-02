@@ -1145,9 +1145,16 @@ select option:disabled {
     background-color: black;
 }
 
+.blocker {
+    z-index: 1000 !important;
+}
+
 .login-button.logout-button {
+    padding: 0.2em 0.7em;
+    font-size: 0.85em;
     border-color: #d9534f;
     color: #ff6b6b;
+    vertical-align: middle;
 }
 
 .login-button.logout-button:hover {

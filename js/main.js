@@ -1,12 +1,12 @@
 /* global Dexie, cornerstone, cornerstoneTools, cornerstoneBase64ImageLoader, cornerstoneWebImageLoader, cornerstoneWADOImageLoader */
-import * as helper from "./helpers.js?v=1.0.8";
-import * as viewer from "./viewer.js?v=1.0.8";
-import * as interact from "./interact.js?v=1.0.8";
+import * as helper from "./helpers.js?v=1.0.9";
+import * as viewer from "./viewer.js?v=1.0.9";
+import * as interact from "./interact.js?v=1.0.9";
 import * as config from "./config.js";
-import { db, question_db } from "./db.js?v=1.0.8";
-import { initSync, triggerImmediateSync, updateSyncUI } from "./sync.js?v=1.0.8";
-import { initSentry } from "./sentry.js?v=1.0.8";
-import { VERSION, BUILD, startUpdateChecker } from "./version.js?v=1.0.8";
+import { db, question_db } from "./db.js?v=1.0.9";
+import { initSync, triggerImmediateSync, updateSyncUI } from "./sync.js?v=1.0.9";
+import { initSentry } from "./sentry.js?v=1.0.9";
+import { VERSION, BUILD, startUpdateChecker } from "./version.js?v=1.0.9";
 
 initSentry(VERSION);
 
@@ -386,6 +386,18 @@ function updateLoginUI() {
 function handleUserLogout() {
   localStorage.removeItem("cid.cid");
   localStorage.removeItem("cid.passcode");
+
+  // Clear cid and passcode from URL query parameters if present
+  try {
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("cid") || url.searchParams.has("passcode")) {
+      url.searchParams.delete("cid");
+      url.searchParams.delete("passcode");
+      window.history.replaceState({}, document.title, url.pathname + (url.search ? url.search : ""));
+    }
+  } catch (e) {
+    console.debug("Error clearing URL parameters on logout:", e);
+  }
 
   if (global_uid != null && URLS.logout_url != undefined && URLS.logout_url !== "") {
     window.location = URLS.logout_url;
