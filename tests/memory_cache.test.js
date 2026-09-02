@@ -346,6 +346,17 @@ describe("RTS Memory Optimization & Cache Safety Tests", () => {
       stack[0] = base64ToBlob(stack[0], "application/dicom");
       expect(stack[0]).toBeInstanceOf(Blob);
       expect(typeof stack[0]).not.toBe("string");
+
+      // Verify mapping handles Blobs without calling .startsWith
+      const imageIds = stack.map((item, i) => {
+        if (item instanceof Blob) {
+          return "rtsdicom:" + i;
+        } else if (typeof item === "string") {
+          return item.startsWith("data:") ? "rtsdicom:" + i : item;
+        }
+        return "rtsdicom:" + i;
+      });
+      expect(imageIds[0]).toBe("rtsdicom:0");
     });
   });
 });

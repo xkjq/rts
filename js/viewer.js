@@ -989,16 +989,22 @@ async function load(images, annotations) {
 
   // Build imageIds immediately without converting any slice up front
   const imageIds = images.map((data_url, i) => {
-    if (data_url.startsWith("data:image")) {
-      return "base64://" + data_url.split(",")[1];
-    } else if (data_url.startsWith("data:")) {
+    if (data_url instanceof Blob) {
       return "rtsdicom:" + i;
-    } else {
-      let url = data_url;
-      if (url.endsWith("dcm") || /(?:\/|^)[^.\/]+$/.test(url)) {
-        url = "wadouri:" + url;
+    } else if (typeof data_url === "string") {
+      if (data_url.startsWith("data:image")) {
+        return "base64://" + data_url.split(",")[1];
+      } else if (data_url.startsWith("data:")) {
+        return "rtsdicom:" + i;
+      } else {
+        let url = data_url;
+        if (url.endsWith("dcm") || /(?:\/|^)[^.\/]+$/.test(url)) {
+          url = "wadouri:" + url;
+        }
+        return url;
       }
-      return url;
+    } else {
+      return "rtsdicom:" + i;
     }
   });
 
@@ -1055,8 +1061,12 @@ export function openMainImage(current_question, t, source) {
               cornerstoneTools.stackPrefetch.disable(el);
             } catch (e) {}
           }
-          cornerstone.removeElementData(el);
-          cornerstone.disable(el);
+          try {
+            cornerstone.removeElementData(el);
+          } catch (e) {}
+          try {
+            cornerstone.disable(el);
+          } catch (e) {}
           // Explicitly remove the dicom-image element
           el.remove();
           $(".canvas-panel").remove();
@@ -1229,8 +1239,12 @@ export function closeViewer(dicom_element) {
       } catch (e) {}
     }
     // See https://github.com/cornerstonejs/cornerstoneTools/issues/1337
-    cornerstone.removeElementData(dicom_element);
-    cornerstone.disable(dicom_element);
+    try {
+      cornerstone.removeElementData(dicom_element);
+    } catch (e) {}
+    try {
+      cornerstone.disable(dicom_element);
+    } catch (e) {}
     $(".canvas-panel").remove();
     $(".figure-open").removeClass("figure-open").addClass("figure");
     $(dicom_element).remove();
