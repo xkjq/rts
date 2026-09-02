@@ -374,6 +374,43 @@ describe("RTS Memory Optimization & Cache Safety Tests", () => {
       expect(variants2).toContain("long/123");
     });
 
+    test("findMatchingEid matches same-type exams by bare id", async () => {
+      const { findMatchingEid } = await import("../js/helpers.js");
+      const map = {
+        "short/1": [42, {}, "short"],
+        "1": [42, {}, "short"],
+      };
+      expect(findMatchingEid({ eid: "short/1", exam_type: "short" }, map)).toBe("short/1");
+      expect(findMatchingEid({ eid: "1", type: "short" }, map)).toBe("1");
+    });
+
+    test("findMatchingEid rejects cross-type bare-id collisions", async () => {
+      const { findMatchingEid } = await import("../js/helpers.js");
+      // Simulates the anatomy list pass: anatomy/1 registered bare key "1"
+      const anatomyMap = {
+        "anatomy/1": [11, {}, "anatomy"],
+        "1": [11, {}, "anatomy"],
+      };
+      // A cached short exam must NOT be matched against anatomy/1's bare id
+      expect(findMatchingEid({ eid: "short/1", exam_type: "short" }, anatomyMap)).toBeNull();
+      // ...and vice versa
+      const shortMap = {
+        "short/1": [42, {}, "short"],
+        "1": [42, {}, "short"],
+      };
+      expect(findMatchingEid({ eid: "anatomy/1", exam_type: "anatomy" }, shortMap)).toBeNull();
+    });
+
+    test("findMatchingEid still matches untyped legacy exams", async () => {
+      const { findMatchingEid } = await import("../js/helpers.js");
+      const map = {
+        "short/1": [42, {}, "short"],
+        "1": [42, {}, "short"],
+      };
+      expect(findMatchingEid({ eid: "1" }, map)).toBe("1");
+      expect(findMatchingEid({ eid: "legacy-packet" }, { "legacy-packet": [3, {}, undefined] })).toBe("legacy-packet");
+    });
+
     test("answer archiving flags records rather than deleting them", () => {
       const answers = [
         { aid: "a1", eid: "long/1", qid: 1, ans: "Fracture", synced: true },

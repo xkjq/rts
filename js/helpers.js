@@ -82,3 +82,35 @@ export function getEidVariants(eid, type = null) {
   }
   return Array.from(variants);
 }
+
+/**
+ * Match a saved exam against the exam_generated_map built from an exam list.
+ *
+ * exam_generated_map is keyed by every eid variant from getEidVariants, which
+ * includes the bare numeric id (e.g. "1" for both "short/1" and "anatomy/1").
+ * Matching purely on those bare keys lets an exam of one type cross-match an
+ * exam of another type that happens to share the same numeric id, causing
+ * bogus cache invalidation. Entries therefore store their exam type at index 2
+ * and are only matched when the type agrees (or when either side has no type).
+ *
+ * @param {object} savedExam - saved_exams record (has eid, type/exam_type)
+ * @param {object} exam_generated_map - variant -> [exam_json_id, question_json_id_hash, exam_type]
+ * @returns {string|null} the matching variant key, or null
+ */
+export function findMatchingEid(savedExam, exam_generated_map) {
+  if (!savedExam || !exam_generated_map) return null;
+  const savedExamType = savedExam.exam_type || savedExam.type;
+  const variants = getEidVariants(savedExam.eid, savedExamType);
+  for (const v of variants) {
+    if (!exam_generated_map.hasOwnProperty(v)) continue;
+    // Type-prefixed variants (contain "/") are unambiguous.
+    if (v.includes("/")) return v;
+    // Bare variants are ambiguous across exam types - only match when the
+    // types agree (or when either side is untyped, e.g. legacy packets).
+    const entryType = exam_generated_map[v][2];
+    if (!savedExamType || !entryType || entryType === savedExamType) {
+      return v;
+    }
+  }
+  return null;
+}

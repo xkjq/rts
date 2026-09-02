@@ -1,12 +1,12 @@
 /* global Dexie, cornerstone, cornerstoneTools, cornerstoneBase64ImageLoader, cornerstoneWebImageLoader, cornerstoneWADOImageLoader */
-import * as helper from "./helpers.js?v=1.0.10";
-import * as viewer from "./viewer.js?v=1.0.10";
-import * as interact from "./interact.js?v=1.0.10";
+import * as helper from "./helpers.js?v=1.0.11";
+import * as viewer from "./viewer.js?v=1.0.11";
+import * as interact from "./interact.js?v=1.0.11";
 import * as config from "./config.js";
-import { db, question_db } from "./db.js?v=1.0.10";
-import { initSync, triggerImmediateSync, updateSyncUI } from "./sync.js?v=1.0.10";
-import { initSentry } from "./sentry.js?v=1.0.10";
-import { VERSION, BUILD, startUpdateChecker } from "./version.js?v=1.0.10";
+import { db, question_db } from "./db.js?v=1.0.11";
+import { initSync, triggerImmediateSync, updateSyncUI } from "./sync.js?v=1.0.11";
+import { initSentry } from "./sentry.js?v=1.0.11";
+import { VERSION, BUILD, startUpdateChecker } from "./version.js?v=1.0.11";
 
 initSentry(VERSION);
 
@@ -850,7 +850,7 @@ async function loadExamList(data, clearExistingList = true, target = "all") {
 
     const eidVariants = getEidVariants(eid, exam_type);
     for (const v of eidVariants) {
-      exam_generated_map[v] = [exam_json_id, question_json_id_hash];
+      exam_generated_map[v] = [exam_json_id, question_json_id_hash, exam_type];
     }
 
     // Match against stored session data and local answers
@@ -948,7 +948,7 @@ async function loadExamList(data, clearExistingList = true, target = "all") {
     saved_exams.forEach(async (saved_exam, n) => {
       console.debug("Check", saved_exam);
       const savedEidVariants = getEidVariants(saved_exam.eid, saved_exam.exam_type || saved_exam.type);
-      let matchingEid = savedEidVariants.find((v) => exam_generated_map.hasOwnProperty(v));
+      let matchingEid = helper.findMatchingEid(saved_exam, exam_generated_map);
 
       if (matchingEid != null) {
         $("#cache-details ul").append(

@@ -12,10 +12,10 @@
  */
 
 // Bump this on every release. Must match the `version` field in version.json.
-export const VERSION = "1.0.10";
+export const VERSION = "1.0.11";
 
 // A short git/commit identifier (optional). Keep in sync with version.json.
-export const BUILD = "ebec3f1";
+export const BUILD = "4ec8ed3";
 
 // URL (relative to the site root) of the static version manifest.
 export const VERSION_URL = "version.json";
