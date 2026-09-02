@@ -1,12 +1,12 @@
 /* global Dexie, cornerstone, cornerstoneTools, cornerstoneBase64ImageLoader, cornerstoneWebImageLoader, cornerstoneWADOImageLoader */
-import * as helper from "./helpers.js?v=1.0.7";
-import * as viewer from "./viewer.js?v=1.0.7";
-import * as interact from "./interact.js?v=1.0.7";
+import * as helper from "./helpers.js?v=1.0.8";
+import * as viewer from "./viewer.js?v=1.0.8";
+import * as interact from "./interact.js?v=1.0.8";
 import * as config from "./config.js";
-import { db, question_db } from "./db.js?v=1.0.7";
-import { initSync, triggerImmediateSync, updateSyncUI } from "./sync.js?v=1.0.7";
-import { initSentry } from "./sentry.js?v=1.0.7";
-import { VERSION, BUILD, startUpdateChecker } from "./version.js?v=1.0.7";
+import { db, question_db } from "./db.js?v=1.0.8";
+import { initSync, triggerImmediateSync, updateSyncUI } from "./sync.js?v=1.0.8";
+import { initSentry } from "./sentry.js?v=1.0.8";
+import { VERSION, BUILD, startUpdateChecker } from "./version.js?v=1.0.8";
 
 initSentry(VERSION);
 
@@ -348,11 +348,65 @@ let userInfoSet = false;
 /**
  * Set user info in the UI independently of packets/exams.
  */
+function updateLoginUI() {
+  const isDjangoUser = global_uid != null || (global_username != null && global_username !== "");
+  const isCandidate = global_cid != null && global_cid !== "" && !String(global_cid).startsWith("u-") && global_passcode != null && global_passcode !== "";
+
+  $("#user-actions").show();
+
+  if (isDjangoUser) {
+    $("#user").empty().text(`User: ${global_username}`);
+    $("#candidate-details").empty();
+    $("#btn-candidate-login").hide();
+    $("#btn-user-login").hide();
+    $("#btn-user-logout").val("Log out").show();
+  } else if (isCandidate) {
+    $("#user").empty();
+    $("#candidate-details").empty().text(`Current: CID ${global_cid} / Passcode ${global_passcode}`);
+    $("#btn-candidate-login").hide();
+    if (allow_users) {
+      $("#btn-user-login").show();
+    } else {
+      $("#btn-user-login").hide();
+    }
+    $("#btn-user-logout").val("Log out").show();
+  } else {
+    $("#user").empty();
+    $("#candidate-details").empty();
+    $("#btn-candidate-login").show();
+    if (allow_users) {
+      $("#btn-user-login").show();
+    } else {
+      $("#btn-user-login").hide();
+    }
+    $("#btn-user-logout").hide();
+  }
+}
+
+function handleUserLogout() {
+  localStorage.removeItem("cid.cid");
+  localStorage.removeItem("cid.passcode");
+
+  if (global_uid != null && URLS.logout_url != undefined && URLS.logout_url !== "") {
+    window.location = URLS.logout_url;
+  } else {
+    global_cid = null;
+    global_passcode = null;
+    global_uid = null;
+    global_username = null;
+    userInfoSet = false;
+    updateLoginUI();
+    retrievePacketList("all");
+  }
+}
+
+/**
+ * Set user info in the UI independently of packets/exams.
+ */
 function setUserInfo(data) {
   if (userInfoSet || !data || !data.user) return;
   userInfoSet = true;
 
-  $("#user").empty().append(`User: ${data.user}`);
   global_uid = data.user_id;
   global_username = data.user;
 
@@ -360,24 +414,7 @@ function setUserInfo(data) {
     global_cid = "u-" + global_uid;
   }
 
-  $("#btn-user-login").hide();
-
-  let logout = $("<span>[x]</span>");
-  logout.css({ cursor: "pointer", "margin-left": "8px" });
-  logout.click(() => {
-    localStorage.removeItem("cid.cid");
-    localStorage.removeItem("cid.passcode");
-    window.location = URLS.logout_url;
-  });
-
-  if ($("#user-actions").length) {
-    $("#user-actions").empty().append(logout);
-    if (!allow_users) {
-      $("#user-actions").hide();
-    }
-  } else {
-    $("#user").append(logout);
-  }
+  updateLoginUI();
 }
 
 // Map of eid -> friendly exam name (populated when exam list is loaded)
@@ -388,7 +425,6 @@ let examNameMap = {};
  * Uses `global_cid`/`global_passcode` if set, otherwise falls back to localStorage.
  */
 function showCandidateDetails() {
-  console.log("Show candidate details");
   let cidToShow = global_cid;
   let passToShow = global_passcode;
 
@@ -399,37 +435,10 @@ function showCandidateDetails() {
 
   // Only show when both values exist and are non-empty
   if (cidToShow != null && cidToShow !== "" && passToShow != null && passToShow !== "") {
-    // Ensure globals reflect what's being shown
     global_cid = cidToShow;
     global_passcode = passToShow;
 
-    $("#candidate-details").empty();
-    $("#candidate-details").text(`Current: CID ${global_cid} / Passcode ${global_passcode}`);
-
-    // Create logout action and place it in the actions area so we can hide actions when users disabled
-    let logout = $("<span>[x]</span>");
-    logout.css({ cursor: "pointer", "margin-left": "8px" });
-    logout.click(() => {
-      localStorage.removeItem("cid.cid");
-      localStorage.removeItem("cid.passcode");
-      // If a logout URL is configured, use it; otherwise reload current page
-      if (URLS.logout_url != undefined && URLS.logout_url !== "") {
-        window.location = URLS.logout_url;
-      } else {
-        window.location = window.location.pathname;
-      }
-    });
-
-    // Ensure the actions container exists and append the logout button there
-    if ($("#user-actions").length) {
-      $("#user-actions").empty().append(logout);
-      // Hide actions entirely if `allow_users` is false
-      if (!allow_users) {
-        $("#user-actions").hide();
-      } else {
-        $("#user-actions").show();
-      }
-    }
+    updateLoginUI();
 
     // If an exam results URL is configured, update the options link to point to the candidate's results
     if (URLS.exam_results_url != "" && URLS.exam_results_url != undefined) {
@@ -441,6 +450,8 @@ function showCandidateDetails() {
           `<a href="${resultsUrl}" target="_blank"><div class="packet-button">Results and answers</div></a>`
         );
     }
+  } else {
+    updateLoginUI();
   }
 }
 
@@ -488,12 +499,7 @@ retrievePacketList();
 
 initVersionSystem();
 
-if (!allow_users) {
-  // Keep the user/candidate details visible, but hide the action buttons entirely
-  $("#user-actions").hide();
-} else {
-  $("#user-actions").show();
-}
+updateLoginUI();
 
 try {
   refreshDatabaseSettings();
@@ -2677,10 +2683,12 @@ $("#btn-fullscreen-overlay").click(function(evt) {
   }
 });
 
-$("#finish-exam, #btn-time-up-review").click(function(evt) {
+$("#finish-exam, #btn-time-up-review").click(async function(evt) {
   review_mode = true;
   reviewQuestions();
   $.modal.close();
+  await saveSession(true);
+  retrievePacketList("all");
 });
 
 $("#btn-time-up-continue").click(function(evt) {
@@ -3402,18 +3410,25 @@ function showLoginDialog() {
 
 
 $("#btn-candidate-login").click(function(evt) {
+  $("#candidate-number").val(global_cid && !String(global_cid).startsWith("u-") ? global_cid : "");
+  $("#passcode").val(global_passcode || "");
   $("#login-dialog").modal({
-    escapeClose: false,
-    clickClose: false,
-    showClose: false
+    escapeClose: true,
+    clickClose: true,
+    showClose: true
   });
-  $("#options-panel").toggle();
-  //$(".exam-wrapper").toggle();
+});
+
+$("#btn-login-cancel").click(function(evt) {
+  $.modal.close();
 });
 
 $("#btn-user-login").click(function(evt) {
   window.location = URLS.login_url;
-  //$(".exam-wrapper").toggle();
+});
+
+$("#btn-user-logout").click(function(evt) {
+  handleUserLogout();
 });
 
 $("#btn-refresh-all").on("click", function(e) {
@@ -3421,6 +3436,7 @@ $("#btn-refresh-all").on("click", function(e) {
   let restore = showLoadingState($(this), $("#packets"));
   retrievePacketList("all", restore);
 });
+
 $("#btn-refresh-packets").on("click", function(e) {
   e.stopPropagation();
   let restore = showLoadingState($(this), $("#packet-list"));
@@ -3436,16 +3452,23 @@ $("#exam-list").on("click", ".type-refresh-button", function(e) {
   retrievePacketList(type, restore);
 });
 
-
-
 $("#btn-login").click(function(evt) {
-  global_cid = $("#candidate-number").val().trim();
-  global_passcode = $("#passcode").val().trim();
+  const cidVal = $("#candidate-number").val().trim();
+  const passVal = $("#passcode").val().trim();
 
-  localStorage.setItem("cid.cid", global_cid)
-  localStorage.setItem("cid.passcode", global_passcode)
-  location.reload();
+  if (!cidVal || !passVal) {
+    alert("Please enter both candidate number and passcode.");
+    return;
+  }
+
+  global_cid = cidVal;
+  global_passcode = passVal;
+
+  localStorage.setItem("cid.cid", global_cid);
+  localStorage.setItem("cid.passcode", global_passcode);
   $.modal.close();
+  updateLoginUI();
+  retrievePacketList("all");
 });
 
 $(".start-packet-button").click(function(evt) {
@@ -3816,16 +3839,19 @@ function saveSession(start_review) {
 
   //console.debug("save session", score);
 
-  let time_values = timer.getTimeValues();
-  let time_remaining =
-    time_values.hours * 60 * 60 +
-    time_values.minutes * 60 +
-    time_values.seconds;
-  db.session.put({
+  let time_remaining = 0;
+  if (timer != null && typeof timer.getTimeValues === "function") {
+    let time_values = timer.getTimeValues();
+    time_remaining =
+      time_values.hours * 60 * 60 +
+      time_values.minutes * 60 +
+      time_values.seconds;
+  }
+  return db.session.put({
     packet: packet_name,
     eid: exam_details.eid,
     aid: exam_details.aid,
-    cid: exam_details.cid,
+    cid: exam_details.cid != null ? String(exam_details.cid) : exam_details.cid,
     passcode: exam_details.passcode,
     status: status,
     date: date_started,
@@ -3856,8 +3882,13 @@ function refreshDatabaseSettings() {
   }
 }
 
-$(document).on("saveSessionEvent", {}, (evt, review) => {
-  saveSession(review);
+$(document).on("saveSessionEvent", {}, async (evt, review) => {
+  await saveSession(review);
+  retrievePacketList("all");
+});
+
+$(document).on("refreshExamListEvent", () => {
+  retrievePacketList("all");
 });
 
 // Disable right click

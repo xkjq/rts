@@ -97,6 +97,7 @@ export function postAnswers(ans, URLS, exam_details) {
           .on("click", function() {
             $.modal.close();
             $("#options-panel").show();
+            $(document).trigger("refreshExamListEvent");
           });
 
         if (typeof $.fn.modal === "function") {
