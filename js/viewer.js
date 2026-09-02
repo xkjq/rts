@@ -218,26 +218,6 @@ export function loadMainImage(image, stack) {
       changeControlSelection();
     });
 
-  // Make the viewer focusable so arrow keys scroll the stack when it has focus
-  element.setAttribute("tabindex", "0");
-
-  element.addEventListener("mousedown", function() {
-    element.focus();
-  });
-
-  element.addEventListener("keydown", function(evt) {
-    let n = null;
-    if (evt.code === "ArrowUp" || evt.code === "ArrowLeft") {
-      n = -1;
-    } else if (evt.code === "ArrowDown" || evt.code === "ArrowRight") {
-      n = 1;
-    }
-    if (n === null) return;
-    manualScrollDicom(n);
-    evt.preventDefault();
-    evt.stopPropagation();
-  });
-
   // Register Key Event Listener
   document.addEventListener("keydown", keydown_handler);
 }
