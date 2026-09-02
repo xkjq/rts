@@ -1,6 +1,6 @@
 /* global Dexie, cornerstone, cornerstoneTools, cornerstoneBase64ImageLoader, cornerstoneWebImageLoader, cornerstoneWADOImageLoader */
 import * as helper from "./helpers.js";
-import * as viewer from "./viewer.js";
+import * as viewer from "./viewer.js?v=1.0.3";
 import * as interact from "./interact.js";
 import * as config from "./config.js";
 import { db, question_db } from "./db.js";
@@ -9,6 +9,27 @@ import { initSentry } from "./sentry.js";
 import { VERSION, BUILD, startUpdateChecker } from "./version.js";
 
 initSentry(VERSION);
+
+function safeCleanupViewerMemory() {
+  if (typeof viewer !== "undefined" && typeof viewer.cleanupViewerMemory === "function") {
+    viewer.cleanupViewerMemory();
+  } else {
+    try {
+      if (typeof cornerstone !== "undefined" && cornerstone.imageCache) {
+        cornerstone.imageCache.purgeCache();
+      }
+      if (typeof cornerstoneWADOImageLoader !== "undefined") {
+        const loader = cornerstoneWADOImageLoader.wadouri || (cornerstoneWADOImageLoader.default && cornerstoneWADOImageLoader.default.wadouri);
+        if (loader) {
+          if (loader.fileManager && loader.fileManager.purge) loader.fileManager.purge();
+          if (loader.dataSetCacheManager && loader.dataSetCacheManager.purge) loader.dataSetCacheManager.purge();
+        }
+      }
+    } catch (e) {
+      console.debug("Fallback viewer cleanup failed", e);
+    }
+  }
+}
 
 // const { v4: uuidv4 } = require('uuid');
 
@@ -790,7 +811,29 @@ async function loadExamList(data, clearExistingList = true, target = "all") {
 
 
   // Check the database for exams that have been saved
-  question_db.saved_exams.toArray().then((saved_exams) => {
+  // Sanitize legacy bloated saved_exams directly on disk before reading into memory
+  question_db.saved_exams
+    .toCollection()
+    .modify((exam) => {
+      if (exam.questions && typeof exam.questions === "object") {
+        exam.questions = "cached";
+      }
+      for (const key of Object.keys(exam)) {
+        if (![
+          "eid", "name", "exam_name", "type", "exam_type",
+          "exam_json_id", "exam_mode", "order", "exam_order",
+          "time", "exam_time", "questions", "question_requests",
+          "multi_question_json"
+        ].includes(key)) {
+          delete exam[key];
+        }
+      }
+    })
+    .catch((err) => {
+      console.debug("Error pre-sanitizing saved_exams:", err);
+    })
+    .then(() => question_db.saved_exams.toArray())
+    .then((saved_exams) => {
     if (saved_exams.length < 1) {
       if ($("#cache-details summary span").length === 0) {
         $("#cache-details summary").append("<span>No cached exams / questions</span>");
@@ -803,26 +846,6 @@ async function loadExamList(data, clearExistingList = true, target = "all") {
     console.debug("Loop through saved exams");
     saved_exams.forEach(async (saved_exam, n) => {
       console.debug("Check", saved_exam);
-      // Sanitize legacy bloated saved_exam records if they contain question data to free storage/heap
-      if ((saved_exam.questions && typeof saved_exam.questions === "object") || Object.keys(saved_exam).length > 15) {
-        const cleanExam = {
-          eid: saved_exam.eid,
-          name: saved_exam.name || saved_exam.exam_name,
-          exam_name: saved_exam.exam_name || saved_exam.name,
-          type: saved_exam.type || saved_exam.exam_type,
-          exam_type: saved_exam.exam_type || saved_exam.type,
-          exam_json_id: saved_exam.exam_json_id,
-          exam_mode: saved_exam.exam_mode,
-          order: saved_exam.order || saved_exam.exam_order,
-          exam_order: saved_exam.exam_order || saved_exam.order,
-          time: saved_exam.time || saved_exam.exam_time,
-          exam_time: saved_exam.exam_time || saved_exam.time,
-          questions: "cached",
-        };
-        if (saved_exam.question_requests) cleanExam.question_requests = saved_exam.question_requests;
-        if (saved_exam.multi_question_json) cleanExam.multi_question_json = saved_exam.multi_question_json;
-        question_db.saved_exams.put(cleanExam).catch(() => {});
-      }
       //Compared saved exams to those available
       if (exam_generated_map.hasOwnProperty(saved_exam.eid)) {
         $("#cache-details ul").append(
@@ -846,71 +869,40 @@ async function loadExamList(data, clearExistingList = true, target = "all") {
           $(`.packet-button[data-eid="${saved_exam.eid}"]`).addClass("cached");
         }
 
-        console.debug("Check question ids")
+        console.debug("Check question ids");
         for (let q in question_json_id_hash) {
           let new_question_json_id = question_json_id_hash[q];
-          console.debug("new question json id", new_question_json_id)
-          //q = q.toString();
+          console.debug("new question json id", new_question_json_id);
           $("#cache-details ul").append(
             `<li class="cache-item" data-qid=${q}>Question (${saved_exam.exam_type}): ${q} [New JSON id: ${new_question_json_id}]`
           );
-          // If a single question is out of date we invalidate the lot...
-          const q_object = {
-            qid: String(q),
-            type: saved_exam.exam_type
-          };
-          console.debug(q_object);
 
-          let save_question_data = await question_db.question_data.get(q_object);
-
+          // Fast index-only existence check without pulling multi-megabyte base64 question data into RAM
+          const q_type = saved_exam.exam_type || saved_exam.type;
+          let count = 0;
           try {
-            console.debug("saved question data", save_question_data, new_question_json_id)
-            // saved_question_data is undefined if the question is not saved
-            // we should really just requeue the required question for dowload...
-            if (save_question_data == undefined || save_question_data.data.question_json_id != new_question_json_id) {
-              console.debug(`INVALIDATE eid: ${saved_exam.eid}, q ${q}`);
-              $(`li.cache-item[data-eid="${saved_exam.eid}"]`).addClass(
-                "cache-out-of-date"
-              );
-              $(`li.cache-item[data-qid="${q}"]`).addClass(
-                "cache-out-of-date"
-              );
-              $(`.packet-button[data-eid="${saved_exam.eid}"]`).addClass(
-                "out-of-date"
-              );
-              // Invalidate associated exam
-              question_db.saved_exams.where("eid").equals(saved_exam.eid).delete();
+            count = await question_db.question_data
+              .where(["qid", "type"])
+              .equals([String(q), q_type])
+              .count();
 
-              // Invalidate and any associated answers
-
-              db.answers.where("eid").equals(saved_exam.eid).delete();
-
-              //question_db.saved_exams.where("eid").equals(saved_exam.eid).delete();
-              question_db.question_data
-                .where(["qid", "type"])
-                .equals([String(q), saved_exam.exam_type])
-                .delete();
+            if (count === 0) {
+              count = await question_db.question_data
+                .where("qid")
+                .equals(String(q))
+                .count();
             }
           } catch (e) {
-            console.debug("Error loading qusetion data", q_object);
-            console.debug(e);
-            console.debug("1234", saved_exam.eid);
-            // If the question isn't found in the cache...
-            $(`li.cache-item[data-eid="${saved_exam.eid}"]`).addClass(
-              "cache-out-of-date"
-            );
-            $(`li.cache-item[data-qid="${q}"]`)
-              .addClass("cache-out-of-date")
-              .append("[Not found]");
-            $(`.packet-button[data-eid="${saved_exam.eid}"]`).addClass(
-              "out-of-date"
-            );
+            console.debug("Error checking question in cache", q, e);
+          }
 
-            //question_db.saved_exams.where("eid").equals(saved_exam.eid).delete();
-            question_db.question_data
-              .where(["qid", "type"])
-              .equals([String(q), saved_exam.exam_type])
-              .delete();
+          if (count === 0) {
+            console.debug(`Question missing in cache: eid: ${saved_exam.eid}, q ${q}`);
+            $(`li.cache-item[data-eid="${saved_exam.eid}"]`).addClass("cache-out-of-date");
+            $(`li.cache-item[data-qid="${q}"]`).addClass("cache-out-of-date").append(" [Not found]");
+            $(`.packet-button[data-eid="${saved_exam.eid}"]`).addClass("out-of-date");
+            question_db.saved_exams.where("eid").equals(saved_exam.eid).delete();
+            db.answers.where("eid").equals(saved_exam.eid).delete();
           }
         }
       }
@@ -1733,7 +1725,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
   }
   $(".canvas-panel").remove();
 
-  viewer.cleanupViewerMemory();
+  safeCleanupViewerMemory();
 
   // Remove feedback images
   $(".feedback-image").remove();

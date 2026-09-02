@@ -89,12 +89,17 @@ with open(path, "w") as f:
     f.write("\n")
 PY
 
-# --- 3. Update index.html (?v= cache-busting query strings) ---
+# --- 3. Update index.html and js/main.js (?v= cache-busting query strings) ---
 if ! grep -q '?v=' "$INDEX_FILE"; then
   echo "Warning: no '?v=' cache-busting query strings found in $INDEX_FILE" >&2
 fi
 sed -i.bak -E "s/(\?v=)[0-9A-Za-z._-]+/\1${NEW_VERSION}/g" "$INDEX_FILE"
 rm -f "$INDEX_FILE.bak"
+
+if grep -q '?v=' "$ROOT/js/main.js"; then
+  sed -i.bak -E "s/(\?v=)[0-9A-Za-z._-]+/\1${NEW_VERSION}/g" "$ROOT/js/main.js"
+  rm -f "$ROOT/js/main.js.bak"
+fi
 
 echo "=== Done. Changed files: ==="
 git status --short
@@ -102,7 +107,7 @@ git status --short
 echo
 echo "Next steps:"
 echo "  1. Review the diff:  git diff"
-echo "  2. Commit:           git add js/version.js version.json index.html && git commit -m \"release: v${NEW_VERSION}\""
+echo "  2. Commit:           git add js/version.js version.json index.html js/main.js && git commit -m \"release: v${NEW_VERSION}\""
 echo "  3. Tag:              git tag \"v${NEW_VERSION}\""
 echo "  4. Push:             git push origin master --tags   (and/or your deploy remote)"
 echo "  5. Deploy the built files to your static host (GitHub Pages etc.)."
