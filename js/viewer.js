@@ -148,6 +148,12 @@ export function loadMainImage(image, stack) {
   }
 
   if (isStack && cornerstoneTools.stackPrefetch) {
+    if (typeof cornerstoneTools.stackPrefetch.setConfiguration === "function") {
+      cornerstoneTools.stackPrefetch.setConfiguration({
+        maxImagesToPrefetch: 3,
+        maxSimultaneousRequests: 1,
+      });
+    }
     cornerstoneTools.stackPrefetch.enable(element);
   }
 
@@ -765,12 +771,61 @@ function loadAnnotation(imageId, annotation) {
 }
 let activeStackData = null;
 const activeStackFileIds = new Map();
+const activeStackMetadata = new Map();
+const activeSliceLRU = [];
+const MAX_ACTIVE_SLICES = 12;
 let rtsDicomLoaderRegistered = false;
 let rtsMetaDataProviderRegistered = false;
+
+function touchSlice(index) {
+  const qIdx = activeSliceLRU.indexOf(index);
+  if (qIdx >= 0) activeSliceLRU.splice(qIdx, 1);
+  activeSliceLRU.push(index);
+
+  while (activeSliceLRU.length > MAX_ACTIVE_SLICES) {
+    const oldestIndex = activeSliceLRU.shift();
+    evictSlice(oldestIndex);
+  }
+}
+
+function evictSlice(index) {
+  if (activeStackFileIds.has(index)) {
+    const dicomFileId = activeStackFileIds.get(index);
+    activeStackFileIds.delete(index);
+    const fileIndex = parseInt(dicomFileId.replace("dicomfile:", ""), 10);
+
+    try {
+      const loader = typeof cornerstoneWADOImageLoader !== "undefined"
+        ? (cornerstoneWADOImageLoader.wadouri || (cornerstoneWADOImageLoader.default && cornerstoneWADOImageLoader.default.wadouri))
+        : null;
+      if (loader) {
+        if (loader.fileManager && typeof loader.fileManager.remove === "function") {
+          loader.fileManager.remove(fileIndex);
+        }
+        if (loader.dataSetCacheManager && typeof loader.dataSetCacheManager.unload === "function") {
+          loader.dataSetCacheManager.unload(String(fileIndex));
+        }
+      }
+    } catch (e) {
+      console.debug("Error in evictSlice fileManager/dataSetCacheManager:", e);
+    }
+  }
+
+  try {
+    const cs = typeof cornerstone !== "undefined" ? cornerstone : (typeof window !== "undefined" ? window.cornerstone : null);
+    if (cs && cs.imageCache && typeof cs.imageCache.removeImageLoadObject === "function") {
+      cs.imageCache.removeImageLoadObject("rtsdicom:" + index);
+    }
+  } catch (e) {
+    // not in imageCache, ignore
+  }
+}
 
 export function cleanupViewerMemory() {
   activeStackData = null;
   activeStackFileIds.clear();
+  activeStackMetadata.clear();
+  activeSliceLRU.length = 0;
 
   try {
     if (typeof cornerstone !== "undefined" && cornerstone.imageCache) {
@@ -821,6 +876,8 @@ export function initRtsDicomLoader() {
     const indexStr = imageId.replace("rtsdicom:", "");
     const index = parseInt(indexStr, 10);
 
+    let innerLoadObj = null;
+
     const promise = new Promise(async (resolve, reject) => {
       try {
         if (!activeStackData || !activeStackData[index]) {
@@ -839,24 +896,46 @@ export function initRtsDicomLoader() {
         if (activeStackFileIds.has(index)) {
           dicomFileId = activeStackFileIds.get(index);
         } else {
-          const dataUrl = activeStackData[index];
+          const item = activeStackData[index];
           let blob;
-          if (dataUrl.startsWith("data:")) {
-            blob = base64ToBlob(dataUrl, "application/dicom");
-          } else {
-            const wadouriId = dataUrl.startsWith("wadouri:") ? dataUrl : `wadouri:${dataUrl}`;
+          if (item instanceof Blob) {
+            blob = item;
+          } else if (typeof item === "string" && item.startsWith("data:")) {
+            blob = base64ToBlob(item, "application/dicom");
+            // Replace bulky base64 string in array with lightweight Blob to free V8 string heap
+            activeStackData[index] = blob;
+          } else if (typeof item === "string") {
+            const wadouriId = item.startsWith("wadouri:") ? item : `wadouri:${item}`;
             const imgLoad = await loader.loadImage(wadouriId);
+            innerLoadObj = imgLoad;
             const img = await (imgLoad.promise || imgLoad);
             img.imageId = imageId;
+            touchSlice(index);
             return resolve(img);
+          } else {
+            return reject(new Error(`Invalid image data at slice index ${index}`));
           }
+
           dicomFileId = loader.fileManager.add(blob);
           activeStackFileIds.set(index, dicomFileId);
         }
 
         const imgLoad = loader.loadImage(dicomFileId);
+        innerLoadObj = imgLoad;
         const image = await (imgLoad.promise || imgLoad);
         image.imageId = imageId;
+
+        // Cache critical metadata tags before potential dataset eviction
+        if (cs && cs.metaData && typeof cs.metaData.get === "function") {
+          try {
+            const voi = cs.metaData.get("voiLutModule", dicomFileId);
+            if (voi) activeStackMetadata.set(`${index}_voiLutModule`, voi);
+            const plane = cs.metaData.get("imagePlaneModule", dicomFileId);
+            if (plane) activeStackMetadata.set(`${index}_imagePlaneModule`, plane);
+          } catch (e) {}
+        }
+
+        touchSlice(index);
         resolve(image);
       } catch (err) {
         console.error(`Error loading rtsdicom slice ${index}:`, err);
@@ -864,16 +943,34 @@ export function initRtsDicomLoader() {
       }
     });
 
-    return { promise };
+    return {
+      promise: promise,
+      cancelFn: function() {
+        if (innerLoadObj && typeof innerLoadObj.cancelFn === "function") {
+          innerLoadObj.cancelFn();
+        }
+      },
+      decache: function() {
+        evictSlice(index);
+      }
+    };
   });
 
   if (cs.metaData && typeof cs.metaData.addProvider === "function" && !rtsMetaDataProviderRegistered) {
     cs.metaData.addProvider(function(type, imageId) {
       if (typeof imageId === "string" && imageId.startsWith("rtsdicom:")) {
         const idx = parseInt(imageId.replace("rtsdicom:", ""), 10);
+        const metaKey = `${idx}_${type}`;
+        if (activeStackMetadata.has(metaKey)) {
+          return activeStackMetadata.get(metaKey);
+        }
         if (activeStackFileIds.has(idx)) {
           const dicomFileId = activeStackFileIds.get(idx);
-          return cs.metaData.get(type, dicomFileId);
+          const meta = cs.metaData.get(type, dicomFileId);
+          if (meta) {
+            activeStackMetadata.set(metaKey, meta);
+          }
+          return meta;
         }
       }
     });
@@ -953,6 +1050,11 @@ export function openMainImage(current_question, t, source) {
         let el;
         el = document.getElementById("dicom-image");
         if (el != undefined) {
+          if (typeof cornerstoneTools !== "undefined" && cornerstoneTools.stackPrefetch) {
+            try {
+              cornerstoneTools.stackPrefetch.disable(el);
+            } catch (e) {}
+          }
           cornerstone.removeElementData(el);
           cornerstone.disable(el);
           // Explicitly remove the dicom-image element
@@ -1121,6 +1223,11 @@ export function closeViewer(dicom_element) {
     disableFullscreen(dicom_element);
   }
   if (dicom_element != undefined) {
+    if (typeof cornerstoneTools !== "undefined" && cornerstoneTools.stackPrefetch) {
+      try {
+        cornerstoneTools.stackPrefetch.disable(dicom_element);
+      } catch (e) {}
+    }
     // See https://github.com/cornerstonejs/cornerstoneTools/issues/1337
     cornerstone.removeElementData(dicom_element);
     cornerstone.disable(dicom_element);

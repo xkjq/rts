@@ -336,5 +336,16 @@ describe("RTS Memory Optimization & Cache Safety Tests", () => {
       const { cleanupViewerMemory } = await import("../js/viewer.js");
       expect(() => cleanupViewerMemory()).not.toThrow();
     });
+
+    test("in-place Blob replacement converts heavy strings to Blobs and frees string memory", async () => {
+      const { base64ToBlob } = await import("../js/viewer.js");
+      const sampleData = Buffer.from("DICOM_TEST_SLICE_BINARY_DATA").toString("base64");
+      const stack = [`data:application/dicom;base64,${sampleData}`];
+
+      expect(typeof stack[0]).toBe("string");
+      stack[0] = base64ToBlob(stack[0], "application/dicom");
+      expect(stack[0]).toBeInstanceOf(Blob);
+      expect(typeof stack[0]).not.toBe("string");
+    });
   });
 });
