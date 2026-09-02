@@ -1733,19 +1733,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
   }
   $(".canvas-panel").remove();
 
-  cornerstone.imageCache.purgeCache();
-  cornerstoneWADOImageLoader.default.wadouri.dataSetCacheManager.purge();
-  try {
-    if (typeof cornerstoneWADOImageLoader !== "undefined") {
-      if (cornerstoneWADOImageLoader.wadouri && cornerstoneWADOImageLoader.wadouri.fileManager) {
-        cornerstoneWADOImageLoader.wadouri.fileManager.purge();
-      } else if (cornerstoneWADOImageLoader.default && cornerstoneWADOImageLoader.default.wadouri && cornerstoneWADOImageLoader.default.wadouri.fileManager) {
-        cornerstoneWADOImageLoader.default.wadouri.fileManager.purge();
-      }
-    }
-  } catch (e) {
-    console.debug("Error purging fileManager", e);
-  }
+  viewer.cleanupViewerMemory();
 
   // Remove feedback images
   $(".feedback-image").remove();

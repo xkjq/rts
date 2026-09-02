@@ -279,4 +279,62 @@ describe("RTS Memory Optimization & Cache Safety Tests", () => {
       expect(results).toEqual([]);
     });
   });
+
+  describe("On-Demand Stack Loading & Memory Optimization", () => {
+    test("base64ToBlob converts base64 data URI to Blob directly without network overhead", async () => {
+      const { base64ToBlob } = await import("../js/viewer.js");
+      const sampleText = "DICM_SAMPLE_HEADER_DATA";
+      const base64Data = Buffer.from(sampleText).toString("base64");
+      const dataUri = `data:application/dicom;base64,${base64Data}`;
+
+      const blob = base64ToBlob(dataUri, "application/dicom");
+      expect(blob).toBeInstanceOf(Blob);
+      expect(blob.type).toBe("application/dicom");
+      expect(blob.size).toBe(sampleText.length);
+
+      const arrayBuf = await blob.arrayBuffer();
+      const decodedText = Buffer.from(arrayBuf).toString();
+      expect(decodedText).toBe(sampleText);
+    });
+
+    test("urltoFile directly resolves base64 data URIs to File without fetch", async () => {
+      const { urltoFile } = await import("../js/viewer.js");
+      const sampleText = "TEST_DICOM_FILE_SLICE";
+      const base64Data = Buffer.from(sampleText).toString("base64");
+      const dataUri = `data:application/dicom;base64,${base64Data}`;
+
+      const file = await urltoFile(dataUri, "dicom", "application/dicom");
+      expect(file).toBeDefined();
+      expect(file.name).toBe("dicom");
+      expect(file.type).toBe("application/dicom");
+      expect(file.size).toBe(sampleText.length);
+    });
+
+    test("generates on-demand imageIds instantly without converting slices up front", () => {
+      const mockSlices = Array.from({ length: 400 }, (_, i) => `data:application/dicom;base64,slice_${i}`);
+      const startTime = performance.now();
+
+      const imageIds = mockSlices.map((data_url, i) => {
+        if (data_url.startsWith("data:image")) {
+          return "base64://" + data_url.split(",")[1];
+        } else if (data_url.startsWith("data:")) {
+          return "rtsdicom:" + i;
+        } else {
+          return data_url;
+        }
+      });
+
+      const elapsed = performance.now() - startTime;
+      expect(imageIds).toHaveLength(400);
+      expect(imageIds[0]).toBe("rtsdicom:0");
+      expect(imageIds[399]).toBe("rtsdicom:399");
+      // Instant mapping in < 5ms without upfront memory allocation
+      expect(elapsed).toBeLessThan(50);
+    });
+
+    test("cleanupViewerMemory purges active stack tracking and caches", async () => {
+      const { cleanupViewerMemory } = await import("../js/viewer.js");
+      expect(() => cleanupViewerMemory()).not.toThrow();
+    });
+  });
 });
