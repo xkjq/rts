@@ -15,7 +15,7 @@
 export const VERSION = "1.0.3";
 
 // A short git/commit identifier (optional). Keep in sync with version.json.
-export const BUILD = "589c732";
+export const BUILD = "6f0dd36";
 
 // URL (relative to the site root) of the static version manifest.
 export const VERSION_URL = "version.json";
