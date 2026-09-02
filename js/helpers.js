@@ -62,3 +62,23 @@ export function humanFileSize(bytes, si=false, dp=1) {
 
   return bytes.toFixed(dp) + ' ' + units[u];
 }
+
+export function normalizeEid(eid) {
+  if (eid == null) return "";
+  return String(eid).trim();
+}
+
+export function getEidVariants(eid, type = null) {
+  const s = normalizeEid(eid);
+  const variants = new Set();
+  if (s) {
+    variants.add(s);
+    if (s.includes("/")) {
+      const parts = s.split("/");
+      variants.add(parts[parts.length - 1]);
+    } else if (type) {
+      variants.add(`${type}/${s}`);
+    }
+  }
+  return Array.from(variants);
+}

@@ -48,7 +48,7 @@ export async function performSync(exam_details, URLS) {
         cid: exam_details.cid,
         eid: exam_details.eid,
       })
-      .filter(ans => ans.synced === false)
+      .filter(ans => ans.synced === false && !ans.archived)
       .toArray();
 
     if (unsynced.length === 0) {

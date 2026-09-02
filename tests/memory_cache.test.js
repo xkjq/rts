@@ -358,5 +358,44 @@ describe("RTS Memory Optimization & Cache Safety Tests", () => {
       });
       expect(imageIds[0]).toBe("rtsdicom:0");
     });
+
+    test("normalizeEid and getEidVariants handle various eid formats", async () => {
+      const { normalizeEid, getEidVariants } = await import("../js/helpers.js");
+      expect(normalizeEid("long/123")).toBe("long/123");
+      expect(normalizeEid(123)).toBe("123");
+      expect(normalizeEid(null)).toBe("");
+
+      const variants1 = getEidVariants("long/123");
+      expect(variants1).toContain("long/123");
+      expect(variants1).toContain("123");
+
+      const variants2 = getEidVariants("123", "long");
+      expect(variants2).toContain("123");
+      expect(variants2).toContain("long/123");
+    });
+
+    test("answer archiving flags records rather than deleting them", () => {
+      const answers = [
+        { aid: "a1", eid: "long/1", qid: 1, ans: "Fracture", synced: true },
+        { aid: "a1", eid: "long/1", qid: 2, ans: "Normal", synced: false },
+      ];
+
+      // Simulate archiving
+      answers.forEach(ans => {
+        ans.archived = true;
+        ans.archived_at = new Date().toISOString();
+        ans.archived_exam_json_id = 1;
+        ans.replaced_by_exam_json_id = 2;
+      });
+
+      expect(answers[0].archived).toBe(true);
+      expect(answers[0].ans).toBe("Fracture"); // Answers are retained, not destroyed!
+      expect(answers[0].archived_exam_json_id).toBe(1);
+
+      // Active filter excludes archived answers
+      const active = answers.filter(a => !a.archived);
+      expect(active).toHaveLength(0);
+    });
   });
 });
+

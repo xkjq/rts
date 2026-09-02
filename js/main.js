@@ -1,12 +1,12 @@
 /* global Dexie, cornerstone, cornerstoneTools, cornerstoneBase64ImageLoader, cornerstoneWebImageLoader, cornerstoneWADOImageLoader */
-import * as helper from "./helpers.js?v=1.0.6";
-import * as viewer from "./viewer.js?v=1.0.6";
-import * as interact from "./interact.js?v=1.0.6";
+import * as helper from "./helpers.js?v=1.0.7";
+import * as viewer from "./viewer.js?v=1.0.7";
+import * as interact from "./interact.js?v=1.0.7";
 import * as config from "./config.js";
-import { db, question_db } from "./db.js?v=1.0.6";
-import { initSync, triggerImmediateSync, updateSyncUI } from "./sync.js?v=1.0.6";
-import { initSentry } from "./sentry.js?v=1.0.6";
-import { VERSION, BUILD, startUpdateChecker } from "./version.js?v=1.0.6";
+import { db, question_db } from "./db.js?v=1.0.7";
+import { initSync, triggerImmediateSync, updateSyncUI } from "./sync.js?v=1.0.7";
+import { initSentry } from "./sentry.js?v=1.0.7";
+import { VERSION, BUILD, startUpdateChecker } from "./version.js?v=1.0.7";
 
 initSentry(VERSION);
 
@@ -31,7 +31,67 @@ function safeCleanupViewerMemory() {
   }
 }
 
-// const { v4: uuidv4 } = require('uuid');
+export function normalizeEid(eid) {
+  if (eid == null) return "";
+  return String(eid).trim();
+}
+
+export function getEidVariants(eid, type = null) {
+  const s = normalizeEid(eid);
+  const variants = new Set();
+  if (s) {
+    variants.add(s);
+    if (s.includes("/")) {
+      const parts = s.split("/");
+      variants.add(parts[parts.length - 1]);
+    } else if (type) {
+      variants.add(`${type}/${s}`);
+    }
+  }
+  return Array.from(variants);
+}
+
+export async function archiveExamAnswers(eid, oldExamJsonId, newExamJsonId) {
+  const variants = getEidVariants(eid);
+  for (const variant of variants) {
+    try {
+      await db.answers
+        .where("eid")
+        .equals(variant)
+        .modify((ans) => {
+          ans.archived = true;
+          ans.archived_at = new Date().toISOString();
+          if (oldExamJsonId != null) ans.archived_exam_json_id = oldExamJsonId;
+          if (newExamJsonId != null) ans.replaced_by_exam_json_id = newExamJsonId;
+        });
+    } catch (e) {
+      console.debug("Error archiving answers for eid variant", variant, e);
+    }
+  }
+}
+
+export async function invalidateExamQuestions(saved_exam) {
+  if (!saved_exam) return;
+  const qids = new Set();
+  if (saved_exam.order && Array.isArray(saved_exam.order)) {
+    saved_exam.order.forEach((q) => qids.add(String(q)));
+  }
+  if (saved_exam.question_requests && typeof saved_exam.question_requests === "object") {
+    Object.keys(saved_exam.question_requests).forEach((q) => qids.add(String(q)));
+  }
+  const examType = saved_exam.exam_type || saved_exam.type;
+
+  for (const qid of qids) {
+    try {
+      if (examType) {
+        await question_db.question_data.where(["qid", "type"]).equals([qid, examType]).delete();
+      }
+      await question_db.question_data.where("qid").equals(qid).delete();
+    } catch (e) {
+      console.debug("Error deleting invalidated question from question_data", qid, e);
+    }
+  }
+}
 
 function initLogging() {
   try {
@@ -701,17 +761,32 @@ async function loadExamList(data, clearExistingList = true, target = "all") {
   setUserInfo(data);
 
 
-  let exams_started = [];
-  let exams_completed = [];
-  log.info("Check status of saved exams")
+  const exams_started_eids = new Set();
+  const exams_completed_eids = new Set();
+  log.info("Check status of saved exams");
   for (const s of sessions) {
-    log.debug(`checking status of`, s)
-    if (s.status == "active") {
-      exams_started.push(s.packet);
-    } else {
-      exams_completed.push(s.packet);
+    log.debug(`checking status of`, s);
+    const targetSet = s.status === "active" ? exams_started_eids : exams_completed_eids;
+    if (s.eid) {
+      getEidVariants(s.eid).forEach((v) => targetSet.add(v));
     }
-  };
+    if (s.packet) {
+      targetSet.add(s.packet);
+    }
+  }
+
+  // Also query db.answers so any exam that has saved answers is identified
+  const exams_with_answers = new Set();
+  try {
+    const allAnswers = await db.answers.toArray();
+    for (const a of allAnswers) {
+      if (!a.archived && a.eid) {
+        getEidVariants(a.eid).forEach((v) => exams_with_answers.add(v));
+      }
+    }
+  } catch (e) {
+    console.debug("Error querying answers for exam list identification:", e);
+  }
 
   // Wouldn't we be better terminating earlier in this situation
   let exam_list = [];
@@ -732,14 +807,15 @@ async function loadExamList(data, clearExistingList = true, target = "all") {
     $("#cache-details summary").empty();
     $("#cache-details ul").empty();
   }
-  
-  log.info("Loop available exams")
+
+  log.info("Loop available exams");
   for (const exam of exam_list) {
-    log.debug(exam)
+    log.debug(exam);
     const name = exam["name"];
     const url = exam["url"];
     const eid = exam["eid"];
     const exam_json_id = exam["exam_json_id"];
+    const exam_type = exam["type"];
 
     // Store friendly name for overlay display
     try {
@@ -753,15 +829,22 @@ async function loadExamList(data, clearExistingList = true, target = "all") {
     if (exam.hasOwnProperty("multi_question_json")) {
       question_json_id_hash = exam["multi_question_json"];
     }
-    exam_generated_map[eid] = [exam_json_id, question_json_id_hash];
 
-    // The exam against stored session data
-    let item_class = "";
-    if (exams_started.indexOf(name) > -1) {
-      item_class = " session-started";
+    const eidVariants = getEidVariants(eid, exam_type);
+    for (const v of eidVariants) {
+      exam_generated_map[v] = [exam_json_id, question_json_id_hash];
     }
-    if (exams_completed.indexOf(name) > -1) {
+
+    // Match against stored session data and local answers
+    const hasCompletedSession = eidVariants.some((v) => exams_completed_eids.has(v)) || exams_completed_eids.has(name);
+    const hasStartedSession = eidVariants.some((v) => exams_started_eids.has(v)) || exams_started_eids.has(name);
+    const hasAnswers = eidVariants.some((v) => exams_with_answers.has(v));
+
+    let item_class = "";
+    if (hasCompletedSession) {
       item_class = " session-completed";
+    } else if (hasStartedSession || hasAnswers) {
+      item_class = " session-started";
     }
 
     if (!exam.exam_active) {
@@ -846,27 +929,51 @@ async function loadExamList(data, clearExistingList = true, target = "all") {
     console.debug("Loop through saved exams");
     saved_exams.forEach(async (saved_exam, n) => {
       console.debug("Check", saved_exam);
-      //Compared saved exams to those available
-      if (exam_generated_map.hasOwnProperty(saved_exam.eid)) {
+      const savedEidVariants = getEidVariants(saved_exam.eid, saved_exam.exam_type || saved_exam.type);
+      let matchingEid = savedEidVariants.find((v) => exam_generated_map.hasOwnProperty(v));
+
+      if (matchingEid != null) {
         $("#cache-details ul").append(
           `<li class="cache-item" data-eid=${saved_exam.eid}>Exam: ${saved_exam.exam_name} [${saved_exam.eid}]: ${saved_exam.exam_json_id}`
         );
         // If the json_id s differ delete and force a refresh
-        const exam_json_id = exam_generated_map[saved_exam.eid][0];
-        const question_json_id_hash = exam_generated_map[saved_exam.eid][1];
+        const exam_json_id = exam_generated_map[matchingEid][0];
+        const question_json_id_hash = exam_generated_map[matchingEid][1];
 
         if (saved_exam.exam_json_id != exam_json_id) {
-          console.debug("id mismath", saved_exam.exam_json_id, exam_json_id);
-          question_db.saved_exams.where("eid").equals(saved_exam.eid).delete();
-          db.answers.where("eid").equals(saved_exam.eid).delete();
+          console.debug("id mismatch", saved_exam.exam_json_id, exam_json_id);
 
-          console.debug("HOL");
+          // 1. Delete outdated exam metadata from saved_exams
+          for (const v of savedEidVariants) {
+            question_db.saved_exams.where("eid").equals(v).delete();
+          }
+
+          // 2. Invalidate and delete outdated questions from question_data so new ones download
+          await invalidateExamQuestions(saved_exam);
+
+          // 3. Archive answers instead of hard-deleting them!
+          await archiveExamAnswers(saved_exam.eid, saved_exam.exam_json_id, exam_json_id);
+
+          // 4. Mark active sessions as archived
+          for (const v of savedEidVariants) {
+            try {
+              db.session.where("eid").equals(v).modify((s) => {
+                if (s.status === "active") s.status = "archived";
+              });
+            } catch (e) {}
+          }
+
           $(`li.cache-item[data-eid="${saved_exam.eid}"]`)
             .addClass("cache-out-of-date")
             .append(` [out of date (latest: ${exam_json_id})]`);
+          for (const v of savedEidVariants) {
+            $(`.packet-button[data-eid="${v}"]`).addClass("out-of-date");
+          }
         } else {
           console.debug("id match", saved_exam.exam_json_id, exam_json_id);
-          $(`.packet-button[data-eid="${saved_exam.eid}"]`).addClass("cached");
+          for (const v of savedEidVariants) {
+            $(`.packet-button[data-eid="${v}"]`).addClass("cached");
+          }
         }
 
         console.debug("Check question ids");
@@ -900,9 +1007,11 @@ async function loadExamList(data, clearExistingList = true, target = "all") {
             console.debug(`Question missing in cache: eid: ${saved_exam.eid}, q ${q}`);
             $(`li.cache-item[data-eid="${saved_exam.eid}"]`).addClass("cache-out-of-date");
             $(`li.cache-item[data-qid="${q}"]`).addClass("cache-out-of-date").append(" [Not found]");
-            $(`.packet-button[data-eid="${saved_exam.eid}"]`).addClass("out-of-date");
-            question_db.saved_exams.where("eid").equals(saved_exam.eid).delete();
-            db.answers.where("eid").equals(saved_exam.eid).delete();
+            for (const v of savedEidVariants) {
+              $(`.packet-button[data-eid="${v}"]`).addClass("out-of-date");
+              question_db.saved_exams.where("eid").equals(v).delete();
+            }
+            await archiveExamAnswers(saved_exam.eid, saved_exam.exam_json_id, exam_json_id);
           }
         }
       }
@@ -3561,13 +3670,16 @@ $("#btn-view-local-answers").click(async function(evt) {
         for (const cidKey of Object.keys(byEid[eidKey])) {
           const answers = byEid[eidKey][cidKey];
           const table = $("<table style='width:100%; border-collapse:collapse; margin-bottom:8px; background:#111; color:#fff;'></table>");
-          table.append("<thead><tr><th style='text-align:left; padding:6px; border-bottom:1px solid #333;'>CID</th><th style='text-align:left; padding:6px; border-bottom:1px solid #333;'>QID</th><th style='text-align:left; padding:6px; border-bottom:1px solid #333;'>Section</th><th style='text-align:left; padding:6px; border-bottom:1px solid #333;'>Answer</th></tr></thead>");
+          table.append("<thead><tr><th style='text-align:left; padding:6px; border-bottom:1px solid #333;'>CID</th><th style='text-align:left; padding:6px; border-bottom:1px solid #333;'>QID</th><th style='text-align:left; padding:6px; border-bottom:1px solid #333;'>Section</th><th style='text-align:left; padding:6px; border-bottom:1px solid #333;'>Answer</th><th style='text-align:left; padding:6px; border-bottom:1px solid #333;'>Status</th></tr></thead>");
           const tbody = $("<tbody></tbody>");
           for (const ans of answers) {
             const qid = ans.qid || '';
             const qidn = ans.qidn || '';
             const text = (typeof ans.ans === 'object') ? JSON.stringify(ans.ans) : String(ans.ans);
-            const row = $(`<tr><td style='padding:6px; border-top:1px solid #222;'>${cidKey}</td><td style='padding:6px; border-top:1px solid #222;'>${qid}</td><td style='padding:6px; border-top:1px solid #222;'>${qidn}</td><td style='padding:6px; border-top:1px solid #222;'>${$('<div>').text(text).html()}</td></tr>`);
+            const statusBadge = ans.archived
+              ? `<span style='background:#721c24; color:#f8d7da; padding:2px 6px; border-radius:3px; font-size:11px;'>Archived${ans.archived_exam_json_id ? ' (Rev ' + ans.archived_exam_json_id + ')' : ''}</span>`
+              : `<span style='background:#155724; color:#d4edda; padding:2px 6px; border-radius:3px; font-size:11px;'>Active</span>`;
+            const row = $(`<tr><td style='padding:6px; border-top:1px solid #222;'>${cidKey}</td><td style='padding:6px; border-top:1px solid #222;'>${qid}</td><td style='padding:6px; border-top:1px solid #222;'>${qidn}</td><td style='padding:6px; border-top:1px solid #222;'>${$('<div>').text(text).html()}</td><td style='padding:6px; border-top:1px solid #222;'>${statusBadge}</td></tr>`);
             tbody.append(row);
           }
           table.append(tbody);
