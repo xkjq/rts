@@ -6,8 +6,9 @@ import * as config from "./config.js";
 import { db, question_db } from "./db.js";
 import { initSync, triggerImmediateSync, updateSyncUI } from "./sync.js";
 import { initSentry } from "./sentry.js";
+import { VERSION, BUILD, startUpdateChecker } from "./version.js";
 
-initSentry();
+initSentry(VERSION);
 
 // const { v4: uuidv4 } = require('uuid');
 
@@ -47,6 +48,41 @@ function initLogging() {
 }
 
 initLogging();
+
+// Version display + update detection (runs early so it works even if exam loading fails)
+function initVersionSystem() {
+  log.info(`RTS v${VERSION} (${BUILD})`);
+
+  const versionEl = document.getElementById("app-version");
+  if (versionEl) {
+    versionEl.textContent = ` v${VERSION}`;
+    versionEl.title = `RTS v${VERSION} (${BUILD})`;
+  }
+
+  const versionFullEl = document.getElementById("app-version-full");
+  if (versionFullEl) {
+    versionFullEl.textContent = `RTS v${VERSION}`;
+  }
+  const versionBuildEl = document.getElementById("app-version-build");
+  if (versionBuildEl) {
+    versionBuildEl.textContent = `Build: ${BUILD}`;
+  }
+
+  // Detect a newly deployed version and prompt a reload so users stay current.
+  const onUpdate = (newVersion) => {
+    // Only prompt once per new version (remembered in localStorage).
+    if (localStorage.getItem("rts.dismissedVersion") === newVersion) {
+      return;
+    }
+    if (!confirm(`A new version of RTS is available (v${newVersion}).\n\nClick OK to reload and get the latest version.`)) {
+      localStorage.setItem("rts.dismissedVersion", newVersion);
+      return;
+    }
+    localStorage.removeItem("rts.dismissedVersion");
+    window.location.reload();
+  };
+  startUpdateChecker(onUpdate);
+}
 
 function checkForceReset() {
   try {
@@ -368,6 +404,8 @@ function putAnswer(answer) {
 }
 
 retrievePacketList();
+
+initVersionSystem();
 
 if (!allow_users) {
   // Keep the user/candidate details visible, but hide the action buttons entirely
@@ -1429,7 +1467,7 @@ function loadSession() {
           let selectedSession = sessions[selectedIdx];
           
           exam_details.aid = selectedSession.aid;
-          exam_details.cid = selectedSession.cid;
+          exam_details.cid = selectedSession.cid != null ? String(selectedSession.cid) : selectedSession.cid;
           date_started = selectedSession.date;
           exam_time = selectedSession.time_left;
           exam_details.question_order = selectedSession.question_order;
@@ -1526,7 +1564,7 @@ async function setUpQuestions(load_previous) {
     //    exam_details.cid = parseInt($("#candidate-number2").val());
     //  });
     console.debug("OTNUHOTNU", global_cid)
-    exam_details.cid = global_cid;
+    exam_details.cid = global_cid != null ? String(global_cid) : global_cid;
     $("#candidate-number2").val(global_cid)
     exam_details.passcode = global_passcode;
 
@@ -3294,8 +3332,8 @@ $("#exam-list").on("click", ".type-refresh-button", function(e) {
 
 
 $("#btn-login").click(function(evt) {
-  global_cid = parseInt($("#candidate-number").val());
-  global_passcode = $("#passcode").val();
+  global_cid = $("#candidate-number").val().trim();
+  global_passcode = $("#passcode").val().trim();
 
   localStorage.setItem("cid.cid", global_cid)
   localStorage.setItem("cid.passcode", global_passcode)

@@ -40,34 +40,34 @@ export function updateSyncUI(status) {
 export async function performSync(exam_details, URLS) {
   if (!exam_details || !exam_details.exam_mode || !exam_details.eid) return;
 
-  // Find all unsynced answers for this exam/cid/aid
-  const unsynced = await db.answers
-    .where({
-      aid: exam_details.aid,
-      cid: exam_details.cid,
-      eid: exam_details.eid,
-    })
-    .filter(ans => ans.synced === false)
-    .toArray();
-
-  if (unsynced.length === 0) {
-    if (currentStatus === "syncing") {
-      updateSyncUI("saved");
-    }
-    return;
-  }
-
-  updateSyncUI("syncing");
-
-  const json = {
-    eid: exam_details.eid,
-    cid: exam_details.cid,
-    start_time: exam_details.start_time,
-    answers: JSON.stringify(unsynced),
-    in_progress: "true",
-  };
-
   try {
+    // Find all unsynced answers for this exam/cid/aid
+    const unsynced = await db.answers
+      .where({
+        aid: exam_details.aid,
+        cid: exam_details.cid,
+        eid: exam_details.eid,
+      })
+      .filter(ans => ans.synced === false)
+      .toArray();
+
+    if (unsynced.length === 0) {
+      if (currentStatus === "syncing") {
+        updateSyncUI("saved");
+      }
+      return;
+    }
+
+    updateSyncUI("syncing");
+
+    const json = {
+      eid: exam_details.eid,
+      cid: exam_details.cid,
+      start_time: exam_details.start_time,
+      answers: JSON.stringify(unsynced),
+      in_progress: "true",
+    };
+
     const response = await new Promise((resolve, reject) => {
       $.ajax({
         type: "POST",
@@ -93,6 +93,12 @@ export async function performSync(exam_details, URLS) {
       updateSyncUI("failed");
     }
   } catch (error) {
+    if (error && error.name === "DatabaseClosedError") {
+      // Another tab closed/deleted the database (versionchange). The
+      // database is recreated on the next page load, so there is nothing
+      // to submit and no point retrying or flagging a server failure.
+      return;
+    }
     console.error("Autosubmission failed:", error);
     updateSyncUI("failed");
   }
