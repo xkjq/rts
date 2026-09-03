@@ -1,5 +1,5 @@
-import * as helper from "./helpers.js?v=1.0.20";
-import * as config from "./config.js?v=1.0.20";
+import * as helper from "./helpers.js?v=1.0.21";
+import * as config from "./config.js?v=1.0.21";
 /**
  * Submits answers
  */
