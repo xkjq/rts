@@ -1,6 +1,6 @@
 // Background Sync Module for RTS
 
-import { db } from "./db.js?v=1.0.19";
+import { db } from "./db.js?v=1.0.20";
 
 let syncInterval = null;
 let debounceTimeout = null;
