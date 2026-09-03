@@ -1,12 +1,12 @@
 /* global Dexie, cornerstone, cornerstoneTools, cornerstoneBase64ImageLoader, cornerstoneWebImageLoader, cornerstoneWADOImageLoader */
-import * as helper from "./helpers.js?v=1.0.18";
-import * as viewer from "./viewer.js?v=1.0.18";
-import * as interact from "./interact.js?v=1.0.18";
-import * as config from "./config.js?v=1.0.18";
-import { db, question_db } from "./db.js?v=1.0.18";
-import { initSync, triggerImmediateSync, updateSyncUI } from "./sync.js?v=1.0.18";
-import { initSentry } from "./sentry.js?v=1.0.18";
-import { VERSION, BUILD, startUpdateChecker } from "./version.js?v=1.0.18";
+import * as helper from "./helpers.js?v=1.0.19";
+import * as viewer from "./viewer.js?v=1.0.19";
+import * as interact from "./interact.js?v=1.0.19";
+import * as config from "./config.js?v=1.0.19";
+import { db, question_db } from "./db.js?v=1.0.19";
+import { initSync, triggerImmediateSync, updateSyncUI } from "./sync.js?v=1.0.19";
+import { initSentry } from "./sentry.js?v=1.0.19";
+import { VERSION, BUILD, startUpdateChecker } from "./version.js?v=1.0.19";
 
 initSentry(VERSION);
 
