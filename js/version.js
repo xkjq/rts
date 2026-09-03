@@ -12,10 +12,10 @@
  */
 
 // Bump this on every release. Must match the `version` field in version.json.
-export const VERSION = "1.0.23";
+export const VERSION = "1.0.24";
 
 // A short git/commit identifier (optional). Keep in sync with version.json.
-export const BUILD = "9b4e1b5";
+export const BUILD = "f42acce";
 
 // URL (relative to the site root) of the static version manifest.
 export const VERSION_URL = "version.json";
@@ -27,7 +27,7 @@ export const CHECK_INTERVAL = 60 * 1000;
  * Cache-bust a static asset URL with the current version so browsers always
  * fetch the latest build after a release.
  * @param {string} url - e.g. "js/main.js"
- * @returns {string} e.g. "js/main.js?v=1.0.23"
+ * @returns {string} e.g. "js/main.js?v=1.0.24"
  */
 export function cacheBust(url) {
   const sep = url.includes("?") ? "&" : "?";
