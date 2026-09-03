@@ -1,5 +1,5 @@
-import * as helper from "./helpers.js?v=1.0.17";
-import * as config from "./config.js?v=1.0.17";
+import * as helper from "./helpers.js?v=1.0.18";
+import * as config from "./config.js?v=1.0.18";
 /**
  * Submits answers
  */
@@ -204,7 +204,7 @@ export function getQuestion(url, question_number, question_total) {
 
   // Stall detection: abort if no bytes are received for 60 seconds.
   // This covers both the server-side generation delay and mid-download pauses.
-  const STALL_MS = 20000;
+  const STALL_MS = 120000;
   let lastActivity = Date.now();
   let xhrInstance = null;
 
