@@ -399,17 +399,42 @@ function handleUserLogout() {
     console.debug("Error clearing URL parameters on logout:", e);
   }
 
-  if (global_uid != null && URLS.logout_url != undefined && URLS.logout_url !== "") {
-    window.location = URLS.logout_url;
-  } else {
-    global_cid = null;
-    global_passcode = null;
-    global_uid = null;
-    global_username = null;
-    userInfoSet = false;
-    updateLoginUI();
-    retrievePacketList("all");
+  const isUserLogout = global_uid != null;
+
+  global_cid = null;
+  global_passcode = null;
+  global_uid = null;
+  global_username = null;
+  userInfoSet = false;
+
+  if (isUserLogout && URLS.logout_url != undefined && URLS.logout_url !== "") {
+    // Django 5+ LogoutView requires a POST request with CSRF token
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = URLS.logout_url;
+
+    const csrfToken = helper.getCookie("csrftoken");
+    if (csrfToken) {
+      const csrfInput = document.createElement("input");
+      csrfInput.type = "hidden";
+      csrfInput.name = "csrfmiddlewaretoken";
+      csrfInput.value = csrfToken;
+      form.appendChild(csrfInput);
+    }
+
+    const nextInput = document.createElement("input");
+    nextInput.type = "hidden";
+    nextInput.name = "next";
+    nextInput.value = window.location.pathname;
+    form.appendChild(nextInput);
+
+    document.body.appendChild(form);
+    form.submit();
+    return;
   }
+
+  updateLoginUI();
+  retrievePacketList("all");
 }
 
 /**

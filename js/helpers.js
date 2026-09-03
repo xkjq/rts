@@ -114,3 +114,21 @@ export function findMatchingEid(savedExam, exam_generated_map) {
   }
   return null;
 }
+
+/**
+ * Get a cookie value by name from document.cookie.
+ * @param {string} name - e.g. "csrftoken"
+ * @returns {string|null} - decoded cookie value, or null if not found
+ */
+export function getCookie(name) {
+  if (typeof document === "undefined" || !document.cookie) return null;
+  const prefix = name + "=";
+  const cookies = document.cookie.split(";");
+  for (let i = 0; i < cookies.length; i++) {
+    const cookie = cookies[i].trim();
+    if (cookie.startsWith(prefix)) {
+      return decodeURIComponent(cookie.substring(prefix.length));
+    }
+  }
+  return null;
+}
