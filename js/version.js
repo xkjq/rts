@@ -44,7 +44,9 @@ export function cacheBust(url) {
 export async function checkForUpdate(onUpdate, url = VERSION_URL) {
   const current = VERSION;
   try {
-    const response = await fetch(url, { cache: "no-store", headers: { "Cache-Control": "no-cache" } });
+    const sep = url.includes("?") ? "&" : "?";
+    const cacheBustedUrl = `${url}${sep}_=${Date.now()}`;
+    const response = await fetch(cacheBustedUrl, { cache: "no-store", headers: { "Cache-Control": "no-cache" } });
     if (!response.ok) {
       console.warn(`[Version] Unable to fetch ${url}: ${response.status}`);
       return { current, remote: null, update: false };
