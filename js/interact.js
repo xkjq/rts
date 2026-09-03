@@ -201,31 +201,48 @@ export function submissionError(data, answer_json, exam_details, URLS) {
 
 export function getQuestion(url, question_number, question_total) {
   console.debug("Downloading question ", url, question_number, question_total);
+
+  // Stall detection: abort if no bytes are received for 60 seconds.
+  // This covers both the server-side generation delay and mid-download pauses.
+  const STALL_MS = 20000;
+  let lastActivity = Date.now();
+  let xhrInstance = null;
+
+  const stallTimer = setInterval(() => {
+    if (Date.now() - lastActivity > STALL_MS) {
+      clearInterval(stallTimer);
+      console.warn("Question download stalled, aborting:", url);
+      if (xhrInstance) xhrInstance.abort();
+    }
+  }, 5000);
+
   return $.ajax({
     dataType: "json",
     url: url,
+    xhr: function() {
+      xhrInstance = new XMLHttpRequest();
+      return xhrInstance;
+    },
     progress: function(e) {
+      lastActivity = Date.now(); // reset stall timer on every incoming chunk
       if (e.lengthComputable) {
         var completedPercentage = Math.round((e.loaded * 100) / e.total);
-
         $("#progress").html(
           `Downloading question [${question_number}/${question_total}]<br/>${completedPercentage}%<br/>${helper.formatBytes(
             e.total
           )}`
         );
       } else {
-      $("#progress").html(
-        `Downloading question [${question_number}/${question_total}]<br/>This file is compressed (downloaded ${helper.humanFileSize(e.loaded)})`
-      );
+        $("#progress").html(
+          `Downloading question [${question_number}/${question_total}]<br/>This file is compressed (downloaded ${helper.humanFileSize(e.loaded)})`
+        );
       }
     },
     error: (jqXHR, textStatus, errorThrown) => {
-      console.debug("error downlading", jqXHR, textStatus, errorThrown);
+      console.debug("error downloading", jqXHR, textStatus, errorThrown);
     },
-    //success: function (data) {
-    //  strReturn = data;
-    //},
-    //async: false,
+  }).always(() => {
+    clearInterval(stallTimer);
   });
 }
 

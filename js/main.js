@@ -1439,16 +1439,32 @@ function setUpPacket(data, path, expected_exam_json_id, expected_eid) {
           ? `${question_url_base}?v=${question_json_id}`
           : question_url_base;
 
-        //console.debug("Creating ", question_url, question_number, question_total);
-        //$("#progress").html(`Downloading [${question_number}/${question_total}]`);
-        let question_json = {};
-        question_json = await interact
-          .getQuestion(question_url, question_number, question_total)
-          .fail((jqXHR, textStatus, errorThrown) => {
-            //console.debug(jqXHR, textStatus, errorThrown);
-            console.debug(`error loading question: ${n}`);
-            //data["questions"][n] = {};
-          });
+        let question_json = null;
+        try {
+          question_json = await interact
+            .getQuestion(question_url, question_number, question_total);
+        } catch (fetchErr) {
+          // A single question failing (timeout, 404, server error) should not
+          // abort the whole download — log it and move on to the next question.
+          console.warn(`Failed to download question ${n} (${question_url}):`, fetchErr);
+          $("#progress").html(
+            `Warning: question [${question_number}/${question_total}] failed to download, skipping`
+          );
+          if (window.Sentry) {
+            const err = fetchErr instanceof Error ? fetchErr : new Error(`Question download failed: ${fetchErr}`);
+            window.Sentry.captureException(err, {
+              tags: { component: "question_download" },
+              extra: { question_id: n, question_url, exam_path: path, question_number, question_total },
+            });
+          }
+          continue;
+        }
+
+
+        if (!question_json || typeof question_json !== "object") {
+          console.warn(`Question ${n} returned unexpected data, skipping`);
+          continue;
+        }
 
         if (question_json.hasOwnProperty("cached") && question_json["cached"]) {
           console.debug("loading cached packet");
@@ -1458,12 +1474,6 @@ function setUpPacket(data, path, expected_exam_json_id, expected_eid) {
           question_json.hasOwnProperty("images_json") &&
           question_json["images_json"]
         ) {}
-
-        //requests.push(request)
-        //request_numbers.push(n)
-
-        // Using indexed db means that we can avoid loading all data into memory
-        //data["questions"][n] = question_json;
 
         // Store question data into dexie
         let qType = question_json.type || question_type || "unknown";
