@@ -416,17 +416,27 @@ function handleUserLogout() {
  * Set user info in the UI independently of packets/exams.
  */
 function setUserInfo(data) {
-  if (userInfoSet || !data || !data.user) return;
-  userInfoSet = true;
+  if (!data || !data.user) return;
+
+  const wasCandidate = global_cid != null && !String(global_cid).startsWith("u-");
 
   global_uid = data.user_id;
   global_username = data.user;
+  global_cid = "u-" + global_uid;
+  global_passcode = null;
+  userInfoSet = true;
 
-  if (global_cid == null) {
-    global_cid = "u-" + global_uid;
-  }
+  // Clear stale candidate CID from localStorage so Django user session takes precedence
+  localStorage.removeItem("cid.cid");
+  localStorage.removeItem("cid.passcode");
 
   updateLoginUI();
+
+  // If we had queried with a stale candidate CID, re-fetch the exam list as the Django user
+  if (wasCandidate) {
+    log.info("Detected Django user session overriding stale candidate CID; reloading exams");
+    retrievePacketList("all");
+  }
 }
 
 // Map of eid -> friendly exam name (populated when exam list is loaded)
@@ -560,7 +570,11 @@ async function retrievePacketList(target = "all", onComplete = null) {
       `<a href="${URLS.exam_user_results_url}" target="_blank"><div class="packet-button">Results and answers</div></a>`
     );
 
-  if (cid != null && passcode != null) {
+  if (global_uid != null) {
+    // Already authenticated as a Django user; candidate CID in localStorage must not override it
+    global_cid = "u-" + global_uid;
+    global_passcode = null;
+  } else if (cid != null && passcode != null) {
     global_cid = cid;
     global_passcode = passcode;
 
@@ -3495,10 +3509,18 @@ $("#btn-login-cancel").click(function(evt) {
 $("#link-main-site-login").on("click", function(e) {
   e.preventDefault();
   $.modal.close();
+  localStorage.removeItem("cid.cid");
+  localStorage.removeItem("cid.passcode");
+  global_cid = null;
+  global_passcode = null;
   window.location = URLS.login_url;
 });
 
 $("#btn-user-login").click(function(evt) {
+  localStorage.removeItem("cid.cid");
+  localStorage.removeItem("cid.passcode");
+  global_cid = null;
+  global_passcode = null;
   window.location = URLS.login_url;
 });
 
@@ -3538,6 +3560,9 @@ $("#btn-login").click(function(evt) {
 
   global_cid = cidVal;
   global_passcode = passVal;
+  global_uid = null;
+  global_username = null;
+  userInfoSet = false;
 
   localStorage.setItem("cid.cid", global_cid);
   localStorage.setItem("cid.passcode", global_passcode);
@@ -3819,8 +3844,14 @@ $("#btn-reset-local").click(function(evt) {
   if (r == true) {
     delete_answer_db();
     delete_question_db();
-    localStorage.removeItem("cid.cid")
-    localStorage.removeItem("cid.passcode")
+    localStorage.removeItem("cid.cid");
+    localStorage.removeItem("cid.passcode");
+    global_cid = null;
+    global_passcode = null;
+    global_uid = null;
+    global_username = null;
+    userInfoSet = false;
+    location.reload();
   } else {}
 });
 // Initialize logging controls
