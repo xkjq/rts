@@ -657,7 +657,7 @@ async function retrievePacketList(target = "all", onComplete = null) {
 
     if (examUrl) {
       if (examUrl.includes("exam/json") || examUrl.endsWith("exam/json")) {
-        const types = ["anatomy", "rapid", "short", "long"];
+        const types = ["anatomy", "long", "rapid", "short"];
         const typesToFetch = types.includes(target) ? [target] : types;
         
         typesToFetch.forEach(type => {
@@ -738,6 +738,43 @@ async function retrievePacketList(target = "all", onComplete = null) {
   } else {
     if (onComplete) onComplete(true);
   }
+}
+
+/**
+ * Gets or creates a type subheading container (e.g. .exam-list.anatomy or .packet-list.rapid)
+ * inside the parent container (#exam-list or #packet-list) in consistent alphabetical order.
+ */
+function getOrCreateTypeContainer(targetListId, type) {
+  const cleanType = String(type).trim();
+  const $target = $(`#${targetListId}`);
+  let $existing = $target.children(`.${targetListId}.${cleanType}`);
+  if ($existing.length) {
+    return $existing;
+  }
+
+  let refreshBtnHtml = "";
+  if (targetListId === "exam-list") {
+    refreshBtnHtml = ` <button class="refresh-button type-refresh-button" data-type="${cleanType}" title="Refresh ${cleanType} exams">Refresh</button>`;
+  }
+  const $newList = $(
+    `<div class='${targetListId} ${cleanType}' data-type='${cleanType}'><span class='packet-list-title'>${cleanType}${refreshBtnHtml}</span><br/></div>`
+  );
+
+  let inserted = false;
+  $target.children(`.${targetListId}`).each(function() {
+    const siblingType = $(this).attr("data-type") || $(this).find(".packet-list-title").text().trim();
+    if (cleanType.localeCompare(siblingType, undefined, { sensitivity: "base" }) < 0) {
+      $(this).before($newList);
+      inserted = true;
+      return false; // break loop
+    }
+  });
+
+  if (!inserted) {
+    $target.append($newList);
+  }
+
+  return $newList;
 }
 
 /**
@@ -880,19 +917,7 @@ async function loadExamList(data, clearExistingList = true, target = "all") {
 
     let list;
     if (exam.type != undefined) {
-      // If the relevant subheading exists target_it it
-      if ($(`.${target_list}.${exam.type}`).length) {
-        list = $(`.${target_list}.${exam.type}`);
-      // or create and add it
-      } else {
-        let refreshBtnHtml = "";
-        if (target_list === "exam-list") {
-          refreshBtnHtml = ` <button class="refresh-button type-refresh-button" data-type="${exam.type}" title="Refresh ${exam.type} exams">Refresh</button>`;
-        }
-        list = $(`<div class='${target_list} ${exam.type}'><span class='packet-list-title'>${exam.type}${refreshBtnHtml}</span><br/></div>`);
-        $(`#${target_list}`).append(list);
-
-      }
+      list = getOrCreateTypeContainer(target_list, exam.type);
     // if the packet / exam type is not defined just add it at the bottom
     // TODO: do we actually want this?
     } else {
@@ -1146,14 +1171,7 @@ async function loadPacketList(data) {
     // Seperate packet types
     let list;
     if (packet.type != undefined) {
-      if ($(`#packet-list .${packet.type}`)) {
-        list = $(`#packet-list .${packet.type}`);
-      } else {
-        list = $(
-          `<div class='packet-list ${packet.type}'>${packet.type}<br/></div>`
-        );
-        $("#packet-list").append(list);
-      }
+      list = getOrCreateTypeContainer("packet-list", packet.type);
     } else {
       list = $("#packet-list");
     }
