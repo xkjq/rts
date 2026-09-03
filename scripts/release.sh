@@ -9,7 +9,8 @@
 #   1. js/version.js   - VERSION (and BUILD) constants consumed by the app
 #   2. version.json    - static manifest fetched by js/version.js to detect
 #                        when a newer version has been deployed
-#   3. index.html      - `?v=` cache-busting query strings on JS/CSS assets
+#   3. index.html + js modules - `?v=` cache-busting query strings on JS/CSS
+#      assets and ES module imports
 #
 # Usage:
 #   ./scripts/release.sh <new-version>      # e.g. ./scripts/release.sh 1.1.0
@@ -89,17 +90,23 @@ with open(path, "w") as f:
     f.write("\n")
 PY
 
-# --- 3. Update index.html and js/main.js (?v= cache-busting query strings) ---
+# --- 3. Update index.html and JS modules (?v= cache-busting query strings) ---
+# Bump the version query string on every cache-busted asset / ES module import
+# (index.html, js/main.js, js/interact.js, js/sync.js, ...) so a release
+# refreshes the whole module graph. Files without `?v=` (e.g. the gitignored
+# js/config.js) are intentionally left untouched.
 if ! grep -q '?v=' "$INDEX_FILE"; then
   echo "Warning: no '?v=' cache-busting query strings found in $INDEX_FILE" >&2
 fi
 sed -i.bak -E "s/(\?v=)[0-9A-Za-z._-]+/\1${NEW_VERSION}/g" "$INDEX_FILE"
 rm -f "$INDEX_FILE.bak"
 
-if grep -q '?v=' "$ROOT/js/main.js"; then
-  sed -i.bak -E "s/(\?v=)[0-9A-Za-z._-]+/\1${NEW_VERSION}/g" "$ROOT/js/main.js"
-  rm -f "$ROOT/js/main.js.bak"
-fi
+for js_file in "$ROOT"/js/*.js; do
+  if grep -q '?v=' "$js_file"; then
+    sed -i.bak -E "s/(\?v=)[0-9A-Za-z._-]+/\1${NEW_VERSION}/g" "$js_file"
+    rm -f "$js_file.bak"
+  fi
+done
 
 echo "=== Done. Changed files: ==="
 git status --short
@@ -107,7 +114,7 @@ git status --short
 echo
 echo "Next steps:"
 echo "  1. Review the diff:  git diff"
-echo "  2. Commit:           git add js/version.js version.json index.html js/main.js && git commit -m \"release: v${NEW_VERSION}\""
+echo "  2. Commit:           git add js/version.js version.json index.html js/*.js && git commit -m \"release: v${NEW_VERSION}\""
 echo "  3. Tag:              git tag \"v${NEW_VERSION}\""
 echo "  4. Push:             git push origin master --tags   (and/or your deploy remote)"
 echo "  5. Deploy the built files to your static host (GitHub Pages etc.)."
