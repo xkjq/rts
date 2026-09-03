@@ -1232,7 +1232,6 @@ function loadPacketFromAjax(path, eid, exam_json_id) {
     $.ajax({
       dataType: "json",
       url: requestUrl,
-      xhrFields: { withCredentials: true },
       cache: browser_cache,
       progress: function(e) {
         if (e.lengthComputable) {
