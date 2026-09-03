@@ -1,12 +1,12 @@
 /* global Dexie, cornerstone, cornerstoneTools, cornerstoneBase64ImageLoader, cornerstoneWebImageLoader, cornerstoneWADOImageLoader */
-import * as helper from "./helpers.js?v=1.0.15";
-import * as viewer from "./viewer.js?v=1.0.15";
-import * as interact from "./interact.js?v=1.0.15";
+import * as helper from "./helpers.js?v=1.0.16";
+import * as viewer from "./viewer.js?v=1.0.16";
+import * as interact from "./interact.js?v=1.0.16";
 import * as config from "./config.js";
-import { db, question_db } from "./db.js?v=1.0.15";
-import { initSync, triggerImmediateSync, updateSyncUI } from "./sync.js?v=1.0.15";
-import { initSentry } from "./sentry.js?v=1.0.15";
-import { VERSION, BUILD, startUpdateChecker } from "./version.js?v=1.0.15";
+import { db, question_db } from "./db.js?v=1.0.16";
+import { initSync, triggerImmediateSync, updateSyncUI } from "./sync.js?v=1.0.16";
+import { initSentry } from "./sentry.js?v=1.0.16";
+import { VERSION, BUILD, startUpdateChecker } from "./version.js?v=1.0.16";
 
 initSentry(VERSION);
 
@@ -1433,7 +1433,11 @@ function setUpPacket(data, path, expected_exam_json_id, expected_eid) {
           continue;
         }
 
-        const question_url = `${path}/question/${n}`;
+        const question_json_id = data["question_requests"][n];
+        const question_url_base = `${path}/question/${n}`;
+        const question_url = question_json_id != null
+          ? `${question_url_base}?v=${question_json_id}`
+          : question_url_base;
 
         //console.debug("Creating ", question_url, question_number, question_total);
         //$("#progress").html(`Downloading [${question_number}/${question_total}]`);
