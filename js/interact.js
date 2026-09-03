@@ -219,6 +219,7 @@ export function getQuestion(url, question_number, question_total) {
   return $.ajax({
     dataType: "json",
     url: url,
+    xhrFields: { withCredentials: true },
     xhr: function() {
       xhrInstance = new XMLHttpRequest();
       return xhrInstance;

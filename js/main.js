@@ -1232,6 +1232,7 @@ function loadPacketFromAjax(path, eid, exam_json_id) {
     $.ajax({
       dataType: "json",
       url: requestUrl,
+      xhrFields: { withCredentials: true },
       cache: browser_cache,
       progress: function(e) {
         if (e.lengthComputable) {
@@ -1434,9 +1435,23 @@ function setUpPacket(data, path, expected_exam_json_id, expected_eid) {
         }
 
         const question_json_id = data["question_requests"][n];
-        const question_url_base = `${path}/question/${n}`;
-        const question_url = question_json_id != null
-          ? `${question_url_base}?v=${question_json_id}`
+        let pathUrl = path;
+        let pathParams = "";
+        if (path.includes("?")) {
+          const qParts = path.split("?");
+          pathUrl = qParts[0];
+          pathParams = qParts[1];
+        }
+        const question_url_base = `${pathUrl}/question/${n}`;
+        const queryParams = [];
+        if (question_json_id != null) {
+          queryParams.push(`v=${question_json_id}`);
+        }
+        if (pathParams) {
+          queryParams.push(pathParams);
+        }
+        const question_url = queryParams.length > 0
+          ? `${question_url_base}?${queryParams.join("&")}`
           : question_url_base;
 
         let question_json = null;
