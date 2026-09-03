@@ -613,7 +613,8 @@ async function retrievePacketList(target = "all", onComplete = null) {
   let promises = [];
 
   // 1. Fetch packets if target is "all" or "packets"
-  if (target === "all" || target === "packets") {
+  const checkStaticPackets = config.check_static_packets !== false && !config.disable_static_packets;
+  if ((target === "all" || target === "packets") && checkStaticPackets) {
     let packetsUrl = "packets/packets.json";
     let p = $.ajax({
       dataType: "json",
