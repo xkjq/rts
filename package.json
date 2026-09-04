@@ -28,6 +28,7 @@
   },
   "jest": {
     "moduleNameMapper": {
+      "^.*[\\/\\\\]config\\.js(\\?.*)?$": "<rootDir>/tests/mocks/config.js",
       "^(.*)\\?v=[0-9A-Za-z._-]+$": "$1"
     }
   }

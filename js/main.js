@@ -6,7 +6,7 @@ import * as config from "./config.js?v=1.0.25";
 import { db, question_db } from "./db.js?v=1.0.25";
 import { initSync, triggerImmediateSync, updateSyncUI } from "./sync.js?v=1.0.25";
 import { initSentry } from "./sentry.js?v=1.0.25";
-import { VERSION, BUILD, startUpdateChecker } from "./version.js?v=1.0.25";
+import { VERSION, BUILD, startUpdateChecker, checkForUpdate, VERSION_URL } from "./version.js?v=1.0.25";
 
 initSentry(VERSION);
 
@@ -130,6 +130,8 @@ function initLogging() {
 
 initLogging();
 
+let updateCallback = null;
+
 // Version display + update detection (runs early so it works even if exam loading fails)
 function initVersionSystem() {
   log.info(`RTS v${VERSION} (${BUILD})`);
@@ -151,6 +153,10 @@ function initVersionSystem() {
 
   // Detect a newly deployed version and prompt a reload so users stay current.
   const onUpdate = (newVersion) => {
+    // Only prompt when the user is not taking an exam
+    if (typeof isTakingExam === "function" && isTakingExam()) {
+      return;
+    }
     // Only prompt once per new version (remembered in localStorage).
     if (localStorage.getItem("rts.dismissedVersion") === newVersion) {
       return;
@@ -162,7 +168,8 @@ function initVersionSystem() {
     localStorage.removeItem("rts.dismissedVersion");
     window.location.reload();
   };
-  startUpdateChecker(onUpdate);
+  updateCallback = onUpdate;
+  startUpdateChecker(onUpdate, () => (typeof isTakingExam === "function" ? !isTakingExam() : true));
 }
 
 function checkForceReset() {
@@ -505,6 +512,80 @@ function showCandidateDetails() {
 let allow_self_marking = true;
 
 let timer = null;
+let is_taking_exam = false;
+
+/**
+ * Set the taking exam state (used internally and in tests).
+ * @param {boolean} val
+ */
+export function setIsTakingExam(val) {
+  is_taking_exam = !!val;
+}
+
+/**
+ * Determine whether a user is currently taking an exam.
+ * RTS should only check for updates when a user is NOT taking an exam.
+ * Returns true if an exam session is actively in progress.
+ * Returns false if the user is in the lobby/menu, reviewing, or has finished.
+ * @returns {boolean}
+ */
+export function isTakingExam() {
+  // If review mode is active, exam has concluded
+  if (review_mode) {
+    return false;
+  }
+  if (typeof $ !== "undefined") {
+    const $review = $("#review-overlay");
+    if ($review.length && $review.is(":visible")) {
+      return false;
+    }
+
+    // If finished modal is visible, exam has concluded
+    const $finished = $("#exam-finished-modal");
+    if ($finished.length && $finished.is(":visible")) {
+      return false;
+    }
+  }
+
+  // If an exam has actively been started and is underway
+  if (is_taking_exam) {
+    return true;
+  }
+
+  // If timer is running or paused, user is actively taking an exam/packet
+  if (timer != null && typeof timer.getTimeValues === "function") {
+    if (typeof timer.isRunning === "function" && (timer.isRunning() || timer.isPaused())) {
+      return true;
+    }
+  }
+
+  if (typeof $ !== "undefined") {
+    // If options panel is visible, user is in the lobby/menu and not taking an exam
+    const $options = $("#options-panel");
+    if ($options.length && $options.is(":visible")) {
+      return false;
+    }
+
+    // If start dialog or resume dialog is open, user is in the exam flow
+    const $startDialog = $("#start-dialog");
+    if ($startDialog.length && $startDialog.is(":visible")) {
+      return true;
+    }
+    const $resumeDialog = $("#resume-dialog");
+    if ($resumeDialog.length && $resumeDialog.is(":visible")) {
+      return true;
+    }
+  }
+
+  // Default: if no exam loaded or started, user is not taking an exam
+  return false;
+}
+
+try {
+  window.isTakingExam = isTakingExam;
+} catch (e) {
+  // Non-browser environment
+}
 
 let use_local_question_cache = false;
 
@@ -1317,6 +1398,7 @@ function loadPacketFromAjax(path, eid, exam_json_id) {
  * @param {JSON} data
  */
 function setUpPacket(data, path, expected_exam_json_id, expected_eid) {
+  is_taking_exam = false;
   session_questions_fallback = null;
   packet_name = path;
   // Load the exam name from the json packet (if it exists)
@@ -2792,6 +2874,7 @@ $("#btn-fullscreen-overlay").click(function(evt) {
 });
 
 $("#finish-exam, #btn-time-up-review").click(async function(evt) {
+  is_taking_exam = false;
   review_mode = true;
   reviewQuestions();
   $.modal.close();
@@ -2861,6 +2944,7 @@ function loadLocalQuestionSet() {
  * Displays the review question panel with a summary of marks
  */
 function reviewQuestions() {
+  is_taking_exam = false;
   // Stop timer (if it's running)
   if (timer != null) {
     timer.stop();
@@ -3597,7 +3681,7 @@ $("#btn-login").click(function(evt) {
 });
 
 $(".start-packet-button").click(function(evt) {
-
+  is_taking_exam = true;
   exam_details.start_time = new Date().getTime() / 1000;
   if (exam_details.exam_mode) {
     sendExamStatus("started", "Candidate clicked Start Exam");
@@ -4014,8 +4098,14 @@ function refreshDatabaseSettings() {
 }
 
 $(document).on("saveSessionEvent", {}, async (evt, review) => {
+  if (review) {
+    is_taking_exam = false;
+  }
   await saveSession(review);
   retrievePacketList("all");
+  if (updateCallback && !isTakingExam()) {
+    checkForUpdate(updateCallback, VERSION_URL, () => !isTakingExam());
+  }
 });
 
 $(document).on("refreshExamListEvent", () => {

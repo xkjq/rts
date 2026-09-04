@@ -39,9 +39,21 @@ export function cacheBust(url) {
  * If a newer version is live, call `onUpdate(newVersion)` so the caller can
  * prompt a reload. `cache:false` ensures we never get a stale manifest.
  * @param {Function} onUpdate - callback(newVersion)
- * @returns {Promise<{current:string, remote:string|null, update:boolean}>}
+ * @param {string} [url=VERSION_URL] - URL of the version manifest
+ * @param {Function} [shouldCheck=null] - optional predicate; if false, skips check
+ * @returns {Promise<{current:string, remote:string|null, update:boolean, skipped?:boolean}>}
  */
-export async function checkForUpdate(onUpdate, url = VERSION_URL) {
+export async function checkForUpdate(onUpdate, url = VERSION_URL, shouldCheck = null) {
+  if (typeof url === "function") {
+    shouldCheck = url;
+    url = VERSION_URL;
+  }
+
+  if (typeof shouldCheck === "function" && !shouldCheck()) {
+    console.debug("[Version] Skipping update check: check condition returned false");
+    return { current: VERSION, remote: null, update: false, skipped: true };
+  }
+
   const current = VERSION;
   try {
     const sep = url.includes("?") ? "&" : "?";
@@ -71,11 +83,12 @@ export async function checkForUpdate(onUpdate, url = VERSION_URL) {
 /**
  * Start polling for a newer version. Call once at startup.
  * @param {Function} onUpdate - callback(newVersion)
+ * @param {Function} [shouldCheck=null] - optional predicate; if false, skips check
  * @returns {Function} stop() - cancels the polling interval
  */
-export function startUpdateChecker(onUpdate) {
-  checkForUpdate(onUpdate);
-  const interval = setInterval(() => checkForUpdate(onUpdate), CHECK_INTERVAL);
+export function startUpdateChecker(onUpdate, shouldCheck = null) {
+  checkForUpdate(onUpdate, VERSION_URL, shouldCheck);
+  const interval = setInterval(() => checkForUpdate(onUpdate, VERSION_URL, shouldCheck), CHECK_INTERVAL);
   return () => clearInterval(interval);
 }
 
