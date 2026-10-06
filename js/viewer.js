@@ -1,6 +1,6 @@
 /* global cornerstone, cornerstoneTools, cornerstoneBase64ImageLoader, cornerstoneWebImageLoader, cornerstoneWADOImageLoader */
-import * as helper from "./helpers.js?v=1.1.0";
-import { getCachedImage } from "./precache.js?v=1.1.0";
+import * as helper from "./helpers.js?v=1.1.1";
+import { getCachedImage } from "./precache.js?v=1.1.1";
 /**
  * Load the main image
  * @param {*} image -
