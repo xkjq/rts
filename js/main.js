@@ -730,8 +730,8 @@ async function retrievePacketList(target = "all", onComplete = null) {
   if (target === "all") {
     $("#packet-list").empty();
     $("#exam-list").empty();
-    $("#cache-details summary").empty();
-    $("#cache-details ul").empty();
+    $("#cache-details > .cache-details-box > summary").empty();
+    $("#cache-details > .cache-details-box > ul").empty();
   } else if (target === "exams") {
     $("#exam-list").empty();
   } else if (target === "packets") {
@@ -991,8 +991,8 @@ async function loadExamList(data, clearExistingList = true, target = "all") {
     if (target === "all" || target === "exams") {
       $("#exam-list").empty();
     }
-    $("#cache-details summary").empty();
-    $("#cache-details ul").empty();
+    $("#cache-details > .cache-details-box > summary").empty();
+    $("#cache-details > .cache-details-box > ul").empty();
   }
 
   log.info("Loop available exams");
@@ -1104,12 +1104,12 @@ async function loadExamList(data, clearExistingList = true, target = "all") {
     .then(() => question_db.saved_exams.toArray())
     .then((saved_exams) => {
     if (saved_exams.length < 1) {
-      if ($("#cache-details summary span").length === 0) {
-        $("#cache-details summary").append("<span>No cached exams / questions</span>");
+      if ($("#cache-details > .cache-details-box > summary span").length === 0) {
+        $("#cache-details > .cache-details-box > summary").append("<span>No cached exams</span>");
       }
     } else {
-      if ($("#cache-details summary span").length === 0 || $("#cache-details summary span").text().includes("No cached")) {
-        $("#cache-details summary").empty().append("<span>Cached exams / questions:</span>");
+      if ($("#cache-details > .cache-details-box > summary span").length === 0 || $("#cache-details > .cache-details-box > summary span").text().includes("No cached")) {
+        $("#cache-details > .cache-details-box > summary").empty().append("<span>Cached exams:</span>");
       }
     }
     console.debug("Loop through saved exams");
@@ -1119,27 +1119,40 @@ async function loadExamList(data, clearExistingList = true, target = "all") {
       let matchingEid = helper.findMatchingEid(saved_exam, exam_generated_map);
 
       if (matchingEid != null) {
-        $("#cache-details ul").append(
-          `<li class="cache-item" data-eid=${saved_exam.eid}>Exam: ${saved_exam.exam_name} [${saved_exam.eid}]: ${saved_exam.exam_json_id}`
-        );
-        // If the json_id s differ delete and force a refresh
         const exam_json_id = exam_generated_map[matchingEid][0];
-        const question_json_id_hash = exam_generated_map[matchingEid][1];
+        const question_json_id_hash = exam_generated_map[matchingEid][1] || {};
+        const qids = Object.keys(question_json_id_hash);
+        const q_type = saved_exam.exam_type || saved_exam.type;
+        const examIdChanged = String(saved_exam.exam_json_id) !== String(exam_json_id);
 
-        if (saved_exam.exam_json_id != exam_json_id) {
+        // One bulk existence check at list time (no per-question queries); the
+        // individual questions are only rendered when the user expands the row.
+        let cachedCount = qids.length;
+        if (!examIdChanged && qids.length) {
+          try {
+            cachedCount = await question_db.question_data
+              .where("qid")
+              .anyOf(qids)
+              .count();
+          } catch (e) {
+            console.debug("Error counting cached questions", e);
+            cachedCount = 0;
+          }
+        }
+        const questionsMissing = qids.length > 0 && cachedCount < qids.length;
+        const outOfDate = examIdChanged || questionsMissing;
+
+        // Invalidate as before, but without listing every question.
+        if (examIdChanged) {
           console.debug("id mismatch", saved_exam.exam_json_id, exam_json_id);
-
           // 1. Delete outdated exam metadata from saved_exams
           for (const v of savedEidVariants) {
             question_db.saved_exams.where("eid").equals(v).delete();
           }
-
           // 2. Invalidate and delete outdated questions from question_data so new ones download
           await invalidateExamQuestions(saved_exam);
-
           // 3. Archive answers instead of hard-deleting them!
           await archiveExamAnswers(saved_exam.eid, saved_exam.exam_json_id, exam_json_id);
-
           // 4. Mark active sessions as archived
           for (const v of savedEidVariants) {
             try {
@@ -1148,57 +1161,79 @@ async function loadExamList(data, clearExistingList = true, target = "all") {
               });
             } catch (e) {}
           }
-
-          $(`li.cache-item[data-eid="${saved_exam.eid}"]`)
-            .addClass("cache-out-of-date")
-            .append(` [out of date (latest: ${exam_json_id})]`);
+        } else if (questionsMissing) {
+          console.debug(`Questions missing in cache for ${saved_exam.eid}`);
           for (const v of savedEidVariants) {
-            $(`.packet-button[data-eid="${v}"]`).addClass("out-of-date");
+            question_db.saved_exams.where("eid").equals(v).delete();
           }
-        } else {
-          console.debug("id match", saved_exam.exam_json_id, exam_json_id);
-          for (const v of savedEidVariants) {
-            $(`.packet-button[data-eid="${v}"]`).addClass("cached");
-          }
+          await archiveExamAnswers(saved_exam.eid, saved_exam.exam_json_id, exam_json_id);
         }
 
-        console.debug("Check question ids");
-        for (let q in question_json_id_hash) {
-          let new_question_json_id = question_json_id_hash[q];
-          console.debug("new question json id", new_question_json_id);
-          $("#cache-details ul").append(
-            `<li class="cache-item" data-qid=${q}>Question (${saved_exam.exam_type}): ${q} [New JSON id: ${new_question_json_id}]`
+        // Exam-level summary row.
+        const $li = $(
+          `<li class="cache-item cache-exam${outOfDate ? " cache-out-of-date" : ""}" data-eid="${saved_exam.eid}"></li>`
+        );
+        const $summary = $(`
+          <div class="cache-exam-summary">
+            <span class="cache-exam-name"></span>
+            <span class="cache-exam-meta"></span>
+            <span class="cache-exam-status"></span>
+          </div>
+        `);
+        const questionSummary = qids.length
+          ? `${cachedCount}/${qids.length} questions`
+          : "no questions";
+        $summary
+          .find(".cache-exam-name")
+          .text(saved_exam.exam_name || saved_exam.name || saved_exam.eid);
+        $summary.find(".cache-exam-meta").text(`[${saved_exam.eid}] · ${questionSummary}`);
+        $summary
+          .find(".cache-exam-status")
+          .text(outOfDate ? (examIdChanged ? `Out of date (latest ${exam_json_id})` : "Out of date") : "Cached")
+          .addClass(outOfDate ? "cache-status-outdated" : "cache-status-ok");
+        $li.append($summary);
+
+        // Questions are listed only when the user asks for them.
+        if (qids.length) {
+          const $details = $(
+            '<details class="cache-questions"><summary>Show questions</summary><ul class="cache-question-list"></ul></details>'
           );
-
-          // Fast index-only existence check without pulling multi-megabyte base64 question data into RAM
-          const q_type = saved_exam.exam_type || saved_exam.type;
-          let count = 0;
-          try {
-            count = await question_db.question_data
-              .where(["qid", "type"])
-              .equals([String(q), q_type])
-              .count();
-
-            if (count === 0) {
-              count = await question_db.question_data
-                .where("qid")
-                .equals(String(q))
-                .count();
+          const $qList = $details.find("ul");
+          $details.on("toggle", async function () {
+            if (!this.open || $qList.data("loaded")) return;
+            $qList.data("loaded", true);
+            for (const q of qids) {
+              let count = 0;
+              try {
+                count = await question_db.question_data
+                  .where(["qid", "type"])
+                  .equals([String(q), q_type])
+                  .count();
+                if (count === 0) {
+                  count = await question_db.question_data
+                    .where("qid")
+                    .equals(String(q))
+                    .count();
+                }
+              } catch (e) {
+                console.debug("Error checking question in cache", q, e);
+              }
+              const missing = count === 0;
+              $qList.append(
+                `<li class="cache-item${missing ? " cache-out-of-date" : ""}" data-qid="${q}">` +
+                  `Question ${q} — json ${question_json_id_hash[q]}` +
+                  `${missing ? ' <span class="cache-note">not downloaded</span>' : ""}</li>`
+              );
             }
-          } catch (e) {
-            console.debug("Error checking question in cache", q, e);
-          }
+          });
+          $li.append($details);
+        }
 
-          if (count === 0) {
-            console.debug(`Question missing in cache: eid: ${saved_exam.eid}, q ${q}`);
-            $(`li.cache-item[data-eid="${saved_exam.eid}"]`).addClass("cache-out-of-date");
-            $(`li.cache-item[data-qid="${q}"]`).addClass("cache-out-of-date").append(" [Not found]");
-            for (const v of savedEidVariants) {
-              $(`.packet-button[data-eid="${v}"]`).addClass("out-of-date");
-              question_db.saved_exams.where("eid").equals(v).delete();
-            }
-            await archiveExamAnswers(saved_exam.eid, saved_exam.exam_json_id, exam_json_id);
-          }
+        $("#cache-details > .cache-details-box > ul").append($li);
+
+        // Mark the exam button(s) cached/out-of-date.
+        for (const v of savedEidVariants) {
+          $(`.packet-button[data-eid="${v}"]`).addClass(outOfDate ? "out-of-date" : "cached");
         }
       }
     });
