@@ -146,9 +146,9 @@ export function urlPath(url) {
 /**
  * Best-effort check for whether a media URL points at a DICOM object.
  *
- * A DICOM URL either ends in `.dcm` (ignoring a `?v=<content hash>` cache
- * query) or uses an extensionless final path segment (e.g. `/media/.../12345`).
- * Versioned URLs like `/media/x.dcm?v=abc123` must still be recognised as DICOM.
+ * A DICOM URL either ends in `.dcm` (ignoring any version query) or uses an
+ * extensionless final path segment (e.g. `/media/.../12345`). Versioned URLs
+ * (with a content-hash query) must still be recognised as DICOM.
  *
  * @param {string} url
  * @returns {boolean}
