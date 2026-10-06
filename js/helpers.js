@@ -132,3 +132,51 @@ export function getCookie(name) {
   }
   return null;
 }
+
+/**
+ * Return the path part of a URL, dropping any query string or fragment.
+ * @param {string} url
+ * @returns {string}
+ */
+export function urlPath(url) {
+  if (typeof url !== "string") return "";
+  return url.split("#")[0].split("?")[0];
+}
+
+/**
+ * Best-effort check for whether a media URL points at a DICOM object.
+ *
+ * A DICOM URL either ends in `.dcm` (ignoring a `?v=<content hash>` cache
+ * query) or uses an extensionless final path segment (e.g. `/media/.../12345`).
+ * Versioned URLs like `/media/x.dcm?v=abc123` must still be recognised as DICOM.
+ *
+ * @param {string} url
+ * @returns {boolean}
+ */
+export function isDicomUrl(url) {
+  const path = urlPath(url);
+  if (!path) return false;
+  if (path.toLowerCase().endsWith(".dcm")) return true;
+  return /(?:\/|^)[^.\/]+$/.test(path);
+}
+
+/**
+ * Build the per-question JSON URL for an exam.
+ *
+ * Based exam URLs (e.g. `/longs/exam/json/5/123/abc`) get `/question/<id>`
+ * appended. Unbased exam URLs end in `/unbased`, and the matching server route
+ * inserts the question path *before* that suffix
+ * (`/longs/exam/json/5/123/abc/question/9/unbased`), so we must not simply
+ * concatenate.
+ *
+ * @param {string} examUrl - exam JSON URL (without any `?v=` query)
+ * @param {string|number} questionId
+ * @returns {string}
+ */
+export function questionUrlForExam(examUrl, questionId) {
+  const suffix = "/unbased";
+  if (examUrl.endsWith(suffix)) {
+    return `${examUrl.slice(0, -suffix.length)}/question/${questionId}${suffix}`;
+  }
+  return `${examUrl}/question/${questionId}`;
+}

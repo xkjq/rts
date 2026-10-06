@@ -1,4 +1,6 @@
 /* global cornerstone, cornerstoneTools, cornerstoneBase64ImageLoader, cornerstoneWebImageLoader, cornerstoneWADOImageLoader */
+import * as helper from "./helpers.js?v=1.0.25";
+import { getCachedImage } from "./precache.js?v=1.0.25";
 /**
  * Load the main image
  * @param {*} image -
@@ -879,13 +881,21 @@ export function initRtsDicomLoader() {
             // Replace bulky base64 string in array with lightweight Blob to free V8 string heap
             activeStackData[index] = blob;
           } else if (typeof item === "string") {
-            const wadouriId = item.startsWith("wadouri:") ? item : `wadouri:${item}`;
-            const imgLoad = await loader.loadImage(wadouriId);
-            innerLoadObj = imgLoad;
-            const img = await (imgLoad.promise || imgLoad);
-            img.imageId = imageId;
-            touchSlice(index);
-            return resolve(img);
+            // Pre-cached images are served from Cache Storage; only fall back
+            // to a network wadouri fetch when the image is not cached.
+            const cached = await getCachedImage(item);
+            if (cached) {
+              blob = await cached.blob();
+              activeStackData[index] = blob;
+            } else {
+              const wadouriId = item.startsWith("wadouri:") ? item : `wadouri:${item}`;
+              const imgLoad = await loader.loadImage(wadouriId);
+              innerLoadObj = imgLoad;
+              const img = await (imgLoad.promise || imgLoad);
+              img.imageId = imageId;
+              touchSlice(index);
+              return resolve(img);
+            }
           } else {
             return reject(new Error(`Invalid image data at slice index ${index}`));
           }
@@ -971,11 +981,13 @@ async function load(images, annotations) {
       } else if (data_url.startsWith("data:")) {
         return "rtsdicom:" + i;
       } else {
-        let url = data_url;
-        if (url.endsWith("dcm") || /(?:\/|^)[^.\/]+$/.test(url)) {
-          url = "wadouri:" + url;
+        // DICOM URLs go through the cache-aware rtsdicom loader so that
+        // pre-cached images are served locally; non-DICOM web images keep
+        // their URL for the web image loader.
+        if (helper.isDicomUrl(data_url)) {
+          return "rtsdicom:" + i;
         }
-        return url;
+        return data_url;
       }
     } else {
       return "rtsdicom:" + i;
@@ -1235,13 +1247,12 @@ export function urltoFile(url, filename, mimeType) {
       console.warn("base64ToBlob failed, falling back to fetch", e);
     }
   }
-  return fetch(url)
-    .then(function(res) {
-      return res.arrayBuffer();
-    })
-    .then(function(buf) {
-      return new File([buf], filename, { type: mimeType });
-    });
+  // Prefer the locally pre-cached copy so thumbnails work without a network.
+  return getCachedImage(url)
+    .then((cached) =>
+      cached ? cached.arrayBuffer() : fetch(url).then((res) => res.arrayBuffer())
+    )
+    .then((buf) => new File([buf], filename, { type: mimeType }));
 }
 
 
