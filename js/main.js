@@ -345,6 +345,10 @@ let exam_time = null;
 // Per-image DICOM flag map (URL -> bool) for the currently loaded question,
 // supplied by the server; used by createThumbnail to pick the right loader.
 let current_image_is_dicom = {};
+
+// Debounces the global ajaxStop hide of #loading so back-to-back requests do
+// not make the overlay flash.
+let loadingHideTimer = null;
 let packet_time = null;
 let date_started = null;
 let score = 0;
@@ -1390,15 +1394,20 @@ function loadPacketFromAjax(path, eid, exam_json_id) {
       dataType: "json",
       url: requestUrl,
       cache: browser_cache,
-      progress: function(e) {
-        if (e.lengthComputable) {
-          var completedPercentage = Math.round((e.loaded * 100) / e.total);
-
+      progress: (function() {
+        let last = 0;
+        return function(e) {
+          if (!e.lengthComputable) return;
+          const now = Date.now();
+          // Throttle so the % text does not flicker on every chunk.
+          if (now - last < 200 && e.loaded < e.total) return;
+          last = now;
+          const completedPercentage = Math.round((e.loaded * 100) / e.total);
           $("#progress").html(
             `${completedPercentage}%<br/>${helper.formatBytes(e.total)}`
           );
-        }
-      },
+        };
+      })(),
     })
       .done(function(data) {
         setUpPacket(data, path, exam_json_id, eid);
@@ -1732,13 +1741,28 @@ async function preCacheExamImages(questionDatas) {
   if (urls.length === 0) {
     return { total: 0, missing: [] };
   }
-  $("#progress").html(`Preparing exam (0 / ${urls.length})`);
+
+  // Image downloads use fetch(), which does not fire jQuery's ajaxStart/Stop,
+  // so manage the overlay explicitly here (and cancel any pending ajax hide).
+  if (loadingHideTimer) {
+    clearTimeout(loadingHideTimer);
+    loadingHideTimer = null;
+  }
+  $("#loading").show();
+  $("#progress").html(`Preparing exam — 0 / ${urls.length}`);
+
+  let lastRendered = 0;
   return await preCache.prefetchImageUrls(urls, {
     concurrency: 6,
     onProgress: (r) => {
       const done = r.downloaded + r.skipped + r.failed;
+      const now = Date.now();
+      // Throttle DOM updates (~5/s) so the text does not flicker or reflow on
+      // every slice; always render the final state.
+      if (done < r.total && now - lastRendered < 200) return;
+      lastRendered = now;
       $("#progress").html(
-        `Preparing exam (${done} / ${r.total})<br/>${helper.formatBytes(r.bytes)}`
+        `Preparing exam — ${done} / ${r.total}<br/>${helper.formatBytes(r.bytes)}`
       );
     },
   });
@@ -1773,6 +1797,14 @@ async function preCacheThenStart(questionDatas) {
     );
   }
 
+  // Keep the overlay up (with a distinct message) while the exam is built, so
+  // the pause between "100%" and the first question does not look like a hang.
+  if (loadingHideTimer) {
+    clearTimeout(loadingHideTimer);
+    loadingHideTimer = null;
+  }
+  $("#loading").show();
+  $("#progress").html("Starting exam…");
   loadSession();
 }
 
@@ -1954,6 +1986,7 @@ function loadSession() {
         }
 
         // Open the dialog
+        $("#loading").hide();
         $("#resume-dialog").modal({
           escapeClose: false,
           clickClose: false,
@@ -2073,6 +2106,10 @@ async function setUpQuestions(load_previous) {
       exam_time = $(".exam-time").val() * 60;
     });
 
+  // The exam is built: hand off from the full-screen progress overlay to the
+  // start dialog / question spinner.
+  $("#loading").hide();
+
   if (exam_details.exam_mode) {
     // NOTE: changing the CID when restoring a session will not affect the time left
     //$("#candidate-number2")
@@ -2117,6 +2154,8 @@ async function setUpQuestions(load_previous) {
  */
 async function loadQuestion(n, section = 1, force_reload = false) {
   $("#question-loading").show();
+  // Hand off from the pre-cache overlay so there is always a visible spinner.
+  $("#loading").hide();
   const aid = exam_details.aid;
   const cid = exam_details.cid;
   const eid = exam_details.eid;
@@ -4246,11 +4285,25 @@ $("#btn-delete-current-saved-answers").click(function(evt) {
 });
 
 $(document).ajaxStart(function() {
+  // A new request supersedes any pending hide, so sequential downloads do not
+  // make the loading overlay flash.
+  if (loadingHideTimer) {
+    clearTimeout(loadingHideTimer);
+    loadingHideTimer = null;
+  }
   $("#loading").show();
 });
 
 $(document).ajaxStop(function() {
-  $("#loading").hide();
+  if (loadingHideTimer) {
+    clearTimeout(loadingHideTimer);
+  }
+  // Wait briefly for a follow-up request before hiding, avoiding a flicker
+  // between consecutive downloads.
+  loadingHideTimer = setTimeout(function() {
+    loadingHideTimer = null;
+    $("#loading").hide();
+  }, 400);
 });
 
 function saveSession(start_review) {
