@@ -752,6 +752,7 @@ const activeSliceLRU = [];
 const MAX_ACTIVE_SLICES = 12;
 let rtsDicomLoaderRegistered = false;
 let rtsMetaDataProviderRegistered = false;
+let rtsWebLoaderRegistered = false;
 
 function touchSlice(index) {
   const qIdx = activeSliceLRU.indexOf(index);
@@ -964,8 +965,66 @@ export function initRtsDicomLoader() {
   rtsDicomLoaderRegistered = true;
 }
 
-async function load(images, annotations) {
+/**
+ * Register a loader for non-DICOM images (`rtsweb:<index>`).
+ *
+ * Serves the pre-cached bytes from Cache Storage when available, falling back
+ * to the network (absolute URL), and delegates the actual decode to
+ * cornerstoneWebImageLoader. This keeps non-DICOM images (e.g. JPEGs) working
+ * offline once an exam has been pre-cached, the same way `rtsdicom` handles
+ * DICOM.
+ */
+export function initRtsWebLoader() {
+  if (rtsWebLoaderRegistered) return true;
+  const cs =
+    typeof cornerstone !== "undefined"
+      ? cornerstone
+      : typeof window !== "undefined"
+        ? window.cornerstone
+        : null;
+  const webLoader =
+    typeof cornerstoneWebImageLoader !== "undefined"
+      ? cornerstoneWebImageLoader
+      : null;
+  if (
+    !cs ||
+    typeof cs.registerImageLoader !== "function" ||
+    !webLoader ||
+    typeof webLoader.loadImage !== "function"
+  ) {
+    return false;
+  }
+
+  cs.registerImageLoader("rtsweb", function(imageId) {
+    const index = parseInt(imageId.replace("rtsweb:", ""), 10);
+    const promise = (async () => {
+      const url = activeStackData && activeStackData[index];
+      if (!url || typeof url !== "string") {
+        throw new Error(`No image URL for slice index ${index}`);
+      }
+      let src = helper.absoluteUrl(url);
+      const cached = await getCachedImage(url);
+      if (cached) {
+        src = URL.createObjectURL(await cached.blob());
+      }
+      const load = webLoader.loadImage(src);
+      const image = await (load.promise || load);
+      image.imageId = imageId;
+      return image;
+    })();
+    return {
+      promise: promise,
+      cancelFn: function() {},
+    };
+  });
+
+  rtsWebLoaderRegistered = true;
+  return true;
+}
+
+async function load(images, annotations, isDicomMap) {
   initRtsDicomLoader();
+  const webLoaderReady = initRtsWebLoader();
 
   // Reset active stack for on-demand decoding and clear prior stack memory
   cleanupViewerMemory();
@@ -981,13 +1040,13 @@ async function load(images, annotations) {
       } else if (data_url.startsWith("data:")) {
         return "rtsdicom:" + i;
       } else {
-        // DICOM URLs go through the cache-aware rtsdicom loader so that
-        // pre-cached images are served locally; non-DICOM web images are made
-        // absolute so cornerstone's http/https web image loader handles them.
-        if (helper.isDicomUrl(data_url)) {
+        // Prefer the server's per-image format flag; fall back to the filename
+        // heuristic for legacy payloads. DICOM goes through the cache-aware
+        // rtsdicom loader, images through the cache-aware rtsweb loader.
+        if (helper.isDicomImage(data_url, isDicomMap)) {
           return "rtsdicom:" + i;
         }
-        return helper.absoluteUrl(data_url);
+        return webLoaderReady ? "rtsweb:" + i : helper.absoluteUrl(data_url);
       }
     } else {
       return "rtsdicom:" + i;
@@ -1209,7 +1268,7 @@ export function openMainImage(current_question, t, source) {
     });
 
     // Load annotations into the dicom_element
-    load(images, annotations);
+    load(images, annotations, current_question.image_is_dicom);
   }
 }
 

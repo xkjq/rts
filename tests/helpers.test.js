@@ -5,7 +5,13 @@
 // images fail to load once the unbased exam list is in use.
 import { describe, test, expect } from "@jest/globals";
 
-import { urlPath, isDicomUrl, questionUrlForExam, absoluteUrl } from "../js/helpers.js";
+import {
+  urlPath,
+  isDicomUrl,
+  questionUrlForExam,
+  absoluteUrl,
+  isDicomImage,
+} from "../js/helpers.js";
 
 describe("urlPath", () => {
   test("strips a query string", () => {
@@ -85,5 +91,18 @@ describe("absoluteUrl", () => {
   test("returns relative urls unchanged when there is no document base", () => {
     // jsdom-less node has no `location`; the browser resolves them instead.
     expect(absoluteUrl("/media/x.jpg")).toBe("/media/x.jpg");
+  });
+});
+
+describe("isDicomImage", () => {
+  test("uses the server-provided flag when present", () => {
+    const map = { "/media/a.jpg": true, "/media/b.dcm": false };
+    expect(isDicomImage("/media/a.jpg", map)).toBe(true);
+    expect(isDicomImage("/media/b.dcm", map)).toBe(false);
+  });
+
+  test("falls back to the filename heuristic without a map entry", () => {
+    expect(isDicomImage("/media/a.dcm", null)).toBe(true);
+    expect(isDicomImage("/media/a.jpg", {})).toBe(false);
   });
 });

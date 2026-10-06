@@ -342,6 +342,9 @@ let question_type = null;
 let loaded_question = null;
 let review_mode = false;
 let exam_time = null;
+// Per-image DICOM flag map (URL -> bool) for the currently loaded question,
+// supplied by the server; used by createThumbnail to pick the right loader.
+let current_image_is_dicom = {};
 let packet_time = null;
 let date_started = null;
 let score = 0;
@@ -2173,6 +2176,8 @@ async function loadQuestion(n, section = 1, force_reload = false) {
   }
   return_data = null;
 
+  current_image_is_dicom = question_data.image_is_dicom || {};
+
   loaded_question = n;
 
   $(".question-list-item").attr("aria-selected", "false");
@@ -2290,7 +2295,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
 
       // otherwise try to load it as a dicom (if it starts with data)
       // or ends with dcm
-    } else if (based_img.startsWith("data:") || helper.isDicomUrl(based_img)) {
+    } else if (based_img.startsWith("data:") || helper.isDicomImage(based_img, current_image_is_dicom)) {
       // convert the data url to a file
       viewer
         .urltoFile(based_img, "dicom", "application/dicom")

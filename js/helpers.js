@@ -185,6 +185,25 @@ export function absoluteUrl(url) {
 }
 
 /**
+ * Decide whether an image URL is DICOM.
+ *
+ * Prefers the server-provided per-image flag (`image_is_dicom`, a URL -> bool
+ * map emitted in unbased question JSON) so a DICOM that happens to be named
+ * `.jpg` (or a JPEG named `.dcm`) is handled correctly; falls back to the
+ * filename heuristic for legacy payloads that do not carry the map.
+ *
+ * @param {string} url
+ * @param {object} [isDicomMap]
+ * @returns {boolean}
+ */
+export function isDicomImage(url, isDicomMap) {
+  if (isDicomMap && Object.prototype.hasOwnProperty.call(isDicomMap, url)) {
+    return !!isDicomMap[url];
+  }
+  return isDicomUrl(url);
+}
+
+/**
  * Build the per-question JSON URL for an exam.
  *
  * Based exam URLs (e.g. `/longs/exam/json/5/123/abc`) get `/question/<id>`
