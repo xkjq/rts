@@ -982,12 +982,12 @@ async function load(images, annotations) {
         return "rtsdicom:" + i;
       } else {
         // DICOM URLs go through the cache-aware rtsdicom loader so that
-        // pre-cached images are served locally; non-DICOM web images keep
-        // their URL for the web image loader.
+        // pre-cached images are served locally; non-DICOM web images are made
+        // absolute so cornerstone's http/https web image loader handles them.
         if (helper.isDicomUrl(data_url)) {
           return "rtsdicom:" + i;
         }
-        return data_url;
+        return helper.absoluteUrl(data_url);
       }
     } else {
       return "rtsdicom:" + i;

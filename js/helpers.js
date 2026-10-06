@@ -161,6 +161,30 @@ export function isDicomUrl(url) {
 }
 
 /**
+ * Resolve a (possibly root-relative) URL to an absolute one.
+ *
+ * Cornerstone's web image loader only registers `http`/`https` schemes, so a
+ * non-DICOM image served as a root-relative `/media/...` URL must be made
+ * absolute before it is handed to `loadAndCacheImage`, otherwise cornerstone
+ * reports "no image loader for imageId". `data:`/`blob:` are returned as-is.
+ *
+ * @param {string} url
+ * @returns {string}
+ */
+export function absoluteUrl(url) {
+  if (typeof url !== "string" || !url) return "";
+  if (url.startsWith("data:") || url.startsWith("blob:")) return url;
+  if (typeof location !== "undefined" && location.href) {
+    try {
+      return new URL(url, location.href).href;
+    } catch (e) {
+      return url;
+    }
+  }
+  return url;
+}
+
+/**
  * Build the per-question JSON URL for an exam.
  *
  * Based exam URLs (e.g. `/longs/exam/json/5/123/abc`) get `/question/<id>`

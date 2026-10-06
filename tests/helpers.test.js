@@ -5,7 +5,7 @@
 // images fail to load once the unbased exam list is in use.
 import { describe, test, expect } from "@jest/globals";
 
-import { urlPath, isDicomUrl, questionUrlForExam } from "../js/helpers.js";
+import { urlPath, isDicomUrl, questionUrlForExam, absoluteUrl } from "../js/helpers.js";
 
 describe("urlPath", () => {
   test("strips a query string", () => {
@@ -65,5 +65,25 @@ describe("questionUrlForExam", () => {
     expect(questionUrlForExam("/rapids/exam/json/5/123/abc/unbased", 9)).toBe(
       "/rapids/exam/json/5/123/abc/question/9/unbased"
     );
+  });
+});
+
+describe("absoluteUrl", () => {
+  test("leaves data and blob urls unchanged", () => {
+    expect(absoluteUrl("data:image/png;base64,AAAA")).toBe(
+      "data:image/png;base64,AAAA"
+    );
+    expect(absoluteUrl("blob:abc")).toBe("blob:abc");
+  });
+
+  test("leaves absolute urls unchanged", () => {
+    expect(absoluteUrl("https://example.test/media/x.jpg")).toBe(
+      "https://example.test/media/x.jpg"
+    );
+  });
+
+  test("returns relative urls unchanged when there is no document base", () => {
+    // jsdom-less node has no `location`; the browser resolves them instead.
+    expect(absoluteUrl("/media/x.jpg")).toBe("/media/x.jpg");
   });
 });
