@@ -25,8 +25,8 @@
  *   - `external:<url>`   for non-DICOM images (base64 data URLs / blob URLs)
  */
 
-import * as helper from "./helpers.js?v=1.3.0";
-import { getCachedImage } from "./precache.js?v=1.3.0";
+import * as helper from "./helpers.js?v=1.3.1";
+import { getCachedImage } from "./precache.js?v=1.3.1";
 
 const RE_ID = "rts-rendering-engine";
 const VP_ID = "rts-viewport";
