@@ -702,11 +702,14 @@ function drawImageToCanvas(canvas, image) {
   const data = out.data;
   const px = image.getPixelData();
   if (image.color || image.rgba) {
+    // Color images: `rgba` (4 bytes/pixel) or RGB (3 bytes/pixel). Cornerstone
+    // sets `color: true` for both, so pick the stride from `rgba`.
+    const stride = image.rgba ? 4 : 3;
     for (let i = 0; i < cols * rows; i++) {
-      data[i * 4] = px[i * 4];
-      data[i * 4 + 1] = px[i * 4 + 1];
-      data[i * 4 + 2] = px[i * 4 + 2];
-      data[i * 4 + 3] = px[i * 4 + 3] === undefined ? 255 : px[i * 4 + 3];
+      data[i * 4] = px[i * stride];
+      data[i * 4 + 1] = px[i * stride + 1];
+      data[i * 4 + 2] = px[i * stride + 2];
+      data[i * 4 + 3] = stride === 4 ? px[i * stride + 3] : 255;
     }
   } else {
     let wc = image.windowCenter;
