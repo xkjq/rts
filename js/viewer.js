@@ -29,9 +29,9 @@ import {
   base64ToBlob,
   renderThumbnail,
   addImageRenderedListener,
-} from "./viewer3d.js?v=1.2.2";
-import * as helper from "./helpers.js?v=1.2.2";
-import { getCachedImage } from "./precache.js?v=1.2.2";
+} from "./viewer3d.js?v=1.3.0";
+import * as helper from "./helpers.js?v=1.3.0";
+import { getCachedImage } from "./precache.js?v=1.3.0";
 
 export { base64ToBlob, renderThumbnail };
 

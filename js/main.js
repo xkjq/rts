@@ -1,13 +1,13 @@
 /* global Dexie */
-import * as helper from "./helpers.js?v=1.2.2";
-import * as viewer from "./viewer.js?v=1.2.2";
-import * as interact from "./interact.js?v=1.2.2";
-import * as config from "./config.js?v=1.2.2";
-import { db, question_db } from "./db.js?v=1.2.2";
-import * as preCache from "./precache.js?v=1.2.2";
-import { initSync, triggerImmediateSync, updateSyncUI } from "./sync.js?v=1.2.2";
-import { initSentry } from "./sentry.js?v=1.2.2";
-import { VERSION, BUILD, startUpdateChecker, checkForUpdate, VERSION_URL } from "./version.js?v=1.2.2";
+import * as helper from "./helpers.js?v=1.3.0";
+import * as viewer from "./viewer.js?v=1.3.0";
+import * as interact from "./interact.js?v=1.3.0";
+import * as config from "./config.js?v=1.3.0";
+import { db, question_db } from "./db.js?v=1.3.0";
+import * as preCache from "./precache.js?v=1.3.0";
+import { initSync, triggerImmediateSync, updateSyncUI } from "./sync.js?v=1.3.0";
+import { initSentry } from "./sentry.js?v=1.3.0";
+import { VERSION, BUILD, startUpdateChecker, checkForUpdate, VERSION_URL } from "./version.js?v=1.3.0";
 
 initSentry(VERSION);
 
