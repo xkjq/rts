@@ -606,7 +606,7 @@ export function manualScroll(n) {
   state.vp.render();
 }
 
-/** Reset pan/zoom/rotation and clear measurement annotations (the "reset" tool). */
+/** Reset pan/zoom/rotation, window/level and measurement annotations (the "reset" tool). */
 export function resetView() {
   const tools = state.engine.cornerstoneTools;
   const annotationState = tools.annotation.state;
@@ -622,6 +622,11 @@ export function resetView() {
     }
   });
   state.vp.resetCamera();
+  // resetProperties() restores the default VOI (window/level) and invert, and
+  // re-renders — matching the old cornerstone 2D `reset` behaviour.
+  if (typeof state.vp.resetProperties === "function") {
+    state.vp.resetProperties();
+  }
   state.vp.render();
 }
 
@@ -744,13 +749,12 @@ export async function renderThumbnail(canvas, data) {
   } else if (typeof data === "string" && data.startsWith("data:")) {
     imageId = loader.wadouri.fileManager.add(base64ToBlob(data, "application/dicom"));
   } else if (typeof data === "string") {
-    // Prefer the offline pre-cache so thumbnails render without a network.
+    // Load the bytes the same way the viewer does: from the offline pre-cache
+    // when present, otherwise a direct fetch. This mirrors the old viewer's
+    // urltoFile path and keeps thumbnails working offline once pre-cached.
     const cached = await getCachedImage(data);
-    if (cached) {
-      imageId = loader.wadouri.fileManager.add(await cached.blob());
-    } else {
-      imageId = data.startsWith("wadouri:") ? data : "wadouri:" + helper.absoluteUrl(data);
-    }
+    const blob = cached ? await cached.blob() : await (await fetch(helper.absoluteUrl(data))).blob();
+    imageId = loader.wadouri.fileManager.add(blob);
   } else {
     return;
   }
