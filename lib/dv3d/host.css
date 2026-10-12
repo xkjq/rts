@@ -1,0 +1,73 @@
+/*
+ * Host-safe dv3d viewer stylesheet.
+ *
+ * Linked by host pages (the Django `{% dv3d_script %}` tag / dv3d-script
+ * middleware) so the viewer's non-inline rules apply when it is embedded.
+ *
+ * Deliberately scoped under `.dicom-viewer-root` and free of `html`/`body`/
+ * `#root` sizing rules, so it can be linked on any host page without affecting
+ * the host layout. The full app stylesheet (`index.css`) `@import`s this for the
+ * standalone/test pages; the deploy script also copies this file verbatim to
+ * `dv3d/<version>/host.css` for the host to link.
+ */
+
+/* Top grid/fullscreen bar: the buttons hang from the top edge and slide into
+   view on hover. Give them a light hover cue so the peeking strip reads as
+   interactive rather than as a rendering artefact. */
+.dicom-viewer-root .grid-menu-btn:hover,
+.dicom-viewer-root .grid-menu-btn:focus-visible,
+.dicom-viewer-root .grid-menu-fullscreen-btn:hover,
+.dicom-viewer-root .grid-menu-fullscreen-btn:focus-visible {
+  background: #1565c0 !important;
+  outline: none;
+}
+.dicom-viewer-root .grid-menu-btn,
+.dicom-viewer-root .grid-menu-fullscreen-btn {
+  transition: background 0.15s ease;
+}
+
+/* Cornerstone canvases should not show the page's text cursor. */
+.dicom-viewer-root .cornerstone-viewport,
+.dicom-viewer-root .cornerstone-canvas {
+  cursor: inherit !important;
+}
+
+/* Make annotation displays smaller and more compact inside viewports. */
+.dicom-viewer-root .cornerstone-viewport svg text,
+.dicom-viewer-root .cornerstone-viewport .annotation-label,
+.dicom-viewer-root .cornerstone-viewport .annotation-text,
+.dicom-viewer-root .cornerstone-viewport .cornerstone-annotation,
+.dicom-viewer-root .cornerstone-viewport .ct-annotation,
+.dicom-viewer-root .cornerstone-viewport .annotation {
+  font-size: 11px !important;
+  line-height: 1 !important;
+}
+
+/* Smaller text boxes / labels. */
+.dicom-viewer-root .cornerstone-viewport .cornerstone-annotation-label,
+.dicom-viewer-root .cornerstone-viewport .annotation-text {
+  padding: 2px 4px !important;
+  border-radius: 3px !important;
+}
+
+/* Reduce handle and marker sizes for compactness. */
+.dicom-viewer-root .cornerstone-viewport .handle,
+.dicom-viewer-root .cornerstone-viewport .annotation-handle,
+.dicom-viewer-root .cornerstone-viewport .ct-handle,
+.dicom-viewer-root .cornerstone-viewport .cornerstone-handle {
+  width: 8px !important;
+  height: 8px !important;
+}
+
+/* If tools render HTML overlays, make them compact. */
+.dicom-viewer-root .cornerstone-viewport .ct-annotation-overlay {
+  font-size: 11px !important;
+  padding: 2px !important;
+}
+
+/* Colour fusion: the moving viewport is blended over the fixed one. Hide its
+   own chrome (buttons/menus/labels) so only the rendered image is tinted and
+   the two viewports' controls don't overlap; keep Cornerstone's element. */
+.dicom-viewer-root .fusion-moving > *:not(.viewport-element) {
+  display: none !important;
+}

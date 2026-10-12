@@ -1,9 +1,38 @@
-/* global cornerstone, cornerstoneTools, cornerstoneBase64ImageLoader, cornerstoneWebImageLoader, cornerstoneWADOImageLoader */
+/* global window, document, $, event */
 /**
- * Load the main image
- * @param {*} image -
- * @param {*} stack -
+ * viewer.js — the RTS image viewer (UI, toolbar, controls).
+ *
+ * The viewer keeps the exact RTS flow and chrome it has always had; only the
+ * rendering engine changed: it now drives cornerstone3D through `viewer3d.js`
+ * (which consumes the cornerstone3D build exposed by the dv3d bundle on
+ * `window.dv3dEngine`). Nothing here is cornerstones-2D specific any more.
  */
+import {
+  ensureEngine,
+  createViewport,
+  destroyViewport,
+  setStack,
+  setActiveTool,
+  importAnnotations,
+  manualPan,
+  manualZoom,
+  manualRotate,
+  manualWindow,
+  setWindowLevel,
+  manualScroll,
+  resetView,
+  resize as resizeEngine,
+  purgeCaches,
+  getCurrentIndex,
+  getImageCount,
+  getWindowLevel,
+  base64ToBlob,
+  renderThumbnail,
+  addImageRenderedListener,
+} from "./viewer3d.js?v=1.1.0";
+
+export { base64ToBlob, renderThumbnail };
+
 let isMouseScrolling = false;
 let staticBarTop = 0;
 let staticBarLeft = 0;
@@ -57,84 +86,34 @@ export function hideScrollIndicator() {
   }
 }
 
+/** Select value -> cornerstone3D tool name. */
+const TOOL_BY_SELECT = {
+  pan: "Pan",
+  zoom: "Zoom",
+  rotate: "PlanarRotate",
+  scroll: "StackScroll",
+  window: "WindowLevel",
+  measure: "Length",
+  rectangle: "RectangleROI",
+  ellipse: "EllipticalROI",
+  angle: "Angle",
+  cobbangle: "CobbAngle",
+  eraser: "Eraser",
+};
+
+/**
+ * Wire up the RTS chrome for a freshly loaded stack: default tool, scroll
+ * indicator, keyboard handling, fullscreen dblclick. The engine/viewport has
+ * already been created and the stack set by `load()`.
+ * @param {*} image - unused (kept for API compatibility)
+ * @param {*} stack - { imageIds, currentImageIdIndex }
+ */
 export function loadMainImage(image, stack) {
-  const PanTool = cornerstoneTools.PanTool;
-  const ZoomTool = cornerstoneTools.ZoomTool;
-  const WwwcTool = cornerstoneTools.WwwcTool;
-  const RotateTool = cornerstoneTools.RotateTool;
-  const StackScrollTool = cornerstoneTools.StackScrollTool;
-  const StackScrollMouseWheelTool = cornerstoneTools.StackScrollMouseWheelTool;
-  const ArrowAnnotateTool = cornerstoneTools.ArrowAnnotateTool;
-  const LengthTool = cornerstoneTools.LengthTool;
-  const RectangleRoiTool = cornerstoneTools.RectangleRoiTool;
-  const EllipseRoiTool = cornerstoneTools.EllipseRoiTool;
-  const AngleTool = cornerstoneTools.AngleTool;
-  const CobbAngleTool = cornerstoneTools.CobbAngleTool;
-  const EraserTool = cornerstoneTools.EraserTool;
-
   const element = document.getElementById("dicom-image");
-  cornerstone.enable(element);
-
-  cornerstone.displayImage(element, image);
-
-  cornerstoneTools.addStackStateManager(element, ["stack"]);
-  cornerstoneTools.addToolState(element, "stack", stack);
-
-  cornerstoneTools.addToolForElement(element, PanTool);
-  cornerstoneTools.addToolForElement(element, ZoomTool, {
-    configuration: {
-      invert: true,
-    },
-  });
-  cornerstoneTools.addToolForElement(element, WwwcTool);
-  cornerstoneTools.addToolForElement(element, RotateTool);
-  cornerstoneTools.addToolForElement(element, AngleTool);
-  cornerstoneTools.addToolForElement(element, CobbAngleTool);
   const isStack = stack && stack.imageIds && stack.imageIds.length > 1;
   const defaultTool = isStack ? "StackScroll" : "Pan";
-  const scrollSpeed = isStack ? (staticBarHeight / stack.imageIds.length) : undefined;
 
-  cornerstoneTools.addToolForElement(element, StackScrollTool, {
-    configuration: {
-      loop: true,
-      allowSkipping: true,
-      stackScrollSpeed: scrollSpeed,
-    },
-  });
-  if (StackScrollMouseWheelTool) {
-    cornerstoneTools.addToolForElement(element, StackScrollMouseWheelTool, {
-      configuration: {
-        loop: true,
-        allowSkipping: true,
-      },
-    });
-    cornerstoneTools.setToolActiveForElement(element, "StackScrollMouseWheel", {});
-  }
-  cornerstoneTools.addToolForElement(element, EraserTool);
-  cornerstoneTools.addToolForElement(element, LengthTool);
-  cornerstoneTools.addToolForElement(element, RectangleRoiTool);
-  //cornerstoneTools.addToolForElement(element, EllipseRoiTool);
-
-  cornerstoneTools.addToolForElement(element, ArrowAnnotateTool, {
-    configuration: {
-      getTextCallback: () => {},
-      changeTextCallback: () => {},
-      allowEmptyLabel: true,
-      renderDashed: false,
-      drawHandles: false,
-      drawHandlesOnHover: true,
-    },
-  });
-
-  cornerstoneTools.setToolActiveForElement(element, defaultTool, {
-    mouseButtonMask: 1,
-    configuration: {
-      loop: true,
-      allowSkipping: true,
-      stackScrollSpeed: scrollSpeed,
-    },
-  });
-  cornerstoneTools.setToolEnabledForElement(element, "ArrowAnnotate");
+  setActiveTool(defaultTool);
 
   // Sync select control with default tool
   const sel = $(".dicom-select-control").get(0);
@@ -146,26 +125,11 @@ export function loadMainImage(image, stack) {
     }
   }
 
-  if (isStack && cornerstoneTools.stackPrefetch) {
-    if (typeof cornerstoneTools.stackPrefetch.setConfiguration === "function") {
-      cornerstoneTools.stackPrefetch.setConfiguration({
-        maxImagesToPrefetch: 3,
-        maxSimultaneousRequests: 1,
-      });
-    }
-    cornerstoneTools.stackPrefetch.enable(element);
-  }
-
-  //cornerstoneTools.keyboardInput.enable(element);
-
-  element.addEventListener("cornerstoneimagerendered", onImageRendered);
+  addImageRenderedListener(element, onImageRendered);
 
   setDicomCanvasNonFullscreen(element);
-  cornerstone.reset(element);
-  let viewerTitleBar = document.getElementById("viewer-title-bar");
-  viewerTitleBar.scrollIntoView();
-  //element.scrollIntoView(false);
-  //element.scrollTo(0);
+  const viewerTitleBar = document.getElementById("viewer-title-bar");
+  if (viewerTitleBar) viewerTitleBar.scrollIntoView();
 
   $(element).dblclick(function() {
     if ($(".canvas-panel").length == 0) {
@@ -192,7 +156,7 @@ export function loadMainImage(image, stack) {
       const mouseX = evt.clientX - rect.left;
       const mouseY = evt.clientY - rect.top;
       const total = stack.imageIds.length;
-      const current = stack.currentImageIdIndex + 1;
+      const current = getCurrentIndex() + 1;
       const percent = total > 1 ? (current - 1) / (total - 1) : 0;
 
       staticBarHeight = 420;
@@ -212,11 +176,12 @@ export function loadMainImage(image, stack) {
     }
   });
 
-  $(".dicom-select-control")
-    .get(0)
-    .addEventListener("change", function() {
+  const selControl = $(".dicom-select-control").get(0);
+  if (selControl) {
+    selControl.addEventListener("change", function() {
       changeControlSelection();
     });
+  }
 
   // Register Key Event Listener
   document.addEventListener("keydown", keydown_handler);
@@ -227,38 +192,26 @@ export function loadMainImage(image, stack) {
  * @param {*} e - Event
  */
 function onImageRendered(e) {
-  const eventData = e.detail;
-
   // Update ww/wl
   const sel = $(".dicom-select-control").get(0);
-  if (sel) {
+  const wl = getWindowLevel();
+  if (sel && wl) {
     const windowOpt = find_option(sel, "window");
     if (windowOpt !== undefined && sel.options[windowOpt]) {
       sel.options[windowOpt].firstChild.textContent =
-        "window (" +
-        Math.round(eventData.viewport.voi.windowCenter) +
-        " \u00b1 " +
-        Math.round(eventData.viewport.voi.windowWidth) +
-        ")";
+        "window (" + Math.round(wl.windowCenter) + " \u00b1 " + Math.round(wl.windowWidth) + ")";
     }
   }
 
   // update stack data
-  const stack =
-    eventData.enabledElement.toolStateManager.toolState.stack.data[0];
-  if (stack && stack.imageIds.length > 1) {
+  const total = getImageCount();
+  if (total > 1) {
     $("option[value=scroll").prop("disabled", false);
     $("option[value=scroll").prop("hidden", false);
-    $("option[value=scroll").text(
-      "scroll (" +
-      (stack.currentImageIdIndex + 1) +
-      "/" +
-      stack.imageIds.length +
-      ")"
-    );
+    $("option[value=scroll").text("scroll (" + (getCurrentIndex() + 1) + "/" + total + ")");
 
     if (isMouseScrolling) {
-      updateScrollIndicator(stack.currentImageIdIndex + 1, stack.imageIds.length);
+      updateScrollIndicator(getCurrentIndex() + 1, total);
     }
 
     // Temp way to enable CT window presets
@@ -315,104 +268,49 @@ export function setDicomCanvasNonFullscreen(element) {
   const h = window.innerHeight - $(".nav-bar").height() - 4;
   $("#dicom-image").attr("height", h);
   $("#dicom-image").height(h);
-  // $("#dicom-image.cornerstone-canvas").attr("height", h);
-  // $("#dicom-image.cornerstone-canvas").height(h);
 
-  $("#dicom-image .cornerstone-canvas").attr("width", "100%");
-
-  cornerstone.resize(element, true);
+  resizeEngine();
 }
 
 export function manualPanDicom(x, y) {
-  let dicom_element = document.getElementById("dicom-image");
-  const viewport = cornerstone.getViewport(dicom_element);
-
-  viewport.translation.x += x;
-  viewport.translation.y += y;
-
-  cornerstone.setViewport(dicom_element, viewport);
+  manualPan(x, y);
 }
 
 export function manualZoomDicom(delta) {
-  let dicom_element = document.getElementById("dicom-image");
-  const viewport = cornerstone.getViewport(dicom_element);
-
-  viewport.scale += delta / 100;
-
-  cornerstone.setViewport(dicom_element, viewport);
+  manualZoom(delta);
 }
 
 export function manualRotateDicom(delta) {
-  let dicom_element = document.getElementById("dicom-image");
-  const viewport = cornerstone.getViewport(dicom_element);
-
-  viewport.rotation += delta;
-
-  cornerstone.setViewport(dicom_element, viewport);
+  manualRotate(delta);
 }
 
 export function manualScrollDicom(n) {
-  // There must be a better way to do this...
-  let dicom_element = document.getElementById("dicom-image");
-  let c = cornerstone.getEnabledElement(dicom_element);
-
-  let max = c.toolStateManager.toolState.stack.data[0].imageIds.length;
-
-  if (max < 2) {
-    return;
+  manualScroll(n);
+  const total = getImageCount();
+  if (total > 1) {
+    updateScrollIndicator(getCurrentIndex() + 1, total);
   }
-
-  let current_index =
-    c.toolStateManager.toolState.stack.data[0].currentImageIdIndex;
-
-  // Loop through stack if out of bounds
-  // Yes it is annoying but it's the way it is done...
-  let new_index = current_index + n;
-  if (new_index >= max) {
-    new_index = new_index - max;
-  } else if (new_index < 0) {
-    new_index = new_index + max;
-  }
-
-  const scrollToIndex = cornerstoneTools.importInternal ? cornerstoneTools.importInternal('util/scrollToIndex') : null;
-  if (scrollToIndex) {
-    scrollToIndex(dicom_element, new_index);
-  } else {
-    c.toolStateManager.toolState.stack.data[0].currentImageIdIndex = new_index;
-    let id = c.toolStateManager.toolState.stack.data[0].imageIds[new_index];
-    cornerstone.loadAndCacheImage(id).then((b) => {
-      if (c.toolStateManager.toolState.stack.data[0].currentImageIdIndex === new_index) {
-        cornerstone.displayImage(dicom_element, b);
-      }
-    });
-  }
-  updateScrollIndicator(new_index + 1, max);
-  // c = cornerstone.getEnabledElement(dicom_element)
 }
 
 export function manualWindowDicom(wl, ww) {
-  let dicom_element = document.getElementById("dicom-image");
-  const viewport = cornerstone.getViewport(dicom_element);
-
-  // For reference
-  // brightness ~= wl
-  // contrast ~= ww
-
-  viewport.voi.windowCenter += wl;
-  viewport.voi.windowWidth += ww;
-
-  cornerstone.setViewport(dicom_element, viewport);
+  manualWindow(wl, ww);
 }
 
 export function debugCornerstone() {
-  let dicom_element = document.getElementById("dicom-image");
-  let viewport = cornerstone.getViewport(dicom_element);
-  let c = cornerstone.getEnabledElement(dicom_element);
+  const dicom_element = document.getElementById("dicom-image");
+  const engine = window.dv3dEngine;
+  console.debug("RTS viewer3d debug", {
+    element: dicom_element,
+    engine,
+    index: getCurrentIndex(),
+    count: getImageCount(),
+    windowLevel: getWindowLevel(),
+  });
 }
 
 /**
  * Registers the selected dicom tool
- * 
+ *
  * This also allows selecting of window levels
  */
 export function changeControlSelection() {
@@ -423,134 +321,46 @@ export function changeControlSelection() {
   sel.oldSelectedIndex = sel.selectedIndex;
 
   const dicom_element = document.getElementById("dicom-image");
-  switch (sel.options[sel.selectedIndex].value) {
-    case "pan": {
-      cornerstoneTools.setToolActiveForElement(dicom_element, "Pan", {
-        mouseButtonMask: 1,
-      });
-      break;
-    }
-    case "zoom": {
-      cornerstoneTools.setToolActiveForElement(dicom_element, "Zoom", {
-        mouseButtonMask: 1,
-      });
-      break;
-    }
-    case "rotate": {
-      cornerstoneTools.setToolActiveForElement(dicom_element, "Rotate", {
-        mouseButtonMask: 1,
-      });
-      break;
-    }
-    case "measure": {
-      cornerstoneTools.setToolActiveForElement(dicom_element, "Length", {
-        mouseButtonMask: 1,
-      });
-      break;
-    }
-    case "rectangle": {
-      cornerstoneTools.setToolActiveForElement(dicom_element, "RectangleRoi", {
-        mouseButtonMask: 1,
-      });
-      break;
-    }
-    case "ellipse": {
-      cornerstoneTools.setToolActiveForElement(dicom_element, "EllipseRoi", {
-        mouseButtonMask: 1,
-      });
-      break;
-    }
+  const value = sel.options[sel.selectedIndex].value;
 
-    case "angle": {
-      cornerstoneTools.setToolActiveForElement(dicom_element, "Angle", {
-        mouseButtonMask: 1,
-      });
-      break;
-    }
-    case "cobbangle": {
-      cornerstoneTools.setToolActiveForElement(dicom_element, "CobbAngle", {
-        mouseButtonMask: 1,
-      });
-      break;
-    }
-    case "eraser": {
-      cornerstoneTools.setToolActiveForElement(dicom_element, "Eraser", {
-        mouseButtonMask: 1,
-      });
-      break;
-    }
-    case "scroll": {
-      let speed = undefined;
-      try {
-        const c = cornerstone.getEnabledElement(dicom_element);
-        if (c && c.toolStateManager && c.toolStateManager.toolState && c.toolStateManager.toolState.stack) {
-          const stackData = c.toolStateManager.toolState.stack.data[0];
-          if (stackData && stackData.imageIds && stackData.imageIds.length > 1) {
-            speed = staticBarHeight / stackData.imageIds.length;
-          }
-        }
-      } catch (err) {}
-      cornerstoneTools.setToolActiveForElement(dicom_element, "StackScroll", {
-        mouseButtonMask: 1,
-        configuration: {
-          loop: true,
-          allowSkipping: true,
-          stackScrollSpeed: speed,
-        },
-      });
-      break;
-    }
-    case "window": {
-      cornerstoneTools.setToolActiveForElement(dicom_element, "Wwwc", {
-        mouseButtonMask: 1,
-      });
-      break;
-    }
-    case "abdomen": {
-      const viewport = cornerstone.getViewport(dicom_element);
-      viewport.voi.windowCenter = 150;
-      viewport.voi.windowWidth = 500;
-      cornerstone.setViewport(dicom_element, viewport);
-      sel.selectedIndex = find_option(sel, "window");
-      changeControlSelection();
-      break;
-    }
-    case "pulmonary": {
-      const viewport = cornerstone.getViewport(dicom_element);
-      viewport.voi.windowCenter = -500;
-      viewport.voi.windowWidth = 1500;
-      cornerstone.setViewport(dicom_element, viewport);
-      sel.selectedIndex = find_option(sel, "window");
-      changeControlSelection();
-      break;
-    }
-    case "brain": {
-      const viewport = cornerstone.getViewport(dicom_element);
-      viewport.voi.windowCenter = 50;
-      viewport.voi.windowWidth = 80;
-      cornerstone.setViewport(dicom_element, viewport);
-      sel.selectedIndex = find_option(sel, "window");
-      changeControlSelection();
-      break;
-    }
-    case "bone": {
-      const viewport = cornerstone.getViewport(dicom_element);
-      viewport.voi.windowCenter = 570;
-      viewport.voi.windowWidth = 3000;
-      cornerstone.setViewport(dicom_element, viewport);
-      sel.selectedIndex = find_option(sel, "window");
-      changeControlSelection();
-      break;
-    }
-    case "reset": {
-      resetViewer(dicom_element);
-      sel.selectedIndex = old;
-      sel.oldSelectedIndex = old;
-      break;
-    }
-    case "close": {
-      closeViewer(dicom_element);
-      break;
+  if (TOOL_BY_SELECT[value]) {
+    setActiveTool(TOOL_BY_SELECT[value]);
+  } else {
+    switch (value) {
+      case "abdomen": {
+        setWindowLevel(150, 500);
+        sel.selectedIndex = find_option(sel, "window");
+        changeControlSelection();
+        break;
+      }
+      case "pulmonary": {
+        setWindowLevel(-500, 1500);
+        sel.selectedIndex = find_option(sel, "window");
+        changeControlSelection();
+        break;
+      }
+      case "brain": {
+        setWindowLevel(50, 80);
+        sel.selectedIndex = find_option(sel, "window");
+        changeControlSelection();
+        break;
+      }
+      case "bone": {
+        setWindowLevel(570, 3000);
+        sel.selectedIndex = find_option(sel, "window");
+        changeControlSelection();
+        break;
+      }
+      case "reset": {
+        resetViewer(dicom_element);
+        sel.selectedIndex = old;
+        sel.oldSelectedIndex = old;
+        break;
+      }
+      case "close": {
+        closeViewer(dicom_element);
+        break;
+      }
     }
   }
   sel.blur();
@@ -560,9 +370,7 @@ export function changeControlSelection() {
 }
 
 function resetViewer(dicom_element) {
-  cornerstoneTools.clearToolState(dicom_element, "RectangleRoi");
-  cornerstoneTools.clearToolState(dicom_element, "Length");
-  cornerstone.reset(dicom_element);
+  resetView();
 }
 
 /**
@@ -571,7 +379,6 @@ function resetViewer(dicom_element) {
  * @param {*} event - KeyEvent
  */
 export function keydown_handler(event) {
-  //console.debug(event);
   const target_element = event.target.tagName;
 
   // Cancel if no active element
@@ -628,7 +435,6 @@ export function keydown_handler(event) {
       break;
     case "KeyE":
       sel.selectedIndex = find_option(sel, "reset");
-      // $("#dicom-image").get(0).scrollIntoView(false);
       changeControlSelection();
       break;
     // Escape and C do the same
@@ -649,7 +455,6 @@ export function keydown_handler(event) {
           manualPanDicom(0, -1);
           break;
         case "zoom":
-          // _this.current_dicom.current_view.pre_scale_at(1.01, 1.01, _this.current_dicom.cols / 2, _this.current_dicom.rows / 2);
           manualZoomDicom(1);
           break;
         case "rotate":
@@ -728,279 +533,45 @@ export function keydown_handler(event) {
   event.preventDefault();
 }
 
-function loadAnnotation(imageId, annotation) {
-  const toolStateManager =
-    cornerstoneTools.globalImageIdSpecificToolStateManager;
-
-  if (annotation == undefined || annotation.length < 1) {
-    return;
-  }
-
-  let tool_state_no_id = JSON.parse(annotation);
-
-  let tool_state = {};
-  tool_state[imageId] = tool_state_no_id;
-
-  toolStateManager.restoreToolState(tool_state);
-}
-let activeStackData = null;
-const activeStackFileIds = new Map();
-const activeStackMetadata = new Map();
-const activeSliceLRU = [];
-const MAX_ACTIVE_SLICES = 12;
-let rtsDicomLoaderRegistered = false;
-let rtsMetaDataProviderRegistered = false;
-
-function touchSlice(index) {
-  const qIdx = activeSliceLRU.indexOf(index);
-  if (qIdx >= 0) activeSliceLRU.splice(qIdx, 1);
-  activeSliceLRU.push(index);
-
-  while (activeSliceLRU.length > MAX_ACTIVE_SLICES) {
-    const oldestIndex = activeSliceLRU.shift();
-    evictSlice(oldestIndex);
-  }
-}
-
-function evictSlice(index) {
-  if (activeStackFileIds.has(index)) {
-    const dicomFileId = activeStackFileIds.get(index);
-    activeStackFileIds.delete(index);
-    const fileIndex = parseInt(dicomFileId.replace("dicomfile:", ""), 10);
-
-    try {
-      const loader = typeof cornerstoneWADOImageLoader !== "undefined"
-        ? (cornerstoneWADOImageLoader.wadouri || (cornerstoneWADOImageLoader.default && cornerstoneWADOImageLoader.default.wadouri))
-        : null;
-      if (loader) {
-        if (loader.fileManager && typeof loader.fileManager.remove === "function") {
-          loader.fileManager.remove(fileIndex);
-        }
-        if (loader.dataSetCacheManager && typeof loader.dataSetCacheManager.unload === "function") {
-          loader.dataSetCacheManager.unload(String(fileIndex));
-        }
-      }
-    } catch (e) {
-      console.debug("Error in evictSlice fileManager/dataSetCacheManager:", e);
-    }
-  }
-
-  try {
-    const cs = typeof cornerstone !== "undefined" ? cornerstone : (typeof window !== "undefined" ? window.cornerstone : null);
-    if (cs && cs.imageCache && typeof cs.imageCache.removeImageLoadObject === "function") {
-      cs.imageCache.removeImageLoadObject("rtsdicom:" + index);
-    }
-  } catch (e) {
-    // not in imageCache, ignore
-  }
-}
-
 export function cleanupViewerMemory() {
-  activeStackData = null;
-  activeStackFileIds.clear();
-  activeStackMetadata.clear();
-  activeSliceLRU.length = 0;
-
-  try {
-    if (typeof cornerstone !== "undefined" && cornerstone.imageCache) {
-      cornerstone.imageCache.purgeCache();
-    }
-  } catch (e) {
-    console.debug("Error purging cornerstone imageCache", e);
-  }
-
-  try {
-    const loader = typeof cornerstoneWADOImageLoader !== "undefined"
-      ? (cornerstoneWADOImageLoader.wadouri || (cornerstoneWADOImageLoader.default && cornerstoneWADOImageLoader.default.wadouri))
-      : null;
-    if (loader) {
-      if (loader.fileManager && loader.fileManager.purge) {
-        loader.fileManager.purge();
-      }
-      if (loader.dataSetCacheManager && loader.dataSetCacheManager.purge) {
-        loader.dataSetCacheManager.purge();
-      }
-    }
-  } catch (e) {
-    console.debug("Error purging wadouri fileManager/dataSetCacheManager", e);
-  }
-}
-
-export function base64ToBlob(dataUrl, mimeType = "application/dicom") {
-  const commaIdx = dataUrl.indexOf(",");
-  let base64Str = commaIdx >= 0 ? dataUrl.slice(commaIdx + 1) : dataUrl;
-  if (base64Str.indexOf("\n") >= 0 || base64Str.indexOf("\r") >= 0 || base64Str.indexOf(" ") >= 0) {
-    base64Str = base64Str.replace(/\s+/g, "");
-  }
-  const binaryStr = atob(base64Str);
-  const len = binaryStr.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binaryStr.charCodeAt(i);
-  }
-  return new Blob([bytes], { type: mimeType });
+  purgeCaches();
 }
 
 export function initRtsDicomLoader() {
-  if (rtsDicomLoaderRegistered) return;
-  const cs = typeof cornerstone !== "undefined" ? cornerstone : (typeof window !== "undefined" ? window.cornerstone : null);
-  if (!cs || typeof cs.registerImageLoader !== "function") return;
+  // Loaders are registered by viewer3d.js once the engine is initialised.
+}
 
-  cs.registerImageLoader("rtsdicom", function(imageId) {
-    const indexStr = imageId.replace("rtsdicom:", "");
-    const index = parseInt(indexStr, 10);
-
-    let innerLoadObj = null;
-
-    const promise = new Promise(async (resolve, reject) => {
-      try {
-        if (!activeStackData || !activeStackData[index]) {
-          return reject(new Error(`No image data for slice index ${index}`));
-        }
-
-        const loader = typeof cornerstoneWADOImageLoader !== "undefined"
-          ? (cornerstoneWADOImageLoader.wadouri || (cornerstoneWADOImageLoader.default && cornerstoneWADOImageLoader.default.wadouri))
-          : null;
-
-        if (!loader || !loader.fileManager || !loader.loadImage) {
-          return reject(new Error("cornerstoneWADOImageLoader wadouri not available"));
-        }
-
-        let dicomFileId;
-        if (activeStackFileIds.has(index)) {
-          dicomFileId = activeStackFileIds.get(index);
-        } else {
-          const item = activeStackData[index];
-          let blob;
-          if (item instanceof Blob) {
-            blob = item;
-          } else if (typeof item === "string" && item.startsWith("data:")) {
-            blob = base64ToBlob(item, "application/dicom");
-            // Replace bulky base64 string in array with lightweight Blob to free V8 string heap
-            activeStackData[index] = blob;
-          } else if (typeof item === "string") {
-            const wadouriId = item.startsWith("wadouri:") ? item : `wadouri:${item}`;
-            const imgLoad = await loader.loadImage(wadouriId);
-            innerLoadObj = imgLoad;
-            const img = await (imgLoad.promise || imgLoad);
-            img.imageId = imageId;
-            touchSlice(index);
-            return resolve(img);
-          } else {
-            return reject(new Error(`Invalid image data at slice index ${index}`));
-          }
-
-          dicomFileId = loader.fileManager.add(blob);
-          activeStackFileIds.set(index, dicomFileId);
-        }
-
-        const imgLoad = loader.loadImage(dicomFileId);
-        innerLoadObj = imgLoad;
-        const image = await (imgLoad.promise || imgLoad);
-        image.imageId = imageId;
-
-        // Cache critical metadata tags before potential dataset eviction
-        if (cs && cs.metaData && typeof cs.metaData.get === "function") {
-          try {
-            const voi = cs.metaData.get("voiLutModule", dicomFileId);
-            if (voi) activeStackMetadata.set(`${index}_voiLutModule`, voi);
-            const plane = cs.metaData.get("imagePlaneModule", dicomFileId);
-            if (plane) activeStackMetadata.set(`${index}_imagePlaneModule`, plane);
-          } catch (e) {}
-        }
-
-        touchSlice(index);
-        resolve(image);
-      } catch (err) {
-        console.error(`Error loading rtsdicom slice ${index}:`, err);
-        reject(err);
-      }
-    });
-
-    return {
-      promise: promise,
-      cancelFn: function() {
-        if (innerLoadObj && typeof innerLoadObj.cancelFn === "function") {
-          innerLoadObj.cancelFn();
-        }
-      },
-      decache: function() {
-        evictSlice(index);
-      }
-    };
-  });
-
-  if (cs.metaData && typeof cs.metaData.addProvider === "function" && !rtsMetaDataProviderRegistered) {
-    cs.metaData.addProvider(function(type, imageId) {
-      if (typeof imageId === "string" && imageId.startsWith("rtsdicom:")) {
-        const idx = parseInt(imageId.replace("rtsdicom:", ""), 10);
-        const metaKey = `${idx}_${type}`;
-        if (activeStackMetadata.has(metaKey)) {
-          return activeStackMetadata.get(metaKey);
-        }
-        if (activeStackFileIds.has(idx)) {
-          const dicomFileId = activeStackFileIds.get(idx);
-          const meta = cs.metaData.get(type, dicomFileId);
-          if (meta) {
-            activeStackMetadata.set(metaKey, meta);
-          }
-          return meta;
-        }
-      }
-    });
-    rtsMetaDataProviderRegistered = true;
+/** Build a cornerstone imageId for one exam image entry (same rules as before). */
+function toImageId(data, i) {
+  if (data instanceof Blob) return "rtsdicom:" + i;
+  if (typeof data === "string") {
+    if (data.startsWith("data:image")) return "external:" + data;
+    if (data.startsWith("data:")) return "rtsdicom:" + i;
+    if (data.startsWith("wadouri:") || data.startsWith("external:")) return data;
+    if (data.endsWith("dcm") || /(?:\/|^)[^.\/]+$/.test(data)) return "wadouri:" + data;
+    return "external:" + data;
   }
-
-  rtsDicomLoaderRegistered = true;
+  return "rtsdicom:" + i;
 }
 
 async function load(images, annotations) {
-  initRtsDicomLoader();
+  await ensureEngine();
 
   // Reset active stack for on-demand decoding and clear prior stack memory
   cleanupViewerMemory();
-  activeStackData = images;
 
-  // Build imageIds immediately without converting any slice up front
-  const imageIds = images.map((data_url, i) => {
-    if (data_url instanceof Blob) {
-      return "rtsdicom:" + i;
-    } else if (typeof data_url === "string") {
-      if (data_url.startsWith("data:image")) {
-        return "base64://" + data_url.split(",")[1];
-      } else if (data_url.startsWith("data:")) {
-        return "rtsdicom:" + i;
-      } else {
-        let url = data_url;
-        if (url.endsWith("dcm") || /(?:\/|^)[^.\/]+$/.test(url)) {
-          url = "wadouri:" + url;
-        }
-        return url;
-      }
-    } else {
-      return "rtsdicom:" + i;
-    }
-  });
+  const imageIds = images.map(toImageId);
 
-  // Display the first image as soon as possible
-  cornerstone.loadAndCacheImage(imageIds[0]).then(function(image) {
-    const stack = {
-      currentImageIdIndex: 0,
-      imageIds,
-    };
-    loadMainImage(image, stack);
-    // Restore annotations for all images after display
-    if (annotations && annotations.length > 0) {
-      imageIds.forEach((imageId, idx) => {
-        const annotation = annotations[idx];
-        if (annotation) {
-          loadAnnotation(imageId, annotation);
-        }
-      });
-    }
-  }).catch(function(err) {
-    console.error("Error loading initial image in stack:", err);
-  });
+  const element = document.getElementById("dicom-image");
+  createViewport(element);
+  await setStack(imageIds, 0, images);
+
+  const stack = { currentImageIdIndex: 0, imageIds };
+  loadMainImage(null, stack);
+
+  if (annotations && annotations.length > 0) {
+    await importAnnotations(annotations, imageIds);
+  }
 }
 
 /**
@@ -1009,12 +580,6 @@ async function load(images, annotations) {
  * @param {*} source
  */
 export function openMainImage(current_question, t, source) {
-  /**
-   * Load image
-   * @param {*} images - list of images
-   */
-
-
   if (current_question) {
     // Check if the figure is already loaded (or if another one is)
     const open_figure = $("#dicom-image").data("figure");
@@ -1027,21 +592,11 @@ export function openMainImage(current_question, t, source) {
         document.getElementById("viewer-title-bar").scrollIntoView();
         return;
       } else {
-        let el;
-        el = document.getElementById("dicom-image");
+        try {
+          destroyViewport();
+        } catch (e) {}
+        const el = document.getElementById("dicom-image");
         if (el != undefined) {
-          if (typeof cornerstoneTools !== "undefined" && cornerstoneTools.stackPrefetch) {
-            try {
-              cornerstoneTools.stackPrefetch.disable(el);
-            } catch (e) {}
-          }
-          try {
-            cornerstone.removeElementData(el);
-          } catch (e) {}
-          try {
-            cornerstone.disable(el);
-          } catch (e) {}
-          // Explicitly remove the dicom-image element
           el.remove();
           $(".canvas-panel").remove();
         }
@@ -1166,7 +721,6 @@ export function openMainImage(current_question, t, source) {
     questionElem.insertBefore(canvasPanel, questionElem.firstChild);
 
     let images = current_question.images[figure_to_load.split("-")[1]];
-    // images = current_question.images
 
     // Make sure we have an array
     if (!Array.isArray(images)) {
@@ -1206,24 +760,16 @@ export function closeViewer(dicom_element) {
   if ($(".canvas-panel").length == 0) {
     disableFullscreen(dicom_element);
   }
-  if (dicom_element != undefined) {
-    if (typeof cornerstoneTools !== "undefined" && cornerstoneTools.stackPrefetch) {
-      try {
-        cornerstoneTools.stackPrefetch.disable(dicom_element);
-      } catch (e) {}
-    }
-    // See https://github.com/cornerstonejs/cornerstoneTools/issues/1337
-    try {
-      cornerstone.removeElementData(dicom_element);
-    } catch (e) {}
-    try {
-      cornerstone.disable(dicom_element);
-    } catch (e) {}
-    $(".canvas-panel").remove();
-    $(".figure-open").removeClass("figure-open").addClass("figure");
-    $(dicom_element).remove();
-  }
+  destroyViewport();
+  $(".canvas-panel").remove();
+  $(".figure-open").removeClass("figure-open").addClass("figure");
+  $(dicom_element).remove();
   cleanupViewerMemory();
+}
+
+/** Tear down the cornerstone3D viewport without touching the surrounding DOM. */
+export function destroyViewer() {
+  destroyViewport();
 }
 
 export function urltoFile(url, filename, mimeType) {
@@ -1244,7 +790,6 @@ export function urltoFile(url, filename, mimeType) {
     });
 }
 
-
 function enableFullscreen(dicom_element) {
   $(".content-panel").prepend($(".canvas-panel"));
   $(".canvas-panel").toggleClass("canvas-panel canvas-panel-fullscreen");
@@ -1252,7 +797,5 @@ function enableFullscreen(dicom_element) {
   $("#dicom-image").height("100%");
   $("#disable-fullscreen-viewer-button").show();
   $("#fullscreen-viewer-button").hide();
-  // $(".cornerstone-canvas").attr("height", "100%");
-  // $(".cornerstone-canvas").height("100%");
-  cornerstone.resize(dicom_element, true);
+  resizeEngine();
 }

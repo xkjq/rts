@@ -1,33 +1,18 @@
-/* global Dexie, cornerstone, cornerstoneTools, cornerstoneBase64ImageLoader, cornerstoneWebImageLoader, cornerstoneWADOImageLoader */
-import * as helper from "./helpers.js?v=1.0.25";
-import * as viewer from "./viewer.js?v=1.0.25";
-import * as interact from "./interact.js?v=1.0.25";
-import * as config from "./config.js?v=1.0.25";
-import { db, question_db } from "./db.js?v=1.0.25";
-import { initSync, triggerImmediateSync, updateSyncUI } from "./sync.js?v=1.0.25";
-import { initSentry } from "./sentry.js?v=1.0.25";
-import { VERSION, BUILD, startUpdateChecker, checkForUpdate, VERSION_URL } from "./version.js?v=1.0.25";
+/* global Dexie */
+import * as helper from "./helpers.js?v=1.1.0";
+import * as viewer from "./viewer.js?v=1.1.0";
+import * as interact from "./interact.js?v=1.1.0";
+import * as config from "./config.js?v=1.1.0";
+import { db, question_db } from "./db.js?v=1.1.0";
+import { initSync, triggerImmediateSync, updateSyncUI } from "./sync.js?v=1.1.0";
+import { initSentry } from "./sentry.js?v=1.1.0";
+import { VERSION, BUILD, startUpdateChecker, checkForUpdate, VERSION_URL } from "./version.js?v=1.1.0";
 
 initSentry(VERSION);
 
 function safeCleanupViewerMemory() {
   if (typeof viewer !== "undefined" && typeof viewer.cleanupViewerMemory === "function") {
     viewer.cleanupViewerMemory();
-  } else {
-    try {
-      if (typeof cornerstone !== "undefined" && cornerstone.imageCache) {
-        cornerstone.imageCache.purgeCache();
-      }
-      if (typeof cornerstoneWADOImageLoader !== "undefined") {
-        const loader = cornerstoneWADOImageLoader.wadouri || (cornerstoneWADOImageLoader.default && cornerstoneWADOImageLoader.default.wadouri);
-        if (loader) {
-          if (loader.fileManager && loader.fileManager.purge) loader.fileManager.purge();
-          if (loader.dataSetCacheManager && loader.dataSetCacheManager.purge) loader.dataSetCacheManager.purge();
-        }
-      }
-    } catch (e) {
-      console.debug("Fallback viewer cleanup failed", e);
-    }
   }
 }
 
@@ -589,30 +574,16 @@ try {
 
 let use_local_question_cache = false;
 
-
-
-cornerstone.imageCache.setMaximumSizeBytes(5128800);
-
-// Set up cornerstone (the dicom viewer)
-cornerstoneBase64ImageLoader.external.cornerstone = cornerstone;
-cornerstoneWebImageLoader.external.cornerstone = cornerstone;
-// cornerstoneWebImageLoader.configure({
-//  beforeSend: function(xhr) {
-//    // Add custom headers here (e.g. auth tokens)
-//    //xhr.setRequestHeader('x-auth-token', 'my auth token');
-//  }
-// });
-
-cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
-
-// cornerstoneWADOImageLoader.configure({
-//  beforeSend: function(xhr) {
-//    // Add custom headers here (e.g. auth tokens)
-//    //xhr.setRequestHeader('APIKEY', 'my auth token');
-//  }
-// });
-
-cornerstoneTools.init();
+// Cap the cornerstone3D image cache (the engine is initialised lazily by
+// viewer3d.js on first use; the bundle exposes it on window.dv3dEngine).
+try {
+  const engine = window.dv3dEngine;
+  if (engine && engine.cache && typeof engine.cache.setMaxCacheSize === "function") {
+    engine.cache.setMaxCacheSize(5128800);
+  }
+} catch (e) {
+  console.debug("Could not set cornerstone3D cache size", e);
+}
 
 function putAnswer(answer) {
   answer.time_answered = new Date().toISOString();
@@ -2030,22 +2001,12 @@ async function loadQuestion(n, section = 1, force_reload = false) {
     }
   }
 
-  // Close any open figures
-  //let el = document.getElementById("dicom-image");
-  //if (el != undefined) {
-  //  cornerstone.disable(el);
-  //}
-
-  // disable any further enabled elements
-  let enabled_elements = cornerstone.getEnabledElements();
-  for (var i = enabled_elements.length - 1; i >= 0; i--) {
-    try {
-      cornerstone.removeElementData(enabled_elements[i].element);
-    } catch (e) {}
-    try {
-      cornerstone.disable(enabled_elements[i].element);
-    } catch (e) {}
-  }
+  // Tear down any open cornerstone3D viewer before loading the next question.
+  try {
+    if (typeof viewer !== "undefined" && typeof viewer.destroyViewer === "function") {
+      viewer.destroyViewer();
+    }
+  } catch (e) {}
   $(".canvas-panel").remove();
 
   safeCleanupViewerMemory();
@@ -2067,8 +2028,6 @@ async function loadQuestion(n, section = 1, force_reload = false) {
       `<div class="figure" id="figure-${id}"><div class="figcaption">${caption}</div></div>`
     );
 
-    // const thumbnail = $(".figure .thumbnail").get(id);
-    // cornerstone.enable(thumbnail)
     // based_img = current_question.images[id];
     const based_img = image;
 
@@ -2088,29 +2047,18 @@ async function loadQuestion(n, section = 1, force_reload = false) {
       // otherwise try to load it as a dicom (if it starts with data)
       // or ends with dcm
     } else if (based_img.startsWith("data:") || based_img.endsWith(".dcm") || /(?:\/|^)[^.\/]+$/.test(based_img)) {
-      // convert the data url to a file
-      viewer
-        .urltoFile(based_img, "dicom", "application/dicom")
-        .then(function(dfile) {
-          // load the file using cornerstoneWADO file loader
-          const imageId = cornerstoneWADOImageLoader.wadouri.fileManager.add(
-            dfile
-          );
-          const img = $("<div></div>").get(0);
-          img.id = "thumb-" + id;
-          img.class = "thumbnail";
-          img.title = "Click on the thumbnail to view and manipulate the image.";
-          img.draggable = "false";
-          img.style = "height: 100px; width: 100px";
-          $("#figure-" + id).append(img);
-          const element = document.getElementById("thumb-" + id);
-          cornerstone.enable(element);
-          //cornerstone.loadImage(imageId).then(function (image) {
-          cornerstone.loadAndCacheImage(imageId).then(function(image) {
-            cornerstone.displayImage(element, image);
-            cornerstone.resize(element);
-          }); // .catch( function(error) {
-        });
+      // Render the DICOM slice into a canvas via the cornerstone3D engine.
+      const canvas = document.createElement("canvas");
+      canvas.id = "thumb-" + id;
+      canvas.className = "thumbnail";
+      canvas.title = "Click on the thumbnail to view and manipulate the image.";
+      canvas.draggable = "false";
+      canvas.style.height = "100px";
+      canvas.style.width = "100px";
+      $("#figure-" + id).append(canvas);
+      viewer.renderThumbnail(canvas, based_img).catch(function(err) {
+        console.warn("Failed to render DICOM thumbnail", err);
+      });
     } else {
       const img = $("<img />", {
         src: based_img,
