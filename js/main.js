@@ -1,12 +1,13 @@
 /* global Dexie */
-import * as helper from "./helpers.js?v=1.1.0";
-import * as viewer from "./viewer.js?v=1.1.0";
-import * as interact from "./interact.js?v=1.1.0";
-import * as config from "./config.js?v=1.1.0";
-import { db, question_db } from "./db.js?v=1.1.0";
-import { initSync, triggerImmediateSync, updateSyncUI } from "./sync.js?v=1.1.0";
-import { initSentry } from "./sentry.js?v=1.1.0";
-import { VERSION, BUILD, startUpdateChecker, checkForUpdate, VERSION_URL } from "./version.js?v=1.1.0";
+import * as helper from "./helpers.js?v=1.2.2";
+import * as viewer from "./viewer.js?v=1.2.2";
+import * as interact from "./interact.js?v=1.2.2";
+import * as config from "./config.js?v=1.2.2";
+import { db, question_db } from "./db.js?v=1.2.2";
+import * as preCache from "./precache.js?v=1.2.2";
+import { initSync, triggerImmediateSync, updateSyncUI } from "./sync.js?v=1.2.2";
+import { initSentry } from "./sentry.js?v=1.2.2";
+import { VERSION, BUILD, startUpdateChecker, checkForUpdate, VERSION_URL } from "./version.js?v=1.2.2";
 
 initSentry(VERSION);
 
@@ -326,6 +327,13 @@ let question_type = null;
 let loaded_question = null;
 let review_mode = false;
 let exam_time = null;
+// Per-image DICOM flag map (URL -> bool) for the currently loaded question,
+// supplied by the server; used by createThumbnail to pick the right loader.
+let current_image_is_dicom = {};
+
+// Debounces the global ajaxStop hide of #loading so back-to-back requests do
+// not make the overlay flash.
+let loadingHideTimer = null;
 let packet_time = null;
 let date_started = null;
 let score = 0;
@@ -596,6 +604,9 @@ function putAnswer(answer) {
 
 retrievePacketList();
 
+// Housekeeping: prune expired cached exams in the background.
+pruneStaleExamCaches();
+
 initVersionSystem();
 
 updateLoginUI();
@@ -690,8 +701,8 @@ async function retrievePacketList(target = "all", onComplete = null) {
   if (target === "all") {
     $("#packet-list").empty();
     $("#exam-list").empty();
-    $("#cache-details summary").empty();
-    $("#cache-details ul").empty();
+    $("#cache-details > .cache-details-box > summary").empty();
+    $("#cache-details > .cache-details-box > ul").empty();
   } else if (target === "exams") {
     $("#exam-list").empty();
   } else if (target === "packets") {
@@ -951,8 +962,8 @@ async function loadExamList(data, clearExistingList = true, target = "all") {
     if (target === "all" || target === "exams") {
       $("#exam-list").empty();
     }
-    $("#cache-details summary").empty();
-    $("#cache-details ul").empty();
+    $("#cache-details > .cache-details-box > summary").empty();
+    $("#cache-details > .cache-details-box > ul").empty();
   }
 
   log.info("Loop available exams");
@@ -1016,15 +1027,26 @@ async function loadExamList(data, clearExistingList = true, target = "all") {
     }
 
     // Add the button that is used to load the packet/exam
-    $(list).append(
-      $(
-        `<div class='packet-button${item_class}' data-eid='${eid}' title='Load packet'></div>`
-      )
-        .text(name)
-        .click(function() {
-          loadPacketFromAjax(url, eid, exam_json_id);
+    const $examButton = $(
+      `<div class='packet-button${item_class}' data-eid='${eid}' title='Load packet'></div>`
+    )
+      .text(name)
+      .click(function() {
+        loadPacketFromAjax(url, eid, exam_json_id);
+      });
+
+    // Offer the based "packet" document for offline use / legacy import.
+    if (exam.download_url) {
+      $examButton.append(
+        $(
+          `<div class='save-button' title='Download this exam for offline use'><a href='${exam.download_url}' download='${String(eid).replace("/", "_")}.json'>💾</a></div>`
+        ).click(function(evt) {
+          evt.stopPropagation();
         })
-    );
+      );
+    }
+
+    $(list).append($examButton);
   }
 
 
@@ -1053,12 +1075,12 @@ async function loadExamList(data, clearExistingList = true, target = "all") {
     .then(() => question_db.saved_exams.toArray())
     .then((saved_exams) => {
     if (saved_exams.length < 1) {
-      if ($("#cache-details summary span").length === 0) {
-        $("#cache-details summary").append("<span>No cached exams / questions</span>");
+      if ($("#cache-details > .cache-details-box > summary span").length === 0) {
+        $("#cache-details > .cache-details-box > summary").append("<span>No cached exams</span>");
       }
     } else {
-      if ($("#cache-details summary span").length === 0 || $("#cache-details summary span").text().includes("No cached")) {
-        $("#cache-details summary").empty().append("<span>Cached exams / questions:</span>");
+      if ($("#cache-details > .cache-details-box > summary span").length === 0 || $("#cache-details > .cache-details-box > summary span").text().includes("No cached")) {
+        $("#cache-details > .cache-details-box > summary").empty().append("<span>Cached exams:</span>");
       }
     }
     console.debug("Loop through saved exams");
@@ -1068,27 +1090,40 @@ async function loadExamList(data, clearExistingList = true, target = "all") {
       let matchingEid = helper.findMatchingEid(saved_exam, exam_generated_map);
 
       if (matchingEid != null) {
-        $("#cache-details ul").append(
-          `<li class="cache-item" data-eid=${saved_exam.eid}>Exam: ${saved_exam.exam_name} [${saved_exam.eid}]: ${saved_exam.exam_json_id}`
-        );
-        // If the json_id s differ delete and force a refresh
         const exam_json_id = exam_generated_map[matchingEid][0];
-        const question_json_id_hash = exam_generated_map[matchingEid][1];
+        const question_json_id_hash = exam_generated_map[matchingEid][1] || {};
+        const qids = Object.keys(question_json_id_hash);
+        const q_type = saved_exam.exam_type || saved_exam.type;
+        const examIdChanged = String(saved_exam.exam_json_id) !== String(exam_json_id);
 
-        if (saved_exam.exam_json_id != exam_json_id) {
+        // One bulk existence check at list time (no per-question queries); the
+        // individual questions are only rendered when the user expands the row.
+        let cachedCount = qids.length;
+        if (!examIdChanged && qids.length) {
+          try {
+            cachedCount = await question_db.question_data
+              .where("qid")
+              .anyOf(qids)
+              .count();
+          } catch (e) {
+            console.debug("Error counting cached questions", e);
+            cachedCount = 0;
+          }
+        }
+        const questionsMissing = qids.length > 0 && cachedCount < qids.length;
+        const outOfDate = examIdChanged || questionsMissing;
+
+        // Invalidate as before, but without listing every question.
+        if (examIdChanged) {
           console.debug("id mismatch", saved_exam.exam_json_id, exam_json_id);
-
           // 1. Delete outdated exam metadata from saved_exams
           for (const v of savedEidVariants) {
             question_db.saved_exams.where("eid").equals(v).delete();
           }
-
           // 2. Invalidate and delete outdated questions from question_data so new ones download
           await invalidateExamQuestions(saved_exam);
-
           // 3. Archive answers instead of hard-deleting them!
           await archiveExamAnswers(saved_exam.eid, saved_exam.exam_json_id, exam_json_id);
-
           // 4. Mark active sessions as archived
           for (const v of savedEidVariants) {
             try {
@@ -1097,57 +1132,79 @@ async function loadExamList(data, clearExistingList = true, target = "all") {
               });
             } catch (e) {}
           }
-
-          $(`li.cache-item[data-eid="${saved_exam.eid}"]`)
-            .addClass("cache-out-of-date")
-            .append(` [out of date (latest: ${exam_json_id})]`);
+        } else if (questionsMissing) {
+          console.debug(`Questions missing in cache for ${saved_exam.eid}`);
           for (const v of savedEidVariants) {
-            $(`.packet-button[data-eid="${v}"]`).addClass("out-of-date");
+            question_db.saved_exams.where("eid").equals(v).delete();
           }
-        } else {
-          console.debug("id match", saved_exam.exam_json_id, exam_json_id);
-          for (const v of savedEidVariants) {
-            $(`.packet-button[data-eid="${v}"]`).addClass("cached");
-          }
+          await archiveExamAnswers(saved_exam.eid, saved_exam.exam_json_id, exam_json_id);
         }
 
-        console.debug("Check question ids");
-        for (let q in question_json_id_hash) {
-          let new_question_json_id = question_json_id_hash[q];
-          console.debug("new question json id", new_question_json_id);
-          $("#cache-details ul").append(
-            `<li class="cache-item" data-qid=${q}>Question (${saved_exam.exam_type}): ${q} [New JSON id: ${new_question_json_id}]`
+        // Exam-level summary row.
+        const $li = $(
+          `<li class="cache-item cache-exam${outOfDate ? " cache-out-of-date" : ""}" data-eid="${saved_exam.eid}"></li>`
+        );
+        const $summary = $(`
+          <div class="cache-exam-summary">
+            <span class="cache-exam-name"></span>
+            <span class="cache-exam-meta"></span>
+            <span class="cache-exam-status"></span>
+          </div>
+        `);
+        const questionSummary = qids.length
+          ? `${cachedCount}/${qids.length} questions`
+          : "no questions";
+        $summary
+          .find(".cache-exam-name")
+          .text(saved_exam.exam_name || saved_exam.name || saved_exam.eid);
+        $summary.find(".cache-exam-meta").text(`[${saved_exam.eid}] · ${questionSummary}`);
+        $summary
+          .find(".cache-exam-status")
+          .text(outOfDate ? (examIdChanged ? `Out of date (latest ${exam_json_id})` : "Out of date") : "Cached")
+          .addClass(outOfDate ? "cache-status-outdated" : "cache-status-ok");
+        $li.append($summary);
+
+        // Questions are listed only when the user asks for them.
+        if (qids.length) {
+          const $details = $(
+            '<details class="cache-questions"><summary>Show questions</summary><ul class="cache-question-list"></ul></details>'
           );
-
-          // Fast index-only existence check without pulling multi-megabyte base64 question data into RAM
-          const q_type = saved_exam.exam_type || saved_exam.type;
-          let count = 0;
-          try {
-            count = await question_db.question_data
-              .where(["qid", "type"])
-              .equals([String(q), q_type])
-              .count();
-
-            if (count === 0) {
-              count = await question_db.question_data
-                .where("qid")
-                .equals(String(q))
-                .count();
+          const $qList = $details.find("ul");
+          $details.on("toggle", async function () {
+            if (!this.open || $qList.data("loaded")) return;
+            $qList.data("loaded", true);
+            for (const q of qids) {
+              let count = 0;
+              try {
+                count = await question_db.question_data
+                  .where(["qid", "type"])
+                  .equals([String(q), q_type])
+                  .count();
+                if (count === 0) {
+                  count = await question_db.question_data
+                    .where("qid")
+                    .equals(String(q))
+                    .count();
+                }
+              } catch (e) {
+                console.debug("Error checking question in cache", q, e);
+              }
+              const missing = count === 0;
+              $qList.append(
+                `<li class="cache-item${missing ? " cache-out-of-date" : ""}" data-qid="${q}">` +
+                  `Question ${q} — json ${question_json_id_hash[q]}` +
+                  `${missing ? ' <span class="cache-note">not downloaded</span>' : ""}</li>`
+              );
             }
-          } catch (e) {
-            console.debug("Error checking question in cache", q, e);
-          }
+          });
+          $li.append($details);
+        }
 
-          if (count === 0) {
-            console.debug(`Question missing in cache: eid: ${saved_exam.eid}, q ${q}`);
-            $(`li.cache-item[data-eid="${saved_exam.eid}"]`).addClass("cache-out-of-date");
-            $(`li.cache-item[data-qid="${q}"]`).addClass("cache-out-of-date").append(" [Not found]");
-            for (const v of savedEidVariants) {
-              $(`.packet-button[data-eid="${v}"]`).addClass("out-of-date");
-              question_db.saved_exams.where("eid").equals(v).delete();
-            }
-            await archiveExamAnswers(saved_exam.eid, saved_exam.exam_json_id, exam_json_id);
-          }
+        $("#cache-details > .cache-details-box > ul").append($li);
+
+        // Mark the exam button(s) cached/out-of-date.
+        for (const v of savedEidVariants) {
+          $(`.packet-button[data-eid="${v}"]`).addClass(outOfDate ? "out-of-date" : "cached");
         }
       }
     });
@@ -1343,15 +1400,20 @@ function loadPacketFromAjax(path, eid, exam_json_id) {
       dataType: "json",
       url: requestUrl,
       cache: browser_cache,
-      progress: function(e) {
-        if (e.lengthComputable) {
-          var completedPercentage = Math.round((e.loaded * 100) / e.total);
-
+      progress: (function() {
+        let last = 0;
+        return function(e) {
+          if (!e.lengthComputable) return;
+          const now = Date.now();
+          // Throttle so the % text does not flicker on every chunk.
+          if (now - last < 200 && e.loaded < e.total) return;
+          last = now;
+          const completedPercentage = Math.round((e.loaded * 100) / e.total);
           $("#progress").html(
             `${completedPercentage}%<br/>${helper.formatBytes(e.total)}`
           );
-        }
-      },
+        };
+      })(),
     })
       .done(function(data) {
         setUpPacket(data, path, exam_json_id, eid);
@@ -1552,7 +1614,7 @@ function setUpPacket(data, path, expected_exam_json_id, expected_eid) {
           pathUrl = qParts[0];
           pathParams = qParts[1];
         }
-        const question_url_base = `${pathUrl}/question/${n}`;
+        const question_url_base = helper.questionUrlForExam(pathUrl, n);
         const queryParams = [];
         if (question_json_id != null) {
           queryParams.push(`v=${question_json_id}`);
@@ -1621,16 +1683,227 @@ function setUpPacket(data, path, expected_exam_json_id, expected_eid) {
         question_json = null;
         d = null;
       }
-      // Once all questions have been downloaded we carry on loading
+      // Once all questions have been downloaded, pre-cache the images and
+      // then start (or fall back to limited mode).
       use_local_question_cache = true;
-      loadSession();
+      preCacheThenStart(await collectQuestionDatas(data, questions));
     })().catch((error) => {
       alert("Error downloading, try refreshing");
       console.debug(error);
     });
   } else {
-    // Just carry on loading
-    loadSession();
+    // Inline (based) packets: the question payloads are already in memory.
+    collectQuestionDatas(data, questions).then((datas) => preCacheThenStart(datas));
+  }
+}
+
+/**
+ * Gather the question payloads referenced by a loaded exam.
+ *
+ * For index-style exams (``question_requests``) the payloads are read back from
+ * IndexedDB (falling back to the in-memory session fallback); for inline
+ * packets the in-memory ``questions`` object is used.
+ */
+async function collectQuestionDatas(data, questionsObj) {
+  const datas = [];
+  const requests = data && data.question_requests;
+  if (requests && Object.keys(requests).length > 0) {
+    for (const qid of Object.keys(requests)) {
+      let record = null;
+      try {
+        record = await question_db.question_data
+          .where(["qid", "type"])
+          .equals([String(qid), question_type])
+          .first();
+        if (!record) {
+          record = await question_db.question_data
+            .where("qid")
+            .equals(String(qid))
+            .first();
+        }
+      } catch (e) {
+        console.debug("collectQuestionDatas lookup failed for", qid, e);
+      }
+      const payload = record
+        ? record.data
+        : session_questions_fallback && session_questions_fallback[String(qid)];
+      if (payload) datas.push(payload);
+    }
+  } else if (questionsObj && typeof questionsObj === "object") {
+    for (const key of Object.keys(questionsObj)) {
+      const payload = questionsObj[key];
+      if (payload && typeof payload === "object") datas.push(payload);
+    }
+  }
+  return datas;
+}
+
+/**
+ * Download every image the exam needs into Cache Storage, showing progress.
+ */
+async function preCacheExamImages(questionDatas) {
+  await preCache.requestPersistentStorage();
+  const urls = preCache.collectExamImageUrls(questionDatas);
+  if (urls.length === 0) {
+    return { total: 0, missing: [] };
+  }
+
+  // Image downloads use fetch(), which does not fire jQuery's ajaxStart/Stop,
+  // so manage the overlay explicitly here (and cancel any pending ajax hide).
+  if (loadingHideTimer) {
+    clearTimeout(loadingHideTimer);
+    loadingHideTimer = null;
+  }
+  $("#loading").show();
+  $("#progress").html(`Preparing exam — 0 / ${urls.length}`);
+
+  let lastRendered = 0;
+  return await preCache.prefetchImageUrls(urls, {
+    concurrency: 6,
+    onProgress: (r) => {
+      const done = r.downloaded + r.skipped + r.failed;
+      const now = Date.now();
+      // Throttle DOM updates (~5/s) so the text does not flicker or reflow on
+      // every slice; always render the final state.
+      if (done < r.total && now - lastRendered < 200) return;
+      lastRendered = now;
+      $("#progress").html(
+        `Preparing exam — ${done} / ${r.total}<br/>${helper.formatBytes(r.bytes)}`
+      );
+    },
+  });
+}
+
+/**
+ * Hard gate: the exam may only start once every image is cached. If the client
+ * is offline with a partial cache, start in limited mode instead.
+ */
+async function preCacheThenStart(questionDatas) {
+  let result = null;
+  try {
+    result = await preCacheExamImages(questionDatas);
+  } catch (err) {
+    console.warn("Image pre-cache failed:", err);
+  }
+
+  const missing = result && result.missing ? result.missing : [];
+  if (missing.length > 0) {
+    const online = typeof navigator === "undefined" ? true : navigator.onLine;
+    if (online) {
+      $("#progress").html(
+        `Unable to prepare this exam: ${missing.length} image(s) could not be downloaded.<br/>` +
+          "Check your connection and reload to try again."
+      );
+      $.notify("Exam not fully downloaded - cannot start.", "error");
+      return;
+    }
+    $.notify(
+      `Offline: ${missing.length} image(s) unavailable. Starting in limited mode.`,
+      "warn"
+    );
+  }
+
+  // Keep the overlay up (with a distinct message) while the exam is built, so
+  // the pause between "100%" and the first question does not look like a hang.
+  if (loadingHideTimer) {
+    clearTimeout(loadingHideTimer);
+    loadingHideTimer = null;
+  }
+  $("#loading").show();
+  $("#progress").html("Starting exam…");
+  loadSession();
+}
+
+/**
+ * Enumerate the cached image URLs referenced by one saved exam record.
+ */
+async function collectExamImageUrlsForEid(savedExam) {
+  if (!savedExam || !savedExam.question_requests) return [];
+  const datas = [];
+  for (const qid of Object.keys(savedExam.question_requests)) {
+    let record = null;
+    try {
+      record = await question_db.question_data
+        .where("qid")
+        .equals(String(qid))
+        .first();
+    } catch (e) {
+      console.debug("GC lookup failed for question", qid, e);
+    }
+    if (record && record.data) datas.push(record.data);
+  }
+  return preCache.collectExamImageUrls(datas);
+}
+
+/**
+ * Prune completed exams older than the retention window: remove their question
+ * data and any cached images no longer referenced by a retained exam. Never
+ * runs while an exam is in progress.
+ */
+async function pruneStaleExamCaches() {
+  if (is_taking_exam) return;
+
+  let sessions = [];
+  try {
+    sessions = await db.session.toArray();
+  } catch (e) {
+    console.debug("GC: unable to read sessions", e);
+    return;
+  }
+  const expiredEids = preCache.selectExpiredExams(sessions);
+  if (expiredEids.length === 0) return;
+
+  let savedExams = [];
+  try {
+    savedExams = await question_db.saved_exams.toArray();
+  } catch (e) {
+    console.debug("GC: unable to read saved exams", e);
+    return;
+  }
+
+  const expiredVariants = new Set();
+  for (const eid of expiredEids) {
+    for (const v of getEidVariants(eid)) expiredVariants.add(v);
+  }
+  const isExpired = (savedExam) =>
+    getEidVariants(savedExam.eid, savedExam.exam_type || savedExam.type).some((v) =>
+      expiredVariants.has(v)
+    );
+
+  // Only delete images that are not referenced by a retained exam.
+  const keep = new Set();
+  for (const savedExam of savedExams.filter((s) => !isExpired(s))) {
+    for (const url of await collectExamImageUrlsForEid(savedExam)) keep.add(url);
+  }
+
+  let deleted = 0;
+  for (const savedExam of savedExams) {
+    if (!isExpired(savedExam)) continue;
+
+    const urls = await collectExamImageUrlsForEid(savedExam);
+    const toDelete = preCache.subtractUrls(urls, [...keep]);
+    if (toDelete.length) {
+      deleted += await preCache.deleteCachedImages(toDelete);
+    }
+
+    for (const qid of Object.keys(savedExam.question_requests || {})) {
+      try {
+        await question_db.question_data.where("qid").equals(String(qid)).delete();
+      } catch (e) {
+        console.debug("GC: unable to delete question", qid, e);
+      }
+    }
+    try {
+      await question_db.saved_exams.where("eid").equals(savedExam.eid).delete();
+    } catch (e) {
+      console.debug("GC: unable to delete saved exam", savedExam.eid, e);
+    }
+  }
+
+  if (deleted) {
+    console.debug(
+      `GC: pruned ${deleted} cached image(s) for ${expiredEids.length} expired exam(s)`
+    );
   }
 }
 
@@ -1719,6 +1992,7 @@ function loadSession() {
         }
 
         // Open the dialog
+        $("#loading").hide();
         $("#resume-dialog").modal({
           escapeClose: false,
           clickClose: false,
@@ -1838,6 +2112,10 @@ async function setUpQuestions(load_previous) {
       exam_time = $(".exam-time").val() * 60;
     });
 
+  // The exam is built: hand off from the full-screen progress overlay to the
+  // start dialog / question spinner.
+  $("#loading").hide();
+
   if (exam_details.exam_mode) {
     // NOTE: changing the CID when restoring a session will not affect the time left
     //$("#candidate-number2")
@@ -1882,6 +2160,8 @@ async function setUpQuestions(load_previous) {
  */
 async function loadQuestion(n, section = 1, force_reload = false) {
   $("#question-loading").show();
+  // Hand off from the pre-cache overlay so there is always a visible spinner.
+  $("#loading").hide();
   const aid = exam_details.aid;
   const cid = exam_details.cid;
   const eid = exam_details.eid;
@@ -1940,6 +2220,8 @@ async function loadQuestion(n, section = 1, force_reload = false) {
     return;
   }
   return_data = null;
+
+  current_image_is_dicom = question_data.image_is_dicom || {};
 
   loaded_question = n;
 
@@ -2046,7 +2328,7 @@ async function loadQuestion(n, section = 1, force_reload = false) {
 
       // otherwise try to load it as a dicom (if it starts with data)
       // or ends with dcm
-    } else if (based_img.startsWith("data:") || based_img.endsWith(".dcm") || /(?:\/|^)[^.\/]+$/.test(based_img)) {
+    } else if (based_img.startsWith("data:") || helper.isDicomImage(based_img, current_image_is_dicom)) {
       // Render the DICOM slice into a canvas via the cornerstone3D engine.
       const canvas = document.createElement("canvas");
       canvas.id = "thumb-" + id;
@@ -3730,6 +4012,9 @@ function delete_answer_db() {
 }
 
 function delete_question_db() {
+  // Deleting cached questions must also drop the pre-cached image bytes, or
+  // they linger in Cache Storage with nothing referencing them.
+  preCache.clearImageCache();
   question_db
     .delete()
     .then(() => {
@@ -3983,11 +4268,25 @@ $("#btn-delete-current-saved-answers").click(function(evt) {
 });
 
 $(document).ajaxStart(function() {
+  // A new request supersedes any pending hide, so sequential downloads do not
+  // make the loading overlay flash.
+  if (loadingHideTimer) {
+    clearTimeout(loadingHideTimer);
+    loadingHideTimer = null;
+  }
   $("#loading").show();
 });
 
 $(document).ajaxStop(function() {
-  $("#loading").hide();
+  if (loadingHideTimer) {
+    clearTimeout(loadingHideTimer);
+  }
+  // Wait briefly for a follow-up request before hiding, avoiding a flicker
+  // between consecutive downloads.
+  loadingHideTimer = setTimeout(function() {
+    loadingHideTimer = null;
+    $("#loading").hide();
+  }, 400);
 });
 
 function saveSession(start_review) {

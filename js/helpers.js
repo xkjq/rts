@@ -132,3 +132,94 @@ export function getCookie(name) {
   }
   return null;
 }
+
+/**
+ * Return the path part of a URL, dropping any query string or fragment.
+ * @param {string} url
+ * @returns {string}
+ */
+export function urlPath(url) {
+  if (typeof url !== "string") return "";
+  return url.split("#")[0].split("?")[0];
+}
+
+/**
+ * Best-effort check for whether a media URL points at a DICOM object.
+ *
+ * A DICOM URL either ends in `.dcm` (ignoring any version query) or uses an
+ * extensionless final path segment (e.g. `/media/.../12345`). Versioned URLs
+ * (with a content-hash query) must still be recognised as DICOM.
+ *
+ * @param {string} url
+ * @returns {boolean}
+ */
+export function isDicomUrl(url) {
+  const path = urlPath(url);
+  if (!path) return false;
+  if (path.toLowerCase().endsWith(".dcm")) return true;
+  return /(?:\/|^)[^.\/]+$/.test(path);
+}
+
+/**
+ * Resolve a (possibly root-relative) URL to an absolute one.
+ *
+ * Cornerstone's web image loader only registers `http`/`https` schemes, so a
+ * non-DICOM image served as a root-relative `/media/...` URL must be made
+ * absolute before it is handed to `loadAndCacheImage`, otherwise cornerstone
+ * reports "no image loader for imageId". `data:`/`blob:` are returned as-is.
+ *
+ * @param {string} url
+ * @returns {string}
+ */
+export function absoluteUrl(url) {
+  if (typeof url !== "string" || !url) return "";
+  if (url.startsWith("data:") || url.startsWith("blob:")) return url;
+  if (typeof location !== "undefined" && location.href) {
+    try {
+      return new URL(url, location.href).href;
+    } catch (e) {
+      return url;
+    }
+  }
+  return url;
+}
+
+/**
+ * Decide whether an image URL is DICOM.
+ *
+ * Prefers the server-provided per-image flag (`image_is_dicom`, a URL -> bool
+ * map emitted in unbased question JSON) so a DICOM that happens to be named
+ * `.jpg` (or a JPEG named `.dcm`) is handled correctly; falls back to the
+ * filename heuristic for legacy payloads that do not carry the map.
+ *
+ * @param {string} url
+ * @param {object} [isDicomMap]
+ * @returns {boolean}
+ */
+export function isDicomImage(url, isDicomMap) {
+  if (isDicomMap && Object.prototype.hasOwnProperty.call(isDicomMap, url)) {
+    return !!isDicomMap[url];
+  }
+  return isDicomUrl(url);
+}
+
+/**
+ * Build the per-question JSON URL for an exam.
+ *
+ * Based exam URLs (e.g. `/longs/exam/json/5/123/abc`) get `/question/<id>`
+ * appended. Unbased exam URLs end in `/unbased`, and the matching server route
+ * inserts the question path *before* that suffix
+ * (`/longs/exam/json/5/123/abc/question/9/unbased`), so we must not simply
+ * concatenate.
+ *
+ * @param {string} examUrl - exam JSON URL (without any `?v=` query)
+ * @param {string|number} questionId
+ * @returns {string}
+ */
+export function questionUrlForExam(examUrl, questionId) {
+  const suffix = "/unbased";
+  if (examUrl.endsWith(suffix)) {
+    return `${examUrl.slice(0, -suffix.length)}/question/${questionId}${suffix}`;
+  }
+  return `${examUrl}/question/${questionId}`;
+}

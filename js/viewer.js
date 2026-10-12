@@ -29,7 +29,9 @@ import {
   base64ToBlob,
   renderThumbnail,
   addImageRenderedListener,
-} from "./viewer3d.js?v=1.1.0";
+} from "./viewer3d.js?v=1.2.2";
+import * as helper from "./helpers.js?v=1.2.2";
+import { getCachedImage } from "./precache.js?v=1.2.2";
 
 export { base64ToBlob, renderThumbnail };
 
@@ -541,26 +543,33 @@ export function initRtsDicomLoader() {
   // Loaders are registered by viewer3d.js once the engine is initialised.
 }
 
-/** Build a cornerstone imageId for one exam image entry (same rules as before). */
-function toImageId(data, i) {
+/**
+ * Build a cornerstone imageId for one exam image entry.
+ *
+ * DICOM goes through the cache-aware `rtsdicom:` loader; non-DICOM images go
+ * through `external:` (also cache-aware, served from Cache Storage when the
+ * exam was pre-cached). The server's per-image `image_is_dicom` map is
+ * preferred over the filename heuristic when present.
+ */
+function toImageId(data, i, isDicomMap) {
   if (data instanceof Blob) return "rtsdicom:" + i;
   if (typeof data === "string") {
     if (data.startsWith("data:image")) return "external:" + data;
     if (data.startsWith("data:")) return "rtsdicom:" + i;
     if (data.startsWith("wadouri:") || data.startsWith("external:")) return data;
-    if (data.endsWith("dcm") || /(?:\/|^)[^.\/]+$/.test(data)) return "wadouri:" + data;
+    if (helper.isDicomImage(data, isDicomMap)) return "rtsdicom:" + i;
     return "external:" + data;
   }
   return "rtsdicom:" + i;
 }
 
-async function load(images, annotations) {
+async function load(images, annotations, isDicomMap) {
   await ensureEngine();
 
   // Reset active stack for on-demand decoding and clear prior stack memory
   cleanupViewerMemory();
 
-  const imageIds = images.map(toImageId);
+  const imageIds = images.map((data, i) => toImageId(data, i, isDicomMap));
 
   const element = document.getElementById("dicom-image");
   createViewport(element);
@@ -751,7 +760,7 @@ export function openMainImage(current_question, t, source) {
     });
 
     // Load annotations into the dicom_element
-    load(images, annotations);
+    load(images, annotations, current_question.image_is_dicom);
   }
 }
 
@@ -781,9 +790,10 @@ export function urltoFile(url, filename, mimeType) {
       console.warn("base64ToBlob failed, falling back to fetch", e);
     }
   }
-  return fetch(url)
-    .then(function(res) {
-      return res.arrayBuffer();
+  // Prefer the locally pre-cached copy so thumbnails work without a network.
+  return getCachedImage(url)
+    .then(function(cached) {
+      return cached ? cached.arrayBuffer() : fetch(url).then(function(res) { return res.arrayBuffer(); });
     })
     .then(function(buf) {
       return new File([buf], filename, { type: mimeType });

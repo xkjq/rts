@@ -1,5 +1,5 @@
-import * as helper from "./helpers.js?v=1.1.0";
-import * as config from "./config.js?v=1.1.0";
+import * as helper from "./helpers.js?v=1.2.2";
+import * as config from "./config.js?v=1.2.2";
 /**
  * Submits answers
  */
@@ -223,21 +223,29 @@ export function getQuestion(url, question_number, question_total) {
       xhrInstance = new XMLHttpRequest();
       return xhrInstance;
     },
-    progress: function(e) {
-      lastActivity = Date.now(); // reset stall timer on every incoming chunk
-      if (e.lengthComputable) {
-        var completedPercentage = Math.round((e.loaded * 100) / e.total);
-        $("#progress").html(
-          `Downloading question [${question_number}/${question_total}]<br/>${completedPercentage}%<br/>${helper.formatBytes(
-            e.total
-          )}`
-        );
-      } else {
-        $("#progress").html(
-          `Downloading question [${question_number}/${question_total}]<br/>This file is compressed (downloaded ${helper.humanFileSize(e.loaded)})`
-        );
-      }
-    },
+    progress: (function() {
+      let last = 0;
+      return function(e) {
+        lastActivity = Date.now(); // reset stall timer on every incoming chunk
+        const now = Date.now();
+        // Throttle the DOM update; the stall timer above is still reset on
+        // every chunk.
+        if (now - last < 200 && e.lengthComputable && e.loaded < e.total) return;
+        last = now;
+        if (e.lengthComputable) {
+          var completedPercentage = Math.round((e.loaded * 100) / e.total);
+          $("#progress").html(
+            `Downloading question [${question_number}/${question_total}]<br/>${completedPercentage}%<br/>${helper.formatBytes(
+              e.total
+            )}`
+          );
+        } else {
+          $("#progress").html(
+            `Downloading question [${question_number}/${question_total}]<br/>This file is compressed (downloaded ${helper.humanFileSize(e.loaded)})`
+          );
+        }
+      };
+    })(),
     error: (jqXHR, textStatus, errorThrown) => {
       console.debug("error downloading", jqXHR, textStatus, errorThrown);
     },

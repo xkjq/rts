@@ -25,6 +25,9 @@
  *   - `external:<url>`   for non-DICOM images (base64 data URLs / blob URLs)
  */
 
+import * as helper from "./helpers.js?v=1.2.2";
+import { getCachedImage } from "./precache.js?v=1.2.2";
+
 const RE_ID = "rts-rendering-engine";
 const VP_ID = "rts-viewport";
 const TG_ID = "rts-toolgroup";
@@ -43,6 +46,7 @@ const state = {
   isStack: false,
   activeStackData: null,
   fileIds: new Map(),
+  sourceIds: new Map(),
   metaCache: new Map(),
   lru: [],
   loadersRegistered: false,
@@ -70,6 +74,7 @@ function touchSlice(index) {
 
 function evictSlice(index) {
   if (index === undefined || index === null) return;
+  state.sourceIds.delete(index);
   if (state.fileIds.has(index)) {
     const fileId = state.fileIds.get(index);
     state.fileIds.delete(index);
@@ -169,13 +174,27 @@ function loadExternalImage(url, imageId) {
   });
 }
 
+/** Cache a slice's window/level + plane metadata keyed by index. */
+function cacheSliceMetadata(index, sourceId) {
+  const e = state.engine;
+  try {
+    const voi = e.metaData.get("voiLutModule", sourceId);
+    if (voi) state.metaCache.set(index + "_voiLutModule", voi);
+    const plane = e.metaData.get("imagePlaneModule", sourceId);
+    if (plane) state.metaCache.set(index + "_imagePlaneModule", plane);
+  } catch (err) {
+    // metadata is best-effort
+  }
+}
+
 /** Register RTS's image loaders + metadata provider with cornerstone3D. */
 function registerLoaders() {
   if (state.loadersRegistered) return;
   const e = state.engine;
   const loader = e.cornerstoneDICOMImageLoader;
 
-  // Offline/inline DICOM slices: `rtsdicom:<index>`.
+  // DICOM slices: `rtsdicom:<index>`. Bytes come from the active stack entry
+  // (Blob / base64 / URL), preferring the offline pre-cache when present.
   e.imageLoader.registerImageLoader("rtsdicom", (imageId) => {
     const index = parseInt(imageId.replace("rtsdicom:", ""), 10);
     const promise = (async () => {
@@ -183,50 +202,69 @@ function registerLoaders() {
       if (item === undefined || item === null) {
         throw new Error("No image data for slice index " + index);
       }
-      // Remote URL stored in the stack: delegate to the wadouri loader.
-      if (typeof item === "string" && !item.startsWith("data:") && !(item instanceof Blob)) {
+
+      // Remote URL: serve the pre-cached copy when available, else the network.
+      if (typeof item === "string" && !item.startsWith("data:")) {
+        const cached = await getCachedImage(item);
+        if (cached) {
+          const fileId = loader.wadouri.fileManager.add(await cached.blob());
+          state.fileIds.set(index, fileId);
+          state.sourceIds.set(index, fileId);
+          const image = await loader.wadouri.loadImage(fileId).promise;
+          image.imageId = imageId;
+          cacheSliceMetadata(index, fileId);
+          touchSlice(index);
+          return image;
+        }
         const wadouriId = item.startsWith("wadouri:") ? item : "wadouri:" + item;
+        state.sourceIds.set(index, wadouriId);
         const image = await loader.wadouri.loadImage(wadouriId).promise;
         image.imageId = imageId;
+        cacheSliceMetadata(index, wadouriId);
         touchSlice(index);
         return image;
       }
+
       const fileId = ensureFileId(index);
       if (!fileId) throw new Error("Invalid image data at slice index " + index);
+      state.sourceIds.set(index, fileId);
       const image = await loader.wadouri.loadImage(fileId).promise;
       image.imageId = imageId;
-      try {
-        const voi = e.metaData.get("voiLutModule", fileId);
-        if (voi) state.metaCache.set(index + "_voiLutModule", voi);
-        const plane = e.metaData.get("imagePlaneModule", fileId);
-        if (plane) state.metaCache.set(index + "_imagePlaneModule", plane);
-      } catch (err) {
-        // metadata is best-effort
-      }
+      cacheSliceMetadata(index, fileId);
       touchSlice(index);
       return image;
     })();
     return { promise };
   });
 
-  // Metadata for `rtsdicom:` slices (the dicom-image-loader only answers
-  // `dicomfile:`/`wadouri:` ids).
+  // Metadata for `rtsdicom:` slices. The dicom-image-loader only answers
+  // `dicomfile:`/`wadouri:` ids, so delegate every lookup to the slice's
+  // source id (the wadouri id or file-manager id it was loaded from).
   e.metaData.addProvider((type, imageId) => {
     if (typeof imageId !== "string" || !imageId.startsWith("rtsdicom:")) return undefined;
     const idx = parseInt(imageId.replace("rtsdicom:", ""), 10);
     const key = idx + "_" + type;
     if (state.metaCache.has(key)) return state.metaCache.get(key);
-    if (state.fileIds.has(idx)) {
-      const meta = e.metaData.get(type, state.fileIds.get(idx));
+    const sourceId = state.fileIds.has(idx) ? state.fileIds.get(idx) : state.sourceIds.get(idx);
+    if (sourceId) {
+      const meta = e.metaData.get(type, sourceId);
       if (meta) state.metaCache.set(key, meta);
       return meta;
     }
     return undefined;
   });
 
-  // Non-DICOM images (JPEG/PNG base64 or blob URLs).
+  // Non-DICOM images (`external:<url>`), served from the pre-cache when present.
   e.imageLoader.registerImageLoader("external", (imageId) => ({
-    promise: loadExternalImage(imageId.replace(/^external:/, ""), imageId),
+    promise: (async () => {
+      const raw = imageId.replace(/^external:/, "");
+      let src = raw;
+      if (!raw.startsWith("data:") && !raw.startsWith("blob:")) {
+        const cached = await getCachedImage(raw);
+        src = cached ? URL.createObjectURL(await cached.blob()) : helper.absoluteUrl(raw);
+      }
+      return loadExternalImage(src, imageId);
+    })(),
   }));
 
   state.loadersRegistered = true;
@@ -597,6 +635,7 @@ export function resize() {
 export function purgeCaches() {
   state.activeStackData = null;
   state.fileIds.clear();
+  state.sourceIds.clear();
   state.metaCache.clear();
   state.lru.length = 0;
   try {
@@ -705,7 +744,13 @@ export async function renderThumbnail(canvas, data) {
   } else if (typeof data === "string" && data.startsWith("data:")) {
     imageId = loader.wadouri.fileManager.add(base64ToBlob(data, "application/dicom"));
   } else if (typeof data === "string") {
-    imageId = data.startsWith("wadouri:") ? data : "wadouri:" + data;
+    // Prefer the offline pre-cache so thumbnails render without a network.
+    const cached = await getCachedImage(data);
+    if (cached) {
+      imageId = loader.wadouri.fileManager.add(await cached.blob());
+    } else {
+      imageId = data.startsWith("wadouri:") ? data : "wadouri:" + helper.absoluteUrl(data);
+    }
   } else {
     return;
   }
