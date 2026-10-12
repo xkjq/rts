@@ -100,7 +100,7 @@ export function base64ToBlob(dataUrl, mimeType = "application/dicom") {
   const commaIdx = dataUrl.indexOf(",");
   let base64Str = commaIdx >= 0 ? dataUrl.slice(commaIdx + 1) : dataUrl;
   if (/[\n\r ]/.test(base64Str)) base64Str = base64Str.replace(/\s+/g, "");
-  const binaryStr = window.atob(base64Str);
+  const binaryStr = atob(base64Str);
   const len = binaryStr.length;
   const bytes = new Uint8Array(len);
   for (let i = 0; i < len; i++) bytes[i] = binaryStr.charCodeAt(i);
@@ -429,7 +429,7 @@ function viewPlaneNormal(imageId) {
 
 function newUID() {
   try {
-    return window.crypto.randomUUID();
+    return globalThis.crypto.randomUUID();
   } catch (e) {
     return "rts-" + Date.now() + "-" + Math.random().toString(36).slice(2);
   }
